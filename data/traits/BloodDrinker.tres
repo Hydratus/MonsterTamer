@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TraitData" load_steps=3 format=3 uid="uid://bqmcnv14kkmv7"]
+
+[ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="1_m1xfa"]
+[ext_resource type="Script" uid="uid://d12dflredef2o" path="res://core/battle/traits/trait_stat_modifier.gd" id="2_7rr8k"]
+
+[resource]
+script = ExtResource("1_m1xfa")
+name = "Blood Drinker"
+description = "+10% Lifesteal"
+lifesteal_ratio = 0.1
+metadata/_custom_type_script = "uid://devgkm5eu4v73"

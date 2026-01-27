@@ -1,0 +1,2 @@
+extends BattleDecision
+class_name PlayerDecision

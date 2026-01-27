@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AttackData" load_steps=5 format=3 uid="uid://do68t1hn7g6gq"]
+
+[ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_k20xq"]
+[ext_resource type="Script" uid="uid://d3c72pjv8iek2" path="res://core/battle/stats/stat_change_data.gd" id="2_p86c8"]
+[ext_resource type="Resource" uid="uid://byjnpp3phcp0o" path="res://data/statchanges/Strength+2self.tres" id="3_4bus2"]
+[ext_resource type="Resource" uid="uid://ceb2ba6hfwmxs" path="res://data/statchanges/Speed-5self.tres" id="4_vowsc"]
+
+[resource]
+script = ExtResource("1_k20xq")
+name = "Battle Cry"
+power = 0
+energy_cost = 2
+stat_changes = Array[ExtResource("2_p86c8")]([ExtResource("3_4bus2"), ExtResource("4_vowsc")])
+metadata/_custom_type_script = "uid://byip331ngwvgq"

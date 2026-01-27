@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="StatChangeData" load_steps=2 format=3 uid="uid://dlkgkuv0kng1g"]
+
+[ext_resource type="Script" uid="uid://d3c72pjv8iek2" path="res://core/battle/stats/stat_change_data.gd" id="1_73dnx"]
+
+[resource]
+script = ExtResource("1_73dnx")
+stat = 6
+metadata/_custom_type_script = "uid://d3c72pjv8iek2"

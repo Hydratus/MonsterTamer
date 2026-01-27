@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TraitData" load_steps=3 format=3 uid="uid://dox6h5tqnr2yj"]
+
+[ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="1_124el"]
+[ext_resource type="Script" uid="uid://d12dflredef2o" path="res://core/battle/traits/trait_stat_modifier.gd" id="2_2e3so"]
+
+[resource]
+script = ExtResource("1_124el")
+name = "HP Regen"
+only_when_attacking = false
+regen_hp_ratio = 0.2
+metadata/_custom_type_script = "uid://devgkm5eu4v73"

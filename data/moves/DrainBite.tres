@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="AttackData" load_steps=3 format=3 uid="uid://by3ehbcb3vydg"]
+
+[ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_hmdxr"]
+[ext_resource type="Script" uid="uid://d3c72pjv8iek2" path="res://core/battle/stats/stat_change_data.gd" id="2_xtflp"]
+
+[resource]
+script = ExtResource("1_hmdxr")
+name = "Drain Bite"
+lifesteal = 0.15
+metadata/_custom_type_script = "uid://byip331ngwvgq"

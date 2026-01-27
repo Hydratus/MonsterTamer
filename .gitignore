@@ -1,0 +1,18 @@
+# Godot 4
+.godot/
+.import/
+
+# Export presets (optional – oft behalten!)
+# export_presets.cfg
+
+# Mono / C#
+.mono/
+
+# Logs
+*.log
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

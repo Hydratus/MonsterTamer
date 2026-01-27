@@ -1,0 +1,40 @@
+[gd_scene load_steps=3 format=3 uid="uid://84twmepa6ykg"]
+
+[ext_resource type="Script" uid="uid://cpwg6lis8528r" path="res://core/battle/ui/battle_menu.gd" id="1_idkgt"]
+[ext_resource type="Script" uid="uid://76qxjkx1r5oc" path="res://core/battle/battle_scene.gd" id="1_kinr6"]
+
+[node name="BattleScene" type="Node2D"]
+script = ExtResource("1_kinr6")
+
+[node name="BattleMenu" type="CanvasLayer" parent="."]
+script = ExtResource("1_idkgt")
+metadata/_custom_type_script = "uid://cpwg6lis8528r"
+
+[node name="Control" type="Control" parent="BattleMenu"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="BattleMenu/Control"]
+layout_mode = 0
+offset_right = 120.0
+offset_bottom = 101.0
+
+[node name="Attack1" type="Button" parent="BattleMenu/Control/VBoxContainer"]
+layout_mode = 2
+text = "Attack1"
+
+[node name="Attack2" type="Button" parent="BattleMenu/Control/VBoxContainer"]
+layout_mode = 2
+text = "Attack2"
+
+[node name="Attack3" type="Button" parent="BattleMenu/Control/VBoxContainer"]
+layout_mode = 2
+text = "Attack3"
+
+[node name="Attack4" type="Button" parent="BattleMenu/Control/VBoxContainer"]
+layout_mode = 2
+text = "Attack4"

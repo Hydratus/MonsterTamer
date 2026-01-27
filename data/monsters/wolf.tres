@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=13 format=3 uid="uid://bn0botltdcede"]
+
+[ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_7cryr"]
+[ext_resource type="Script" uid="uid://dlkhfxldvfm2b" path="res://core/monsters/monster_data.gd" id="1_vhgos"]
+[ext_resource type="Resource" uid="uid://c8ovgmpw0mkpy" path="res://data/moves/FireBite.tres" id="2_ljirl"]
+[ext_resource type="Resource" uid="uid://dkrjb4yrweo1q" path="res://data/moves/QuickAttack.tres" id="3_hjup0"]
+[ext_resource type="Resource" uid="uid://do68t1hn7g6gq" path="res://data/moves/BattleCry.tres" id="4_webv6"]
+[ext_resource type="Resource" uid="uid://brlc7xaw4tj8c" path="res://data/moves/Howl.tres" id="5_8u60m"]
+[ext_resource type="Resource" uid="uid://bknd6250e5dlc" path="res://data/traits/BruteForce.tres" id="6_63niu"]
+[ext_resource type="Resource" uid="uid://by3ehbcb3vydg" path="res://data/moves/DrainBite.tres" id="6_voqcd"]
+[ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="7_vje5y"]
+[ext_resource type="Resource" uid="uid://citlotilv0hbx" path="res://data/traits/StrongBody.tres" id="8_vje5y"]
+[ext_resource type="Resource" uid="uid://b6ryw0k1onli1" path="res://data/traits/StrongBeginning.tres" id="9_3t10j"]
+[ext_resource type="Resource" uid="uid://bqmcnv14kkmv7" path="res://data/traits/BloodDrinker.tres" id="11_flji7"]
+
+[resource]
+script = ExtResource("1_vhgos")
+name = "Wolf"
+base_max_hp = 15
+base_speed = 13
+elements = Array[int]([0, 1])
+attacks = Array[ExtResource("1_7cryr")]([ExtResource("2_ljirl"), ExtResource("3_hjup0"), ExtResource("4_webv6"), ExtResource("5_8u60m"), ExtResource("6_voqcd")])
+passive_traits = Array[ExtResource("7_vje5y")]([ExtResource("6_63niu"), ExtResource("8_vje5y"), ExtResource("9_3t10j"), ExtResource("11_flji7")])
+metadata/_custom_type_script = "uid://dlkhfxldvfm2b"

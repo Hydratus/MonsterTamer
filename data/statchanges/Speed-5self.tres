@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="StatChangeData" load_steps=2 format=3 uid="uid://ceb2ba6hfwmxs"]
+
+[ext_resource type="Script" uid="uid://d3c72pjv8iek2" path="res://core/battle/stats/stat_change_data.gd" id="1_eo3eq"]
+
+[resource]
+script = ExtResource("1_eo3eq")
+stat = 6
+stages = -5
+target_self = true
+metadata/_custom_type_script = "uid://d3c72pjv8iek2"

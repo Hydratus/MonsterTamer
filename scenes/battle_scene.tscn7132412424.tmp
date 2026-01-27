@@ -1,0 +1,28 @@
+[gd_scene load_steps=3 format=3 uid="uid://84twmepa6ykg"]
+
+[ext_resource type="Script" uid="uid://cpwg6lis8528r" path="res://core/battle/ui/battle_menu.gd" id="1_idkgt"]
+[ext_resource type="Script" uid="uid://76qxjkx1r5oc" path="res://scenes/battle_scene.gd" id="1_kinr6"]
+
+[node name="BattleScene" type="Node2D"]
+script = ExtResource("1_kinr6")
+
+[node name="BattleMenu" type="CanvasLayer" parent="."]
+visible = false
+script = ExtResource("1_idkgt")
+metadata/_custom_type_script = "uid://cpwg6lis8528r"
+
+[node name="VBoxContainer" type="VBoxContainer" parent="BattleMenu"]
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Quick Attack" type="Button" parent="BattleMenu/VBoxContainer"]
+layout_mode = 2
+text = "Quick Attack"
+
+[node name="Normal Attack" type="Button" parent="BattleMenu/VBoxContainer"]
+layout_mode = 2
+text = "Normal Attack"
+
+[node name="Heavy Attack" type="Button" parent="BattleMenu/VBoxContainer"]
+layout_mode = 2
+text = "Heavy Attack"
