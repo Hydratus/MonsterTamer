@@ -14,7 +14,9 @@
 [resource]
 script = ExtResource("10_m3wq7")
 name = "Slime"
-level = 10
+base_max_hp = 10
+level = 30
+base_exp = 500
 elements = Array[int]([2])
 attacks = Array[ExtResource("1_4bctq")]([ExtResource("2_0xhg0"), ExtResource("3_i1jc1"), ExtResource("4_yxvwe")])
 passive_traits = Array[ExtResource("6_7sxdn")]([ExtResource("7_pf4om"), ExtResource("8_o57q6"), ExtResource("9_sxoxs")])

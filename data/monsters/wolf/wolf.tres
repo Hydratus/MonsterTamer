@@ -17,8 +17,10 @@
 script = ExtResource("12_g7gm0")
 name = "Wolf"
 base_max_hp = 30
+base_max_energy = 30
+base_strength = 100
 base_speed = 13
-level = 10
+level = 9
 elements = Array[int]([0, 1])
 attacks = Array[ExtResource("1_h80kq")]([ExtResource("2_mqy4a"), ExtResource("3_3hg6l"), ExtResource("4_tbtce"), ExtResource("5_bonu0"), ExtResource("6_mio7g")])
 passive_traits = Array[ExtResource("7_88xf6")]([ExtResource("8_a7c6i"), ExtResource("9_v36ls"), ExtResource("10_pg5lq"), ExtResource("11_q6ow0")])

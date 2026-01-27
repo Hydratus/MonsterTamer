@@ -71,6 +71,12 @@ var passive_traits: Array[TraitData] = []
 var attacks: Array[AttackData] = []
 
 # ------------------------
+# EXPERIENCE & LEVELING
+# ------------------------
+var current_exp: int = 0
+var exp_to_next_level: int = 0
+
+# ------------------------
 # INIT
 # ------------------------
 func _init(monster_data: MonsterData):
@@ -84,6 +90,9 @@ func _init(monster_data: MonsterData):
 
 	hp = get_max_hp()
 	energy = get_max_energy()
+	
+	# Initialize EXP requirements
+	exp_to_next_level = _get_required_exp_for_level(data.level + 1)
 
 # ------------------------
 # BASE STAT RESET
@@ -286,7 +295,10 @@ func level_up() -> void:
 	hp = get_max_hp()
 	energy = get_max_energy()
 	
-	print("%s leveled up to level %d!" % [data.name, data.level])
+	print(
+		"🎉 %s leveled up to level %d! (HP: %d | EN: %d)"
+		% [data.name, data.level, hp, energy]
+	)
 	
 	# Check for evolution
 	_check_evolution()
@@ -328,7 +340,7 @@ func _check_attack_learning() -> void:
 	for learn_data in available_attacks:
 		if learn_data.attack != null and not attacks.has(learn_data.attack):
 			attacks.append(learn_data.attack)
-			print("%s learned %s!" % [data.name, learn_data.attack.name])
+			print("⚔️ %s learned %s!" % [data.name, learn_data.attack.name])
 
 # Get all traits the monster can learn at current level
 func get_available_traits_to_learn() -> Array[Resource]:
@@ -349,4 +361,50 @@ func _check_trait_learning() -> void:
 	
 	for learn_data in available_traits:
 		add_trait(learn_data.trait_data as TraitData)
-		print("%s learned trait %s!" % [data.name, learn_data.trait_data.name])
+		print("✨ %s learned trait %s!" % [data.name, learn_data.trait_data.name])
+
+# ------------------------
+# EXPERIENCE SYSTEM
+# ------------------------
+
+# Gain EXP from defeating an opponent
+func gain_exp(defeated_monster: MonsterInstance) -> void:
+	var earned_exp = _calculate_earned_exp(defeated_monster)
+	current_exp += earned_exp
+	
+	print(
+		"%s gained %d EXP! (Total: %d/%d)"
+		% [data.name, earned_exp, current_exp, exp_to_next_level]
+	)
+	
+	# Check if level up is possible
+	_check_level_up()
+
+# Calculate EXP earned from defeating a monster
+# Formula: (baseExp × (level + 5)) / 7
+func _calculate_earned_exp(defeated_monster: MonsterInstance) -> int:
+	var base_exp = defeated_monster.data.base_exp
+	var defeated_level = defeated_monster.data.level
+	
+	var earned = int((base_exp * (defeated_level + 5)) / 7.0)
+	return max(earned, 1)  # Minimum 1 EXP
+
+# Check if monster(s) should level up
+func _check_level_up() -> void:
+	while current_exp >= exp_to_next_level and data.level < 100:
+		current_exp -= exp_to_next_level
+		level_up()
+		exp_to_next_level = _get_required_exp_for_level(data.level + 1)
+
+# Helper function to calculate required EXP for a level
+func _get_required_exp_for_level(level: int) -> int:
+	# Growth rates: FAST (×12), NORMAL (×18), SLOW (×24), VERY_SLOW (×30)
+	# 2-3 Kämpfe pro Level-up durchschnittlich
+	var multiplier = 18
+	match data.growth_rate:
+		MonsterData.GrowthType.FAST: multiplier = 12
+		MonsterData.GrowthType.NORMAL: multiplier = 18
+		MonsterData.GrowthType.SLOW: multiplier = 24
+		MonsterData.GrowthType.VERY_SLOW: multiplier = 30
+	
+	return level * multiplier
