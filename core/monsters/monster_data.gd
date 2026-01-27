@@ -22,6 +22,12 @@ class_name MonsterData
 var base_lifesteal: float = 0.0
 
 # ------------------------
+# LEVEL
+# ------------------------
+@export_range(1, 100)
+var level: int = 1
+
+# ------------------------
 # ELEMENTS
 # ------------------------
 @export var elements: Array[Element.Type] = []

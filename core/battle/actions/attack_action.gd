@@ -153,13 +153,13 @@ func execute() -> Variant:
 					stat_name
 				])
 		else:
-			var sign := "+" if delta > 0 else ""
+			var sign_prefix := "+" if delta > 0 else ""
 			print(
 				"%s's %s changed by %s%d!"
 				% [
 					receiver.data.name,
 					stat_name,
-					sign,
+					sign_prefix,
 					delta
 				]
 			)

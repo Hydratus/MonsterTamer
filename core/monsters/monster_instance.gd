@@ -89,19 +89,27 @@ func _init(monster_data: MonsterData):
 # BASE STAT RESET
 # ------------------------
 func _recalculate_stats():
-	max_hp = data.base_max_hp
-	max_energy = data.base_max_energy
-
-	strength = data.base_strength
-	magic = data.base_magic
-	defense = data.base_defense
-	resistance = data.base_resistance
-	speed = data.base_speed
-
+	_apply_level_scaling()
 	reset_stat_stages()
 	clear_effects()
-
 	clamp_resources()
+
+# Calculate actual stats based on base stats and level
+func _apply_level_scaling():
+	var level = data.level
+	
+	# HP: ((2 × base_max_hp × level) / 100) + level + 5
+	max_hp = int(ceil((2 * data.base_max_hp * level) / 100.0)) + level + 5
+	
+	# Energy: ((2 × base_max_energy × level) / 100) + 3
+	max_energy = int(ceil((2 * data.base_max_energy * level) / 100.0)) + 3
+	
+	# Stats: ((2 × base_stat × level) / 100) + 5
+	strength = int(ceil((2 * data.base_strength * level) / 100.0)) + 5
+	magic = int(ceil((2 * data.base_magic * level) / 100.0)) + 5
+	defense = int(ceil((2 * data.base_defense * level) / 100.0)) + 5
+	resistance = int(ceil((2 * data.base_resistance * level) / 100.0)) + 5
+	speed = int(ceil((2 * data.base_speed * level) / 100.0)) + 5
 
 
 # ------------------------

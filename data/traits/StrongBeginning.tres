@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="TraitData" load_steps=3 format=3 uid="uid://b6ryw0k1onli1"]
+[gd_resource type="Resource" script_class="TraitData" format=3 uid="uid://b6ryw0k1onli1"]
 
 [ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="1_dqsx1"]
 [ext_resource type="Script" uid="uid://d12dflredef2o" path="res://core/battle/traits/trait_stat_modifier.gd" id="2_rxlhi"]

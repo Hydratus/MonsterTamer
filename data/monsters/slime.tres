@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="MonsterData" load_steps=10 format=3 uid="uid://dw2p17b0415xh"]
+[gd_resource type="Resource" script_class="MonsterData" format=3 uid="uid://dw2p17b0415xh"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_5qa6r"]
 [ext_resource type="Resource" uid="uid://bw7nrfjda4m3y" path="res://data/moves/NormalAttack.tres" id="2_pbc0s"]
@@ -13,6 +13,7 @@
 [resource]
 script = ExtResource("4_gsjrs")
 name = "Slime"
+level = 10
 elements = Array[int]([2])
 attacks = Array[ExtResource("1_5qa6r")]([ExtResource("2_pbc0s"), ExtResource("3_gesbe"), ExtResource("4_xulun")])
 passive_traits = Array[ExtResource("4_gesbe")]([ExtResource("5_gesbe"), ExtResource("6_gsjrs"), ExtResource("8_d6j8p")])
