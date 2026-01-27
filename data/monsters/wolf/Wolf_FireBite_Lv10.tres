@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="AttackLearnData" format=3 uid="uid://drxblie30tq18"]
+
+[ext_resource type="Resource" uid="uid://c8ovgmpw0mkpy" path="res://data/moves/FireBite.tres" id="1_jhdtv"]
+[ext_resource type="Script" uid="uid://b23dqagtptegd" path="res://core/monsters/attack_learn_data.gd" id="1_rs4i6"]
+
+[resource]
+script = ExtResource("1_rs4i6")
+attack = ExtResource("1_jhdtv")
+learn_level = 10
+metadata/_custom_type_script = "uid://b23dqagtptegd"

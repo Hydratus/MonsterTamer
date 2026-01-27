@@ -41,3 +41,18 @@ var level: int = 1
 # TRAITS
 # ------------------------
 @export var passive_traits: Array[TraitData] = []
+
+# ------------------------
+# EVOLUTION
+# ------------------------
+@export var evolution: Resource
+
+# ------------------------
+# ATTACK LEARNING
+# ------------------------
+@export var learnable_attacks: Array[Resource] = []
+
+# ------------------------
+# TRAIT LEARNING
+# ------------------------
+@export var learnable_traits: Array[Resource] = []

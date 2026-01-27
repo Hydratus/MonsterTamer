@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="AttackLearnData" format=3 uid="uid://c4ungoku4qbkf"]
+
+[ext_resource type="Resource" uid="uid://dkrjb4yrweo1q" path="res://data/moves/QuickAttack.tres" id="1_5e08t"]
+[ext_resource type="Script" uid="uid://b23dqagtptegd" path="res://core/monsters/attack_learn_data.gd" id="1_hicrx"]
+
+[resource]
+script = ExtResource("1_hicrx")
+attack = ExtResource("1_5e08t")
+metadata/_custom_type_script = "uid://b23dqagtptegd"

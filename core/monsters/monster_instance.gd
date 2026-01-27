@@ -272,3 +272,81 @@ func on_round_end():
 				"%s gains %s due to Trait \"%s\"."
 				% [data.name, " and ".join(parts), trait_effect.name]
 			)
+
+# ------------------------
+# LEVELING UP
+# ------------------------
+func level_up() -> void:
+	if data.level >= 100:
+		print("%s is already at max level!" % data.name)
+		return
+	
+	data.level += 1
+	_recalculate_stats()
+	hp = get_max_hp()
+	energy = get_max_energy()
+	
+	print("%s leveled up to level %d!" % [data.name, data.level])
+	
+	# Check for evolution
+	_check_evolution()
+	
+	# Check for new attacks
+	_check_attack_learning()
+	
+	# Check for new traits
+	_check_trait_learning()
+
+# Check if the monster can evolve
+func _check_evolution() -> bool:
+	if data.evolution == null:
+		return false
+	
+	if data.level < data.evolution.evolution_level:
+		return false
+	
+	print("%s is ready to evolve!" % data.name)
+	return true
+
+# Get all attacks the monster can learn at current level
+func get_available_attacks_to_learn() -> Array[Resource]:
+	var available: Array[Resource] = []
+	
+	for learn_data in data.learnable_attacks:
+		if learn_data.learn_level == data.level:
+			available.append(learn_data)
+	
+	return available
+
+# Check for new attacks to learn
+func _check_attack_learning() -> void:
+	var available_attacks = get_available_attacks_to_learn()
+	
+	if available_attacks.is_empty():
+		return
+	
+	for learn_data in available_attacks:
+		if learn_data.attack != null and not attacks.has(learn_data.attack):
+			attacks.append(learn_data.attack)
+			print("%s learned %s!" % [data.name, learn_data.attack.name])
+
+# Get all traits the monster can learn at current level
+func get_available_traits_to_learn() -> Array[Resource]:
+	var available: Array[Resource] = []
+	
+	for learn_data in data.learnable_traits:
+		if learn_data.learn_level == data.level:
+			available.append(learn_data)
+	
+	return available
+
+# Check for new traits to learn
+func _check_trait_learning() -> void:
+	var available_traits = get_available_traits_to_learn()
+	
+	if available_traits.is_empty():
+		return
+	
+	for learn_data in available_traits:
+		add_trait(learn_data.trait_data as TraitData)
+		print("%s learned trait %s!" % [data.name, learn_data.trait_data.name])
