@@ -4,8 +4,10 @@ class_name StartRoundState
 func enter(battle):
 	print("--- Round Start ---")
 
-	for monster in battle.participants:
-		if not monster.is_alive():
+	# Verarbeite Round-Start-Effekte für beide aktiven Monster
+	for team in battle.teams:
+		var monster = team.get_active_monster()
+		if monster == null or not monster.is_alive():
 			continue
 
 		for trait_effect in monster.passive_traits:
@@ -22,7 +24,7 @@ func enter(battle):
 			]
 
 			var intended: int = trait_effect.round_start_stages
-			var sign := "+" if intended > 0 else ""
+			var sign_prefix := "+" if intended > 0 else ""
 
 			# ❌ Änderung nicht möglich (Limit erreicht)
 			if delta == 0:
@@ -30,7 +32,7 @@ func enter(battle):
 					"%s tried to gain %s%d %s due to Trait \"%s\", but it failed!"
 					% [
 						monster.data.name,
-						sign,
+						sign_prefix,
 						abs(intended),
 						stat_name,
 						trait_effect.name
@@ -43,7 +45,7 @@ func enter(battle):
 				"%s gains %s%d %s due to Trait \"%s\"."
 				% [
 					monster.data.name,
-					sign,
+					sign_prefix,
 					abs(delta),
 					stat_name,
 					trait_effect.name

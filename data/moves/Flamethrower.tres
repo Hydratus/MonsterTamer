@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="AttackData" format=3 uid="uid://8dfmju1geug3"]
+
+[ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_0tuo8"]
+[ext_resource type="Script" uid="uid://d3c72pjv8iek2" path="res://core/battle/stats/stat_change_data.gd" id="2_5qpng"]
+
+[resource]
+script = ExtResource("1_0tuo8")
+name = "Flamethrower"
+power = 50
+element = 1
+damage_type = 1
+metadata/_custom_type_script = "uid://byip331ngwvgq"

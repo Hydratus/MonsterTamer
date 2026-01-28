@@ -36,7 +36,11 @@ func execute() -> Variant:
 	if not target.is_alive():
 		return null
 
-	# 🔋 Energy Check
+	# � Trackiere, dass diese Monster gegeneinander kämpfen
+	actor.register_opponent(target)
+	target.register_opponent(actor)
+
+	# �🔋 Energy Check
 	if not actor.spend_energy(energy_cost):
 		print(
 			"%s tried to use %s — but doesn't have enough energy!"

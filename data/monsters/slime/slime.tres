@@ -14,7 +14,11 @@
 [resource]
 script = ExtResource("10_m3wq7")
 name = "Slime"
-base_max_hp = 10
+base_max_hp = 60
+base_strength = 30
+base_magic = 20
+base_defense = 40
+base_resistance = 40
 level = 30
 base_exp = 500
 elements = Array[int]([2])

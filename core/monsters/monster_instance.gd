@@ -20,7 +20,7 @@ enum StatType {
 # DATA
 # ------------------------
 var data: MonsterData
-var decision: BattleDecision
+var decision: BattleDecision = null  # Wird vom Battle gesetzt (PlayerDecision oder AIDecision)
 
 # ------------------------
 # BASE STATS
@@ -75,6 +75,9 @@ var attacks: Array[AttackData] = []
 # ------------------------
 var current_exp: int = 0
 var exp_to_next_level: int = 0
+
+# Tracking für Gegner, die dieses Monster bekämpft haben
+var opponents_fought: Array[MonsterInstance] = []
 
 # ------------------------
 # INIT
@@ -367,18 +370,36 @@ func _check_trait_learning() -> void:
 # EXPERIENCE SYSTEM
 # ------------------------
 
-# Gain EXP from defeating an opponent
-func gain_exp(defeated_monster: MonsterInstance) -> void:
-	var earned_exp = _calculate_earned_exp(defeated_monster)
-	current_exp += earned_exp
+# Gain EXP von einem besiegten Monster
+# Verteilt EXP auf mehrere Monster basierend auf wer es bekämpft hat
+func gain_exp(defeated_monster: MonsterInstance, contributing_monsters: Array[MonsterInstance]) -> void:
+	# Filtere nur lebende Monster
+	var alive_contributors: Array[MonsterInstance] = []
+	for monster in contributing_monsters:
+		if monster != null and monster.is_alive():
+			alive_contributors.append(monster)
 	
-	print(
-		"%s gained %d EXP! (Total: %d/%d)"
-		% [data.name, earned_exp, current_exp, exp_to_next_level]
-	)
+	# Wenn kein lebendes Monster den Kampf gekämpft hat, gib niemandem EXP
+	if alive_contributors.is_empty():
+		return
 	
-	# Check if level up is possible
-	_check_level_up()
+	var total_exp = _calculate_earned_exp(defeated_monster)
+	var exp_per_monster = int(total_exp / float(alive_contributors.size()))
+	
+	# Verteile EXP auf alle lebenden Monster
+	for monster in alive_contributors:
+		if monster.is_alive():
+			monster.current_exp += exp_per_monster
+			print(
+				"%s gained %d EXP! (Total: %d/%d)"
+				% [monster.data.name, exp_per_monster, monster.current_exp, monster.exp_to_next_level]
+			)
+			monster._check_level_up()
+
+# Tracking: Markiere ein Monster als Gegner in diesem Kampf
+func register_opponent(opponent: MonsterInstance) -> void:
+	if opponent != null and opponent not in opponents_fought:
+		opponents_fought.append(opponent)
 
 # Calculate EXP earned from defeating a monster
 # Formula: (baseExp × (level + 5)) / 7

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="AttackLearnData" format=3 uid="uid://dflih51rv04h7"]
+
+[ext_resource type="Resource" uid="uid://8dfmju1geug3" path="res://data/moves/Flamethrower.tres" id="1_jioi2"]
+[ext_resource type="Script" uid="uid://b23dqagtptegd" path="res://core/monsters/attack_learn_data.gd" id="1_yhvwt"]
+
+[resource]
+script = ExtResource("1_yhvwt")
+attack = ExtResource("1_jioi2")
+learn_level = 10
+metadata/_custom_type_script = "uid://b23dqagtptegd"

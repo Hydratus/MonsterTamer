@@ -6,8 +6,15 @@ func enter(battle: BattleController):
 	battle.pending_player_actions.clear()
 	battle.waiting_for_player = false
 
-	for monster in battle.participants:
-		if not monster.is_alive():
+	# Sammle Aktionen von den aktiven Monstern beider Teams
+	for team in battle.teams:
+		var monster = team.get_active_monster()
+		if monster == null or not monster.is_alive():
+			continue
+
+		# Null-Check für decision
+		if monster.decision == null:
+			push_error("Monster %s hat keine Decision zugewiesen!" % monster.data.name)
 			continue
 
 		if monster.decision is PlayerDecision:

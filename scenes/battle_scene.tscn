@@ -1,16 +1,21 @@
-[gd_scene load_steps=3 format=3 uid="uid://84twmepa6ykg"]
+[gd_scene format=3 uid="uid://84twmepa6ykg"]
 
 [ext_resource type="Script" uid="uid://cpwg6lis8528r" path="res://core/battle/ui/battle_menu.gd" id="1_idkgt"]
 [ext_resource type="Script" uid="uid://76qxjkx1r5oc" path="res://core/battle/battle_scene.gd" id="1_kinr6"]
+[ext_resource type="Script" uid="uid://dlkhfxldvfm2b" path="res://core/monsters/monster_data.gd" id="2_pxwbd"]
+[ext_resource type="Resource" uid="uid://bn0botltdcede" path="res://data/monsters/wolf/wolf.tres" id="3_1i8jf"]
+[ext_resource type="Resource" uid="uid://dw2p17b0415xh" path="res://data/monsters/slime/slime.tres" id="4_svpld"]
 
-[node name="BattleScene" type="Node2D"]
+[node name="BattleScene" type="Node2D" unique_id=1502305483]
 script = ExtResource("1_kinr6")
+player_team = Array[ExtResource("2_pxwbd")]([ExtResource("3_1i8jf"), ExtResource("4_svpld")])
+enemy_team = Array[ExtResource("2_pxwbd")]([ExtResource("4_svpld"), ExtResource("3_1i8jf")])
 
-[node name="BattleMenu" type="CanvasLayer" parent="."]
+[node name="BattleMenu" type="CanvasLayer" parent="." unique_id=1430895341]
 script = ExtResource("1_idkgt")
 metadata/_custom_type_script = "uid://cpwg6lis8528r"
 
-[node name="Control" type="Control" parent="BattleMenu"]
+[node name="Control" type="Control" parent="BattleMenu" unique_id=1213003308]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -18,23 +23,23 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="BattleMenu/Control"]
+[node name="VBoxContainer" type="VBoxContainer" parent="BattleMenu/Control" unique_id=1100218297]
 layout_mode = 0
 offset_right = 120.0
 offset_bottom = 101.0
 
-[node name="Attack1" type="Button" parent="BattleMenu/Control/VBoxContainer"]
+[node name="Attack1" type="Button" parent="BattleMenu/Control/VBoxContainer" unique_id=1910982642]
 layout_mode = 2
 text = "Attack1"
 
-[node name="Attack2" type="Button" parent="BattleMenu/Control/VBoxContainer"]
+[node name="Attack2" type="Button" parent="BattleMenu/Control/VBoxContainer" unique_id=152372708]
 layout_mode = 2
 text = "Attack2"
 
-[node name="Attack3" type="Button" parent="BattleMenu/Control/VBoxContainer"]
+[node name="Attack3" type="Button" parent="BattleMenu/Control/VBoxContainer" unique_id=1727784805]
 layout_mode = 2
 text = "Attack3"
 
-[node name="Attack4" type="Button" parent="BattleMenu/Control/VBoxContainer"]
+[node name="Attack4" type="Button" parent="BattleMenu/Control/VBoxContainer" unique_id=1163721693]
 layout_mode = 2
 text = "Attack4"

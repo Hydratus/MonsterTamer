@@ -2,15 +2,24 @@ extends RefCounted
 class_name BattleController
 
 var scene
-var participants: Array[MonsterInstance] = []
+var teams: Array = []  # Array von MonsterTeam
 var action_queue: Array[BattleAction] = []
 var pending_player_actions := {}
 var waiting_for_player := false
 var current_state
 
 
-func start_battle(monsters: Array[MonsterInstance]):
-	participants = monsters
+func start_battle(team1_monsters: Array[MonsterInstance], team2_monsters: Array[MonsterInstance]):
+	# Erstelle Teams aus den Monstern (MonsterTeam Klasse)
+	teams = [
+		MonsterTeam.new(team1_monsters),
+		MonsterTeam.new(team2_monsters)
+	]
+	
+	# Debug: Zeige wie viele Monster in jedem Team sind
+	print("DEBUG start_battle: Team 1 hat %d Monster" % teams[0].monsters.size())
+	print("DEBUG start_battle: Team 2 hat %d Monster" % teams[1].monsters.size())
+	
 	change_state(BattleStartState.new())
 
 
@@ -60,12 +69,13 @@ func submit_player_attack(monster: MonsterInstance, attack: AttackData):
 
 
 func check_all_player_actions():
-	for monster in participants:
-		if not monster.is_alive():
-			continue
-		if monster.decision is PlayerDecision:
-			if not pending_player_actions.has(monster):
-				return
+	# Prüfe ob beide aktiven Monster Aktionen eingeplant haben
+	for team in teams:
+		var monster = team.get_active_monster()
+		if monster != null and monster.is_alive():
+			if monster.decision != null and monster.decision is PlayerDecision:
+				if not pending_player_actions.has(monster):
+					return
 
 	for action in pending_player_actions.values():
 		action_queue.append(action)
@@ -79,12 +89,33 @@ func check_all_player_actions():
 # Helpers
 # --------------------------------------------------
 
-func get_opponent(monster: MonsterInstance):
-	for m in participants:
-		if m != monster and m.is_alive():
-			return m
+# Bekomme das aktive Monster eines Teams
+func get_active_monster(team_index: int) -> MonsterInstance:
+	if team_index < 0 or team_index >= teams.size():
+		return null
+	return teams[team_index].get_active_monster()
+
+# Bekomme das gegnerische Team
+func get_opponent_team(team_index: int):
+	if team_index == 0:
+		return teams[1]
+	elif team_index == 1:
+		return teams[0]
 	return null
 
+# Bekomme das aktive gegnerische Monster
+func get_opponent(monster: MonsterInstance) -> MonsterInstance:
+	for i in range(teams.size()):
+		if teams[i].get_active_monster() == monster:
+			var opponent_team = get_opponent_team(i)
+			return opponent_team.get_active_monster()
+	return null
+
+# Wechsle ein Monster für ein Team
+func switch_monster(team_index: int, monster_index: int) -> bool:
+	if team_index < 0 or team_index >= teams.size():
+		return false
+	return teams[team_index].switch_to_monster(monster_index)
 
 func sort_actions():
 	action_queue.sort_custom(func(a, b):
