@@ -1,7 +1,7 @@
 extends RefCounted
 class_name DamageCalculator
 
-static func calculate_damage(action: AttackAction) -> Dictionary:
+static func calculate_damage(action: BattleAction) -> Dictionary:
 	var attacker: MonsterInstance = action.actor
 	var defender: MonsterInstance = action.target
 	print("Traits:", attacker.passive_traits)

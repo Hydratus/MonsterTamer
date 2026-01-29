@@ -3,22 +3,28 @@ class_name BattleController
 
 var scene
 var teams: Array = []  # Array von MonsterTeam
-var action_queue: Array[BattleAction] = []
+var action_queue: Array = []  # Gemischte Actions: BattleAction, SwitchAction, etc.
 var pending_player_actions := {}
 var waiting_for_player := false
 var current_state
 
+# Prioritäten-Konstanten (höher = früher ausgeführt)
+const PRIORITY_ESCAPE := 300
+const PRIORITY_ITEM := 200
+const PRIORITY_SWITCH := 100
+const PRIORITY_ATTACK := 0
+
 
 func start_battle(team1_monsters: Array[MonsterInstance], team2_monsters: Array[MonsterInstance]):
-	# Erstelle Teams aus den Monstern (MonsterTeam Klasse)
-	teams = [
-		MonsterTeam.new(team1_monsters),
-		MonsterTeam.new(team2_monsters)
-	]
+	# Teams werden jetzt direkt von BattleScene erstellt und über die 'teams' Variable gesetzt
+	# Diese Funktion wird nicht mehr verwendet, aber bleibt für Kompatibilität
 	
-	# Debug: Zeige wie viele Monster in jedem Team sind
-	print("DEBUG start_battle: Team 1 hat %d Monster" % teams[0].monsters.size())
-	print("DEBUG start_battle: Team 2 hat %d Monster" % teams[1].monsters.size())
+	# Nur für den Fall, dass sie noch von irgendwo aufgerufen wird:
+	if teams.is_empty():
+		teams = [
+			MonsterTeam.new(team1_monsters),
+			MonsterTeam.new(team2_monsters)
+		]
 	
 	change_state(BattleStartState.new())
 
@@ -35,20 +41,21 @@ func change_state(state):
 # --------------------------------------------------
 
 func submit_player_attack(monster: MonsterInstance, attack: AttackData):
-	var target: MonsterInstance = get_opponent(monster)
-	if target == null:
+	var opponent_team = get_opponent_team(0)  # Team 0 ist Spieler
+	if opponent_team == null:
 		return
 
 	var action := AttackAction.new()
 	action.battle = self
 	action.actor = monster
-	action.target = target
+	action.opponent_team = opponent_team  # Speichere das gegnerische Team statt direktes Ziel
+	action.target = get_opponent(monster)  # Fallback für Kompatibilität
 
-	# ✅ Initiative ist bufffähig
-	action.speed = monster.get_speed()
-	action.priority = attack.priority
+	# ✅ Priority und Initiative setzen
+	action.priority = PRIORITY_ATTACK + attack.priority  # attack.priority ist relativ
+	action.initiative = monster.get_speed()
 
-	action.name = attack.name
+	action.action_name = attack.name
 	action.power = attack.power
 	action.energy_cost = attack.energy_cost
 	action.accuracy = attack.accuracy
@@ -66,6 +73,12 @@ func submit_player_attack(monster: MonsterInstance, attack: AttackData):
 	check_all_player_actions()
 
 
+# Spieler wechselt ein Monster (wird als Aktion beendet behandelt)
+func submit_player_switch(monster: MonsterInstance):
+	# Der Switch ist die komplette Action für diese Runde
+	# Wir markieren, dass dieser Spieler seine Action "fertig" hat
+	pending_player_actions[monster] = null  # null bedeutet: Wechsel durchgeführt
+	check_all_player_actions()
 
 
 func check_all_player_actions():
@@ -77,11 +90,14 @@ func check_all_player_actions():
 				if not pending_player_actions.has(monster):
 					return
 
-	for action in pending_player_actions.values():
-		action_queue.append(action)
-
+	# Füge alle Aktionen zur Queue hinzu (BattleAction, SwitchAction, etc.)
+	for monster_key in pending_player_actions.keys():
+		var action = pending_player_actions[monster_key]
+		if action != null:
+			action_queue.append(action)
+	
 	pending_player_actions.clear()
-	sort_actions()
+	# Jetzt zur Auflösung
 	change_state(ResolveActionsState.new())
 
 
@@ -117,6 +133,56 @@ func switch_monster(team_index: int, monster_index: int) -> bool:
 		return false
 	return teams[team_index].switch_to_monster(monster_index)
 
+# Neue API: Reiche eine Action ein (kann BattleAction, SwitchAction, etc. sein)
+func submit_action(action) -> void:
+	if action == null:
+		return
+	action_queue.append(action)
+
+# Führe alle Aktionen mit Prioritäts-Sortierung aus
+func resolve_actions() -> void:
+	# Sortiere nach priority desc, dann initiative desc
+	action_queue.sort_custom(func(a, b):
+		# Priority vergleichen (höher = früher)
+		if a.priority > b.priority:
+			return true  # a kommt zuerst
+		elif a.priority < b.priority:
+			return false  # b kommt zuerst
+		
+		# Bei gleicher Priorität: Initiative vergleichen (höher = früher)
+		if a.initiative > b.initiative:
+			return true
+		else:
+			return false
+	)
+	
+	# Führe alle Aktionen aus
+	for action in action_queue:
+		if action == null:
+			continue
+		if action.has_method("execute"):
+			action.execute(self)
+	
+	action_queue.clear()
+
+# Führe einen Wechsel durch (wird von SwitchAction aufgerufen)
+func perform_switch(team_index: int, monster_index: int, initiator: MonsterInstance) -> bool:
+	if teams == null or team_index < 0 or team_index >= teams.size():
+		return false
+	
+	var team = teams[team_index]
+	if team == null:
+		return false
+	
+	var success = team.switch_to(monster_index)
+	if success:
+		var team_name = "Player" if team_index == 0 else "Enemy"
+		print("--- %s sent out %s! ---" % [team_name, team.get_active_monster().data.name])
+	
+	return success
+
 func sort_actions():
 	action_queue.sort_custom(func(a, b):
-		return a.get_initiative() > b.get_initiative())
+		if a.has_method("get_initiative"):
+			return a.get_initiative() > b.get_initiative()
+		return false)

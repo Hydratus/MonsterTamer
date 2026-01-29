@@ -15,13 +15,15 @@ func enter(battle):
 	
 	# Wenn nicht, versuche das aktive Monster zu wechseln
 	var monster_switched = false
-	for team in battle.teams:
+	for i in range(battle.teams.size()):
+		var team = battle.teams[i]
 		var active = team.get_active_monster()
 		if active != null and not active.is_alive():
-			print("DEBUG: Wechsle Monster für Team - aktiv war %s (tot)" % active.data.name)
+			print("DEBUG: Wechsle Monster für Team %d - aktiv war %s (tot)" % [i, active.data.name])
 			if team.switch_to_next_alive():
 				var new_monster = team.get_active_monster()
-				print("--- %s sent out %s! ---" % [team.get_active_monster().data.name, new_monster.data.name])
+				var team_name = "Player" if i == 0 else "Enemy"
+				print("--- %s sent out %s! ---" % [team_name, new_monster.data.name])
 				monster_switched = true
 			else:
 				print("DEBUG: Konnte nicht wechseln - Sicherheit aktiviert")

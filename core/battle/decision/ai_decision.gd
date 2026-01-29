@@ -18,22 +18,33 @@ func decide(monster: MonsterInstance, battle: BattleController):
 func _basic_attack(
 	monster: MonsterInstance,
 	battle: BattleController
-) -> AttackAction:
+) -> BattleAction:
 
-	var target: MonsterInstance = battle.get_opponent(monster)
-	if target == null:
+	# Bestimme das gegnerische Team dynamisch
+	var team_index = -1
+	for i in range(battle.teams.size()):
+		if battle.teams[i].get_active_monster() == monster:
+			team_index = i
+			break
+	
+	if team_index == -1:
+		return null
+	
+	var opponent_team = battle.get_opponent_team(team_index)
+	if opponent_team == null:
 		return null
 
 	var action := AttackAction.new()
 	action.battle = battle
 	action.actor = monster
-	action.target = target
+	action.opponent_team = opponent_team
+	action.target = battle.get_opponent(monster)
 
 	# ✅ Initiative ist bufffähig
 	action.speed = monster.get_speed()
 	action.priority = 0
 
-	action.name = "Attack"
+	action.action_name = "Attack"
 	action.power = 3
 	action.energy_cost = 0
 	action.accuracy = 100
@@ -58,22 +69,33 @@ func _create_attack_action(
 	monster: MonsterInstance,
 	attack: AttackData,
 	battle: BattleController
-) -> AttackAction:
+) -> BattleAction:
 
-	var target: MonsterInstance = battle.get_opponent(monster)
-	if target == null:
+	# Bestimme das gegnerische Team dynamisch
+	var team_index = -1
+	for i in range(battle.teams.size()):
+		if battle.teams[i].get_active_monster() == monster:
+			team_index = i
+			break
+	
+	if team_index == -1:
+		return null
+	
+	var opponent_team = battle.get_opponent_team(team_index)
+	if opponent_team == null:
 		return null
 
 	var action := AttackAction.new()
 	action.battle = battle
 	action.actor = monster
-	action.target = target
+	action.opponent_team = opponent_team
+	action.target = battle.get_opponent(monster)
 
 	# ✅ Initiative berücksichtigt Speed-Buffs
 	action.speed = monster.get_speed()
 	action.priority = attack.priority
 
-	action.name = attack.name
+	action.action_name = attack.name
 	action.power = attack.power
 	action.energy_cost = attack.energy_cost
 	action.accuracy = attack.accuracy

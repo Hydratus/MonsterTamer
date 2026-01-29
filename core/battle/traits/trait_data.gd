@@ -25,6 +25,23 @@ class_name TraitData
 var lifesteal_ratio: float = 0.0
 
 # ----------------------------
+# TURN BASED EFFECTS
+# ----------------------------
+@export_range(0.0, 1.0, 0.01)
+var regen_hp_ratio: float = 0.0
+
+@export_range(0.0, 1.0, 0.01)
+var regen_energy_ratio: float = 0.0
+
+# ----------------------------
+# ROUND START EFFECTS
+# ----------------------------
+@export var round_start_stat: MonsterInstance.StatType = -1
+
+@export_range(-6, 6)
+var round_start_stages: int = 0
+
+# ----------------------------
 # CONDITIONS
 # ----------------------------
 @export_range(0.0, 1.0)
@@ -41,7 +58,7 @@ func modify_damage(
 	attacker: MonsterInstance,
 	defender: MonsterInstance,
 	base_damage: float,
-	action: AttackAction
+	action: BattleAction
 ) -> float:
 
 	# ----------------------------
@@ -79,20 +96,3 @@ func modify_damage(
 	# APPLY MULTIPLIER
 	# ----------------------------
 	return base_damage * damage_multiplier
-	
-	# ----------------------------
-# TURN BASED EFFECTS
-# ----------------------------
-@export_range(0.0, 1.0, 0.01)
-var regen_hp_ratio: float = 0.0
-
-@export_range(0.0, 1.0, 0.01)
-var regen_energy_ratio: float = 0.0
-
-# ----------------------------
-# ROUND START EFFECTS
-# ----------------------------
-@export var round_start_stat: MonsterInstance.StatType = -1
-
-@export_range(-6, 6)
-var round_start_stages: int = 0

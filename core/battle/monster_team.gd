@@ -29,13 +29,29 @@ func switch_to_monster(index: int) -> bool:
 	if index == active_monster_index:
 		return false  # Schon aktiv
 	
+	# Setze alle Stat-Stages des alten aktiven Monsters auf 0 (Buffs/Debuffs entfernen)
+	var old_monster = get_active_monster()
+	if old_monster != null:
+		for stat in MonsterInstance.StatType.values():
+			old_monster.stat_stages[stat] = 0
+	
 	active_monster_index = index
 	return true
+
+# Alternative: switch_to (neuer Name)
+func switch_to(index: int) -> bool:
+	return switch_to_monster(index)
 
 # Wechsle zum nächsten lebenden Monster
 func switch_to_next_alive() -> bool:
 	for i in range(monsters.size()):
 		if i != active_monster_index and monsters[i] != null and monsters[i].is_alive():
+			# Setze alle Stat-Stages des alten aktiven Monsters auf 0 (Buffs/Debuffs entfernen)
+			var old_monster = get_active_monster()
+			if old_monster != null:
+				for stat in MonsterInstance.StatType.values():
+					old_monster.stat_stages[stat] = 0
+			
 			active_monster_index = i
 			return true
 	

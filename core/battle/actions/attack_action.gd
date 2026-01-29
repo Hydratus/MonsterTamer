@@ -30,11 +30,24 @@ var crit_multiplier: float = 1.5
 var stat_changes: Array[StatChangeData] = []
 
 # --------------------------------------------------
+# TARGET TEAM (statt target direkt, um dynamische Wechsel zu unterstützen)
+# --------------------------------------------------
+var opponent_team: MonsterTeam = null  # Das gegnerische Team
+
+# --------------------------------------------------
 # EXECUTE
 # --------------------------------------------------
-func execute() -> Variant:
-	if not target.is_alive():
-		return null
+func execute(controller = null) -> Variant:
+	# Bestimme das aktive gegnerische Monster (zur Ausführungszeit, nicht Planungszeit!)
+	if opponent_team == null:
+		# Fallback: Verwende das alte target System
+		if target == null or not target.is_alive():
+			return null
+	else:
+		# Verwende das aktive Monster des gegnerischen Teams
+		target = opponent_team.get_active_monster()
+		if target == null or not target.is_alive():
+			return null
 
 	# � Trackiere, dass diese Monster gegeneinander kämpfen
 	actor.register_opponent(target)
@@ -44,7 +57,7 @@ func execute() -> Variant:
 	if not actor.spend_energy(energy_cost):
 		print(
 			"%s tried to use %s — but doesn't have enough energy!"
-			% [actor.data.name, name]
+			% [actor.data.name, action_name]
 		)
 		return null
 
@@ -52,14 +65,14 @@ func execute() -> Variant:
 	if not _roll_hit():
 		print(
 			"%s uses %s on %s — but it MISSES!"
-			% [actor.data.name, name, target.data.name]
+			% [actor.data.name, action_name, target.data.name]
 		)
 		return null
 
 	# --------------------------------------------------
 	# 🗣️ ATTACK HEADER
 	# --------------------------------------------------
-	print("%s uses %s!" % [actor.data.name, name])
+	print("%s uses %s!" % [actor.data.name, action_name])
 
 	# --------------------------------------------------
 	# 💥 DAMAGE
@@ -103,6 +116,10 @@ func execute() -> Variant:
 			]
 
 			print(line)
+			
+			# EXP verteilen, wenn das Ziel gestorben ist
+			if target.hp <= 0:
+				target._distribute_exp_on_death()
 
 	# --------------------------------------------------
 	# 🩸 LIFESTEAL (IMMER AUFRUNDEN)
@@ -130,7 +147,6 @@ func execute() -> Variant:
 						"%s steals %d HP through lifesteal!"
 						% [actor.data.name, healed]
 					)
-
 
 	# --------------------------------------------------
 	# 🔁 BUFFS / DEBUFFS (STAT STAGES)

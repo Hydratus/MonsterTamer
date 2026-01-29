@@ -23,9 +23,11 @@ func enter(battle: BattleController):
 		else:
 			var action = monster.decision.decide(monster, battle)
 			if action:
+				# Initiative für Battle-Aktionen setzen
+				if action.has_method("set_initiative"):
+					action.set_initiative(monster.get_speed())
 				battle.action_queue.append(action)
 
-	# Falls kein Player im Kampf
+	# Falls kein Player im Kampf - direkt zu Resolve
 	if not battle.waiting_for_player:
-		battle.sort_actions()
 		battle.change_state(ResolveActionsState.new())

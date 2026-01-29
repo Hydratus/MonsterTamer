@@ -4,6 +4,10 @@ class_name BattleEndState
 func enter(battle):
 	print("=== Battle End ===")
 	
+	# Verstecke das Menu
+	if battle.scene != null and battle.scene.has_method("hide_ui"):
+		battle.scene.hide_ui()
+	
 	# Bekomme die Teams
 	var team1 = battle.teams[0]
 	var team2 = battle.teams[1]

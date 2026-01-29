@@ -243,6 +243,7 @@ func is_alive() -> bool:
 
 func take_damage(amount: int):
 	hp = max(hp - amount, 0)
+	# EXP-Verteilung wird NICHT mehr hier gemacht, sondern in AttackAction nach der Nachricht
 
 func spend_energy(amount: int) -> bool:
 	if energy < amount:
@@ -429,3 +430,30 @@ func _get_required_exp_for_level(level: int) -> int:
 		MonsterData.GrowthType.VERY_SLOW: multiplier = 30
 	
 	return level * multiplier
+
+# Verteile EXP wenn dieses Monster stirbt
+func _distribute_exp_on_death() -> void:
+	if opponents_fought.is_empty():
+		return
+	
+	# Verteile EXP auf alle lebenden Gegner, die gegen dieses Monster gekämpft haben
+	var alive_opponents: Array[MonsterInstance] = []
+	for opponent in opponents_fought:
+		if opponent != null and opponent.is_alive():
+			alive_opponents.append(opponent)
+	
+	if alive_opponents.is_empty():
+		return
+	
+	# Berechne EXP für dieses Monster
+	var total_exp = _calculate_earned_exp(self)
+	var exp_per_monster = int(total_exp / float(alive_opponents.size()))
+	
+	# Verteile EXP
+	for opponent in alive_opponents:
+		opponent.current_exp += exp_per_monster
+		print(
+			"%s gained %d EXP! (Total: %d/%d)"
+			% [opponent.data.name, exp_per_monster, opponent.current_exp, opponent.exp_to_next_level]
+		)
+		opponent._check_level_up()

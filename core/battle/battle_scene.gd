@@ -9,6 +9,7 @@ class_name BattleScene
 
 var battle: BattleController
 var battle_started := false  # Flag um doppelte Starts zu verhindern
+var player_team_instance: MonsterTeam  # Referenz auf das Spieler-Team
 
 
 func _ready():
@@ -45,13 +46,55 @@ func start_battle(team1: Array[MonsterInstance], team2: Array[MonsterInstance]):
 	print("Team 1: %d Monster" % team1.size())
 	print("Team 2: %d Monster" % team2.size())
 	
-	battle.start_battle(team1, team2)
+	# Erstelle Teams SOFORT und speichere Referenz BEVOR battle.start_battle() aufgerufen wird
+	player_team_instance = MonsterTeam.new(team1)
+	var enemy_team_instance = MonsterTeam.new(team2)
+	
+	# Übergebe die Teams an BattleController
+	battle.teams = [player_team_instance, enemy_team_instance]
+	
+	# Starte Battle (wird jetzt show_player_menu() aufrufen, aber player_team_instance ist schon gesetzt)
+	battle.change_state(BattleStartState.new())
 
 
 func show_player_menu(monster: MonsterInstance):
-	menu.show_attacks(monster)
+	print("DEBUG show_player_menu: monster=%s, player_team_instance ist %s" % [monster.data.name, "null" if player_team_instance == null else "gesetzt"])
+	
+	# Trenne alte Signale wenn noch verbunden
+	if menu.action_selected.is_connected(Callable(self, "_on_menu_action_selected")):
+		menu.action_selected.disconnect(Callable(self, "_on_menu_action_selected"))
+	if menu.escape_battle.is_connected(Callable(self, "_on_menu_escape_battle")):
+		menu.escape_battle.disconnect(Callable(self, "_on_menu_escape_battle"))
+	
+	# Verbinde neue Signale
+	menu.action_selected.connect(Callable(self, "_on_menu_action_selected"))
+	menu.escape_battle.connect(Callable(self, "_on_menu_escape_battle"))
+	
+	menu.show_main_menu(monster, player_team_instance, battle)
 
-	menu.action_selected.connect(func(attack: AttackData):
-		menu.hide_menu()
-		battle.submit_player_attack(monster, attack)
-	, CONNECT_ONE_SHOT)
+func _on_menu_action_selected(attack: AttackData):
+	# Nutze das aktuell aktive Monster aus dem Menu
+	var active_monster = menu.current_monster
+	if active_monster == null:
+		push_error("Kein aktives Monster im Menu!")
+		return
+	
+	print("DEBUG: Angriff ausgewählt für %s: %s" % [active_monster.data.name, attack.name])
+	menu.hide_menu()
+	battle.submit_player_attack(active_monster, attack)
+
+func _on_menu_escape_battle():
+	print("DEBUG: Escape-Button geklickt")
+	menu.hide_menu()
+	# Hier könnte später die Fluchtlogik implementiert werden
+
+# Helper, damit UI sauber Aktionen an den Controller übergeben kann
+func submit_action_to_battle(action) -> void:
+	if battle == null:
+		push_error("Battle nicht initialisiert - kann Aktion nicht einreichen")
+		return
+	if battle.has_method("submit_action"):
+		battle.submit_action(action)
+
+func hide_ui() -> void:
+	menu.hide_menu()
