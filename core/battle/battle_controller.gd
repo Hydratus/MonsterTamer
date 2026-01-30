@@ -14,6 +14,13 @@ const PRIORITY_ITEM := 200
 const PRIORITY_SWITCH := 100
 const PRIORITY_ATTACK := 0
 
+# Helper-Funktion um Messages zur UI hinzuzufügen
+func log_message(text: String):
+	if scene != null and scene.has_method("add_battle_message"):
+		scene.add_battle_message(text)
+	else:
+		print(text)  # Fallback für Debug
+
 
 func start_battle(team1_monsters: Array[MonsterInstance], team2_monsters: Array[MonsterInstance]):
 	# Teams werden jetzt direkt von BattleScene erstellt und über die 'teams' Variable gesetzt
@@ -160,7 +167,15 @@ func resolve_actions() -> void:
 	for action in action_queue:
 		if action == null:
 			continue
+		
+		# Überprüfe ob der Akteur noch lebt
+		if action.actor != null and not action.actor.is_alive():
+			log_message("%s kann nicht angreifen, ist bereits besiegt!" % action.actor.data.name)
+			continue
+		
 		if action.has_method("execute"):
+			# Übergebe Battle Controller an die Action, damit sie log_message nutzen kann
+			action.battle = self
 			action.execute(self)
 	
 	action_queue.clear()

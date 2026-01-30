@@ -3,6 +3,7 @@ class_name BattleMenu
 
 signal action_selected(attack: AttackData)
 signal escape_battle
+signal menu_changed(menu_name: String)  # Neues Signal für HUD-Sichtbarkeit
 
 @onready var control := $Control
 @onready var vbox := $Control/VBoxContainer
@@ -30,6 +31,8 @@ func show_main_menu(monster: MonsterInstance, team: MonsterTeam = null, controll
 	battle_controller = controller
 	current_menu = "main"
 	
+	menu_changed.emit("main")
+	
 	print("DEBUG show_main_menu: monster=%s, team ist %s, controller ist %s" % [monster.data.name, "null" if team == null else "gesetzt", "null" if controller == null else "gesetzt"])
 	print("DEBUG show_main_menu: vbox ist %s, vbox.get_child_count() = %d" % ["null" if vbox == null else "gesetzt", vbox.get_child_count() if vbox != null else -1])
 	
@@ -55,17 +58,26 @@ func show_main_menu(monster: MonsterInstance, team: MonsterTeam = null, controll
 func show_attacks(monster: MonsterInstance):
 	current_monster = monster
 	current_menu = "attacks"
+	menu_changed.emit("attacks")
 	_clear_menu()
+	
+	# Erstelle GridContainer für mehrspaltige Anzeige
+	var grid := GridContainer.new()
+	grid.columns = 2  # Zwei Spalten für Angriffe
+	grid.add_theme_constant_override("h_separation", 5)
+	grid.add_theme_constant_override("v_separation", 5)
+	vbox.add_child(grid)
 	
 	for attack in monster.attacks:
 		var button := Button.new()
 		button.text = attack.name
+		button.custom_minimum_size = Vector2(150, 0)  # Mindestbreite für Buttons
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(func():
 			# Emitiere mit dem aktuellen Monster (zur Ausführungszeit)
 			action_selected.emit(attack)
 		)
-		vbox.add_child(button)
+		grid.add_child(button)
 	
 	# Back-Button
 	_add_back_button()
@@ -74,6 +86,7 @@ func show_attacks(monster: MonsterInstance):
 func show_team(team: MonsterTeam):
 	current_team = team
 	current_menu = "team"
+	menu_changed.emit("team")
 	_clear_menu()
 	
 	# Debug: Prüfe ob Team null ist
@@ -159,9 +172,17 @@ func _show_menu_options(options: Array) -> void:
 	
 	print("DEBUG _show_menu_options: %d Optionen werden hinzugefügt" % options.size())
 	
+	# Erstelle GridContainer für 2x2 Layout
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 5)
+	grid.add_theme_constant_override("v_separation", 5)
+	vbox.add_child(grid)
+	
 	for option in options:
 		var button := Button.new()
 		button.text = option["label"]
+		button.custom_minimum_size = Vector2(140, 0)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		
 		var action = option["action"]
@@ -169,7 +190,7 @@ func _show_menu_options(options: Array) -> void:
 			_handle_menu_action(action)
 		)
 		
-		vbox.add_child(button)
+		grid.add_child(button)
 		print("DEBUG _show_menu_options: Button hinzugefügt: %s" % option["label"])
 
 func _handle_menu_action(action: String) -> void:
@@ -254,19 +275,26 @@ func _clear_menu() -> void:
 		child.queue_free()
 
 func _add_back_button() -> void:
-	var separator := HSeparator.new()
-	vbox.add_child(separator)
+	# Erstelle HBoxContainer für Back-Button rechts neben Grid
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 5)
+	vbox.add_child(hbox)
+	
+	# Spacer links (nimmt restlichen Platz)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(spacer)
 	
 	var back_button := Button.new()
 	back_button.text = "← Zurück"
-	back_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	back_button.custom_minimum_size = Vector2(140, 0)
 	back_button.pressed.connect(func():
 		if current_menu == "main":
 			hide_menu()
 		else:
 			show_main_menu(current_monster, current_team, battle_controller)
 	)
-	vbox.add_child(back_button)
+	hbox.add_child(back_button)
 
 func hide_menu():
 	_clear_menu()  # Lösche alle Buttons bevor das Menu versteckt wird

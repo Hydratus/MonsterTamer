@@ -20,6 +20,7 @@ enum StatType {
 # DATA
 # ------------------------
 var data: MonsterData
+var level: int  # Instanz-spezifisches Level (nicht von MonsterData)
 var decision: BattleDecision = null  # Wird vom Battle gesetzt (PlayerDecision oder AIDecision)
 
 # ------------------------
@@ -83,10 +84,13 @@ var opponents_fought: Array[MonsterInstance] = []
 # INIT
 # ------------------------
 func _init(monster_data: MonsterData):
-	data = monster_data
-	attacks = monster_data.attacks.duplicate()
+	# Dupliziere MonsterData, damit jede Instanz ihre eigene Kopie hat
+	# Dies verhindert, dass Änderungen in einer Instanz andere Instanzen beeinflussen
+	data = monster_data.duplicate()
+	level = data.level  # Kopiere das Start-Level von MonsterData
+	attacks = data.attacks.duplicate()
 
-	for trait_effect in monster_data.passive_traits:
+	for trait_effect in data.passive_traits:
 		add_trait(trait_effect)
 
 	_recalculate_stats()
@@ -95,7 +99,7 @@ func _init(monster_data: MonsterData):
 	energy = get_max_energy()
 	
 	# Initialize EXP requirements
-	exp_to_next_level = _get_required_exp_for_level(data.level + 1)
+	exp_to_next_level = _get_required_exp_for_level(level + 1)
 
 # ------------------------
 # BASE STAT RESET
@@ -108,8 +112,7 @@ func _recalculate_stats():
 
 # Calculate actual stats based on base stats and level
 func _apply_level_scaling():
-	var level = data.level
-	
+	# Nutze das instanz-spezifische Level
 	# HP: ((2 × base_max_hp × level) / 100) + level + 5
 	max_hp = int(ceil((2 * data.base_max_hp * level) / 100.0)) + level + 5
 	
@@ -289,36 +292,42 @@ func on_round_end():
 # ------------------------
 # LEVELING UP
 # ------------------------
-func level_up() -> void:
-	if data.level >= 100:
-		print("%s is already at max level!" % data.name)
+func level_up(logger: Callable = Callable()) -> void:
+	if level >= 100:
+		var msg = "%s is already at max level!" % data.name
+		if logger.is_valid():
+			logger.call(msg)
+		else:
+			print(msg)
 		return
 	
-	data.level += 1
+	level += 1
 	_recalculate_stats()
 	hp = get_max_hp()
 	energy = get_max_energy()
 	
-	print(
-		"🎉 %s leveled up to level %d! (HP: %d | EN: %d)"
-		% [data.name, data.level, hp, energy]
-	)
+	var msg = "🎉 %s leveled up to level %d! (HP: %d | EN: %d)" % [
+		data.name, level, hp, energy
+	]
+	if logger.is_valid():
+		logger.call(msg)
+	else:
+		print(msg)
 	
 	# Check for evolution
 	_check_evolution()
 	
 	# Check for new attacks
-	_check_attack_learning()
+	_check_attack_learning(logger)
 	
 	# Check for new traits
-	_check_trait_learning()
-
+	_check_trait_learning(logger)
 # Check if the monster can evolve
 func _check_evolution() -> bool:
 	if data.evolution == null:
 		return false
 	
-	if data.level < data.evolution.evolution_level:
+	if level < data.evolution.evolution_level:
 		return false
 	
 	print("%s is ready to evolve!" % data.name)
@@ -329,13 +338,13 @@ func get_available_attacks_to_learn() -> Array[Resource]:
 	var available: Array[Resource] = []
 	
 	for learn_data in data.learnable_attacks:
-		if learn_data.learn_level == data.level:
+		if learn_data.learn_level == level:
 			available.append(learn_data)
 	
 	return available
 
 # Check for new attacks to learn
-func _check_attack_learning() -> void:
+func _check_attack_learning(logger: Callable = Callable()) -> void:
 	var available_attacks = get_available_attacks_to_learn()
 	
 	if available_attacks.is_empty():
@@ -344,20 +353,23 @@ func _check_attack_learning() -> void:
 	for learn_data in available_attacks:
 		if learn_data.attack != null and not attacks.has(learn_data.attack):
 			attacks.append(learn_data.attack)
-			print("⚔️ %s learned %s!" % [data.name, learn_data.attack.name])
-
+			var msg = "⚔️ %s learned %s!" % [data.name, learn_data.attack.name]
+			if logger.is_valid():
+				logger.call(msg)
+			else:
+				print(msg)
 # Get all traits the monster can learn at current level
 func get_available_traits_to_learn() -> Array[Resource]:
 	var available: Array[Resource] = []
 	
 	for learn_data in data.learnable_traits:
-		if learn_data.learn_level == data.level:
+		if learn_data.learn_level == level:
 			available.append(learn_data)
 	
 	return available
 
 # Check for new traits to learn
-func _check_trait_learning() -> void:
+func _check_trait_learning(logger: Callable = Callable()) -> void:
 	var available_traits = get_available_traits_to_learn()
 	
 	if available_traits.is_empty():
@@ -365,8 +377,11 @@ func _check_trait_learning() -> void:
 	
 	for learn_data in available_traits:
 		add_trait(learn_data.trait_data as TraitData)
-		print("✨ %s learned trait %s!" % [data.name, learn_data.trait_data.name])
-
+		var msg = "✨ %s learned trait %s!" % [data.name, learn_data.trait_data.name]
+		if logger.is_valid():
+			logger.call(msg)
+		else:
+			print(msg)
 # ------------------------
 # EXPERIENCE SYSTEM
 # ------------------------
@@ -406,17 +421,17 @@ func register_opponent(opponent: MonsterInstance) -> void:
 # Formula: (baseExp × (level + 5)) / 7
 func _calculate_earned_exp(defeated_monster: MonsterInstance) -> int:
 	var base_exp = defeated_monster.data.base_exp
-	var defeated_level = defeated_monster.data.level
+	var defeated_level = defeated_monster.level
 	
 	var earned = int((base_exp * (defeated_level + 5)) / 7.0)
 	return max(earned, 1)  # Minimum 1 EXP
 
 # Check if monster(s) should level up
-func _check_level_up() -> void:
-	while current_exp >= exp_to_next_level and data.level < 100:
+func _check_level_up(logger: Callable = Callable()) -> void:
+	while current_exp >= exp_to_next_level and level < 100:
 		current_exp -= exp_to_next_level
-		level_up()
-		exp_to_next_level = _get_required_exp_for_level(data.level + 1)
+		level_up(logger)
+		exp_to_next_level = _get_required_exp_for_level(level + 1)
 
 # Helper function to calculate required EXP for a level
 func _get_required_exp_for_level(level: int) -> int:
@@ -431,29 +446,11 @@ func _get_required_exp_for_level(level: int) -> int:
 	
 	return level * multiplier
 
-# Verteile EXP wenn dieses Monster stirbt
-func _distribute_exp_on_death() -> void:
-	if opponents_fought.is_empty():
-		return
-	
-	# Verteile EXP auf alle lebenden Gegner, die gegen dieses Monster gekämpft haben
-	var alive_opponents: Array[MonsterInstance] = []
-	for opponent in opponents_fought:
-		if opponent != null and opponent.is_alive():
-			alive_opponents.append(opponent)
-	
-	if alive_opponents.is_empty():
-		return
-	
-	# Berechne EXP für dieses Monster
-	var total_exp = _calculate_earned_exp(self)
-	var exp_per_monster = int(total_exp / float(alive_opponents.size()))
-	
-	# Verteile EXP
-	for opponent in alive_opponents:
-		opponent.current_exp += exp_per_monster
-		print(
-			"%s gained %d EXP! (Total: %d/%d)"
-			% [opponent.data.name, exp_per_monster, opponent.current_exp, opponent.exp_to_next_level]
-		)
-		opponent._check_level_up()
+# Verteile EXP wenn dieses Monster stirbt (Legacy - wird nicht mehr verwendet)
+# Die EXP-Verteilung wird jetzt direkt in AttackAction gehandhabt
+func _distribute_exp_on_death(logger: Callable = Callable()) -> void:
+	pass  # Wird nicht mehr benutzt, aber bleibt für Kompatibilität
+
+# Helper um battle.scene.message_box.flush zu rufen wenn verfügbar
+func _flush_if_battle_available(logger: Callable):
+	pass  # Nicht mehr benötigt

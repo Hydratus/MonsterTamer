@@ -15,3 +15,10 @@ func get_initiative() -> int:
 
 func execute(controller = null) -> Variant:
 	return null
+
+# Helper-Funktion um Messages zu loggen
+func battle_log(text: String):
+	if battle != null and battle.has_method("log_message"):
+		battle.log_message(text)
+	else:
+		print(text)  # Fallback

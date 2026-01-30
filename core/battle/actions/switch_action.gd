@@ -18,4 +18,9 @@ func _init(_team_index: int, _monster_index: int, _initiator: MonsterInstance) -
 
 func execute(controller) -> void:
 	# controller ist die BattleController-Instanz
-	controller.perform_switch(team_index, monster_index, initiator)
+	var success = controller.perform_switch(team_index, monster_index, initiator)
+	if success:
+		var team = controller.teams[team_index]
+		var new_monster = team.get_active_monster()
+		var team_name = "Player" if team_index == 0 else "Enemy"
+		controller.log_message("%s switched to %s!" % [team_name, new_monster.data.name])
