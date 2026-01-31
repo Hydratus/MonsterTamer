@@ -26,7 +26,7 @@ func _ready():
 	anchor_bottom = 1.0
 	offset_left = 10    # 10px Abstand zum linken Rand
 	offset_top = -80    # 70px Höhe für MessageBox (halbiert)
-	offset_right = -10  # 10px Abstand zum rechten Rand
+	offset_right = -280  # Platz für Player-Box rechts
 	offset_bottom = -10 # 10px Abstand zum unteren Rand (wie Enemy stats 10px oben)
 	grow_horizontal = GROW_DIRECTION_BOTH
 	grow_vertical = GROW_DIRECTION_BEGIN
@@ -89,6 +89,8 @@ func _input(event):
 	if event is InputEventKey and event.pressed and not event.echo:
 		_on_continue_pressed()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_on_continue_pressed()
+	elif event.is_action_pressed("ui_accept"):
 		_on_continue_pressed()
 
 func _on_continue_pressed():

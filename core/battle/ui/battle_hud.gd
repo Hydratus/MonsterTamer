@@ -72,9 +72,9 @@ func _ready():
 	player_panel.anchor_right = 1.0
 	player_panel.anchor_bottom = 1.0
 	player_panel.offset_left = -260  # 250px breit + 10px margin
-	player_panel.offset_top = -340   # Höher positioniert für Platz unten
+	player_panel.offset_top = -170   # Tiefer, auf Höhe von Actions/Textbox
 	player_panel.offset_right = -10  # 10px Abstand zum rechten Rand
-	player_panel.offset_bottom = -180 # Endet höher für Platz unten
+	player_panel.offset_bottom = -10 # Bis zum unteren Rand
 	player_panel.grow_horizontal = GROW_DIRECTION_BEGIN
 	player_panel.grow_vertical = GROW_DIRECTION_BEGIN
 	add_child(player_panel)
