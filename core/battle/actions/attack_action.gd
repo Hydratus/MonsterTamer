@@ -222,20 +222,18 @@ func _distribute_exp_with_flush(defeated_monster: MonsterInstance):
 	var total_exp = defeated_monster._calculate_earned_exp(defeated_monster)
 	var exp_per_monster = int(total_exp / float(alive_opponents.size()))
 	
-	# Verteile EXP
-	for opponent in alive_opponents:
-		opponent.current_exp += exp_per_monster
-		
-		# Block 3: EXP-Gewinn
-		battle_log("%s gained %d EXP! (Total: %d/%d)" % [
-			opponent.data.name, exp_per_monster,
-			opponent.current_exp, opponent.exp_to_next_level
-		])
-		if battle != null and battle.scene != null:
-			battle.scene.message_box.flush_action_messages()
-		
-		# Block 4+: Jedes Level-Up einzeln
-		_check_level_up_with_flush(opponent)
+	var ordered_opponents := _order_exp_recipients(alive_opponents)
+	# Verteile EXP (levelweise) über die Szene
+	if battle != null and battle.scene != null:
+		for opponent in ordered_opponents:
+			battle.scene.queue_exp_step(
+				Callable(self, "_process_exp_gain_with_flush"),
+				[opponent, exp_per_monster]
+			)
+		battle.scene.start_pending_exp_processing()
+	else:
+		for opponent in ordered_opponents:
+			_process_exp_gain_with_flush(opponent, exp_per_monster)
 
 func _check_level_up_with_flush(monster: MonsterInstance):
 	while monster.current_exp >= monster.exp_to_next_level and monster.level < 100:
@@ -269,9 +267,11 @@ func _level_up_with_flush(monster: MonsterInstance):
 	var res_gain = monster.resistance - old_resistance
 	var spd_gain = monster.speed - old_speed
 	
-	# HP und Energy auf neue Maximalwerte setzen
-	monster.hp = monster.get_max_hp()
-	monster.energy = monster.get_max_energy()
+	# HP und Energy nur um Zugewinn erhöhen (nicht vollheilen)
+	monster.hp = clamp(monster.hp + hp_gain, 0, monster.get_max_hp())
+	monster.energy = clamp(monster.energy + energy_gain, 0, monster.get_max_energy())
+	if battle != null and battle.scene != null and battle.scene.has_method("update_hud_with_active"):
+		battle.scene.update_hud_with_active()
 	
 	# Level-Up Nachricht mit allen Stat-Erhöhungen (auch +0)
 	var stat_changes = []
@@ -287,13 +287,73 @@ func _level_up_with_flush(monster: MonsterInstance):
 	
 	battle_log("🎉 %s leveled up to level %d!" % [monster.data.name, monster.level])
 	battle_log(stat_text)
+
+	var queued_evolution := false
+	if monster.can_evolve():
+		if battle != null:
+			battle.queue_evolution(monster, Callable(self, "_check_learning_with_flush"))
+			queued_evolution = true
+		else:
+			monster.apply_evolution(Callable(self, "battle_log"))
 	
 	# Flush Level-Up Block BEVOR Lern-Messages kommen
 	if battle != null and battle.scene != null:
 		battle.scene.message_box.flush_action_messages()
-	
+
+	if queued_evolution:
+		return
+
 	# Check for new attacks/traits (jedes als eigener Block)
 	_check_learning_with_flush(monster)
+
+func _process_exp_gain_with_flush(monster: MonsterInstance, exp_remaining: int):
+	if monster == null or exp_remaining <= 0:
+		return
+
+	var to_next = monster.exp_to_next_level - monster.current_exp
+	if to_next <= 0:
+		to_next = monster.exp_to_next_level
+	var gain = min(exp_remaining, to_next)
+	monster.current_exp += gain
+
+	battle_log("%s gained %d EXP! (Total: %d/%d)" % [
+		monster.data.name, gain,
+		monster.current_exp, monster.exp_to_next_level
+	])
+	if battle != null and battle.scene != null:
+		battle.scene.message_box.flush_action_messages()
+
+	var remaining = exp_remaining - gain
+	if monster.current_exp >= monster.exp_to_next_level:
+		monster.current_exp -= monster.exp_to_next_level
+		_level_up_with_flush(monster)
+		monster.exp_to_next_level = monster._get_required_exp_for_level(monster.level + 1)
+		if remaining > 0 and battle != null and battle.scene != null:
+			battle.scene.queue_exp_step_front(
+				Callable(self, "_process_exp_gain_with_flush"),
+				[monster, remaining]
+			)
+
+func _order_exp_recipients(opponents: Array[MonsterInstance]) -> Array[MonsterInstance]:
+	if battle == null or opponents.is_empty():
+		return opponents
+
+	var active_first: Array[MonsterInstance] = []
+	var bench: Array[MonsterInstance] = []
+	for opponent in opponents:
+		var is_active := false
+		for team in battle.teams:
+			if team == null:
+				continue
+			if team.monsters.has(opponent) and team.get_active_monster() == opponent:
+				is_active = true
+				break
+		if is_active:
+			active_first.append(opponent)
+		else:
+			bench.append(opponent)
+
+	return active_first + bench
 
 func _check_learning_with_flush(monster: MonsterInstance):
 	# Check attacks

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="MonsterData" format=3 uid="uid://0tyw1amx8xfm"]
+
+[ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_a6qrd"]
+[ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="2_55d8w"]
+[ext_resource type="Resource" uid="uid://dgn2ju3sncx6m" path="res://data/monsters/wolfinator/moves/Wolfinator_FireCrunch_Lv13.tres" id="2_ed4y7"]
+[ext_resource type="Script" uid="uid://dlkhfxldvfm2b" path="res://core/monsters/monster_data.gd" id="3_ed4y7"]
+
+[resource]
+script = ExtResource("3_ed4y7")
+name = "Wolfinator"
+base_max_hp = 50
+base_max_energy = 40
+base_strength = 80
+base_magic = 30
+base_defense = 40
+base_resistance = 30
+base_speed = 40
+base_exp = 300
+growth_rate = 2
+elements = Array[int]([0, 1])
+learnable_attacks = Array[Resource]([ExtResource("2_ed4y7")])
+metadata/_custom_type_script = "uid://dlkhfxldvfm2b"

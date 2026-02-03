@@ -258,7 +258,7 @@ func spend_energy(amount: int) -> bool:
 # ------------------------
 # ROUND END (REGEN TRAITS)
 # ------------------------
-func on_round_end():
+func on_round_end(logger: Callable = Callable()):
 	for trait_effect in passive_traits:
 		var healed_hp := 0
 		var restored_energy := 0
@@ -284,10 +284,15 @@ func on_round_end():
 			if restored_energy > 0:
 				parts.append("+%d EN" % restored_energy)
 
-			print(
-				"%s gains %s due to Trait \"%s\"."
-				% [data.name, " and ".join(parts), trait_effect.name]
-			)
+			var msg := "%s gains %s due to Trait \"%s\"." % [
+				data.name,
+				" and ".join(parts),
+				trait_effect.name
+			]
+			if logger.is_valid():
+				logger.call(msg)
+			else:
+				print(msg)
 
 # ------------------------
 # LEVELING UP
@@ -315,22 +320,57 @@ func level_up(logger: Callable = Callable()) -> void:
 		print(msg)
 	
 	# Check for evolution
-	_check_evolution()
+	evolve_if_ready(logger)
 	
 	# Check for new attacks
 	_check_attack_learning(logger)
 	
 	# Check for new traits
 	_check_trait_learning(logger)
-# Check if the monster can evolve
-func _check_evolution() -> bool:
+# Check if the monster can evolve and apply it
+func evolve_if_ready(logger: Callable = Callable()) -> bool:
+	if not can_evolve():
+		return false
+	return apply_evolution(logger)
+
+func can_evolve() -> bool:
 	if data.evolution == null:
 		return false
 	
-	if level < data.evolution.evolution_level:
+	var evolution_data := data.evolution as EvolutionData
+	if evolution_data == null:
 		return false
 	
-	print("%s is ready to evolve!" % data.name)
+	if level < evolution_data.evolution_level:
+		return false
+	
+	var evolved_data := evolution_data.evolved_monster as MonsterData
+	return evolved_data != null
+
+func apply_evolution(logger: Callable = Callable()) -> bool:
+	if not can_evolve():
+		return false
+	
+	var evolution_data := data.evolution as EvolutionData
+	var evolved_data := evolution_data.evolved_monster as MonsterData
+	
+	var old_name := data.name
+	var prev_hp := hp
+	var prev_energy := energy
+	var prev_max_hp := get_max_hp()
+	var prev_max_energy := get_max_energy()
+	data = evolved_data.duplicate()
+	_recalculate_stats()
+	var hp_gain := get_max_hp() - prev_max_hp
+	var energy_gain := get_max_energy() - prev_max_energy
+	hp = clamp(prev_hp + hp_gain, 0, get_max_hp())
+	energy = clamp(prev_energy + energy_gain, 0, get_max_energy())
+	
+	var msg := "✨ %s evolved into %s!" % [old_name, data.name]
+	if logger.is_valid():
+		logger.call(msg)
+	else:
+		print(msg)
 	return true
 
 # Get all attacks the monster can learn at current level
@@ -338,6 +378,8 @@ func get_available_attacks_to_learn() -> Array[Resource]:
 	var available: Array[Resource] = []
 	
 	for learn_data in data.learnable_attacks:
+		if learn_data == null:
+			continue
 		if learn_data.learn_level == level:
 			available.append(learn_data)
 	
@@ -363,6 +405,8 @@ func get_available_traits_to_learn() -> Array[Resource]:
 	var available: Array[Resource] = []
 	
 	for learn_data in data.learnable_traits:
+		if learn_data == null:
+			continue
 		if learn_data.learn_level == level:
 			available.append(learn_data)
 	

@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="AttackData" load_steps=2 format=3 uid="uid://2q8610o31dqy"]
+[gd_resource type="Resource" script_class="AttackData" format=3 uid="uid://2q8610o31dqy"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_f5als"]
+[ext_resource type="Script" uid="uid://d3c72pjv8iek2" path="res://core/battle/stats/stat_change_data.gd" id="2_jd7ux"]
 
 [resource]
 script = ExtResource("1_f5als")
 name = "Grass Whip"
+power = 30
 element = 2
 metadata/_custom_type_script = "uid://byip331ngwvgq"

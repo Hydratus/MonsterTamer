@@ -6,6 +6,7 @@
 [resource]
 script = ExtResource("1_g16pw")
 name = "Fire Bite"
+description = "A fiery bite that has the chance to burn enemies."
 power = 50
 accuracy = 80
 priority = -1

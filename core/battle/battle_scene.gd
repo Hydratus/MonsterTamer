@@ -5,6 +5,14 @@ class_name BattleScene
 
 var hud: BattleHUD
 var message_box: BattleMessageBox
+var evolution_layer: CanvasLayer
+var evolution_panel: PanelContainer
+var evolution_label: Label
+var evolution_yes_button: Button
+var evolution_no_button: Button
+var _pending_learning: Array = []
+var _pending_exp_steps: Array = []
+var _evolution_decision_callback: Callable
 
 # Team-Konfiguration im Inspector
 @export var player_team: Array[MonsterData] = []
@@ -34,6 +42,8 @@ func _ready():
 	message_box = BattleMessageBox.new()
 	message_layer.add_child(message_box)
 	message_box.all_messages_completed.connect(_on_messages_completed)
+
+	_create_evolution_prompt_ui()
 	
 	# Starte automatisch einen Kampf wenn Teams im Inspector konfiguriert sind
 	# (Nur wenn die Szene direkt geladen wird, nicht wenn sie von außen gestartet wird)
@@ -142,6 +152,14 @@ func submit_action_to_battle(action) -> void:
 func hide_ui() -> void:
 	menu.hide_menu()
 
+func update_hud_with_active() -> void:
+	if hud == null or battle == null:
+		return
+	var player_active = battle.get_active_monster(0)
+	var enemy_active = battle.get_active_monster(1)
+	if player_active != null and enemy_active != null:
+		hud.update_monsters(player_active, enemy_active)
+
 func add_battle_message(text: String):
 	if message_box != null:
 		message_box.add_message(text)
@@ -161,6 +179,149 @@ func show_battle_messages():
 func _on_messages_completed():
 	# Alle Messages wurden angezeigt, gehe zurück zum Battle Controller
 	message_box.clear_messages()  # Bereite MessageBox für nächste Action vor
+	if _try_handle_pending_learning():
+		return
+	if _try_handle_pending_evolution():
+		return
+	if _try_handle_pending_exp():
+		return
 	if battle != null and battle.current_state != null:
 		if battle.current_state.has_method("on_messages_completed"):
 			battle.current_state.on_messages_completed(battle)
+
+func _create_evolution_prompt_ui() -> void:
+	evolution_layer = CanvasLayer.new()
+	add_child(evolution_layer)
+
+	var root := Control.new()
+	root.anchor_right = 1.0
+	root.anchor_bottom = 1.0
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	evolution_layer.add_child(root)
+
+	evolution_panel = PanelContainer.new()
+	evolution_panel.anchor_left = 0.5
+	evolution_panel.anchor_top = 0.5
+	evolution_panel.anchor_right = 0.5
+	evolution_panel.anchor_bottom = 0.5
+	evolution_panel.offset_left = -180
+	evolution_panel.offset_top = -80
+	evolution_panel.offset_right = 180
+	evolution_panel.offset_bottom = 80
+	root.add_child(evolution_panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	evolution_panel.add_child(vbox)
+
+	evolution_label = Label.new()
+	evolution_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	evolution_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(evolution_label)
+
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 10)
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_child(hbox)
+
+	evolution_yes_button = Button.new()
+	evolution_yes_button.text = "Yes"
+	hbox.add_child(evolution_yes_button)
+	evolution_yes_button.pressed.connect(_on_evolution_yes_pressed)
+
+	evolution_no_button = Button.new()
+	evolution_no_button.text = "No"
+	hbox.add_child(evolution_no_button)
+	evolution_no_button.pressed.connect(_on_evolution_no_pressed)
+
+	evolution_layer.visible = false
+
+func _show_evolution_prompt(monster: MonsterInstance, on_decision: Callable) -> void:
+	var evolved_name := monster.data.name
+	if monster.data != null and monster.data.evolution != null:
+		var evolution_data := monster.data.evolution as EvolutionData
+		if evolution_data != null and evolution_data.evolved_monster != null:
+			evolved_name = evolution_data.evolved_monster.name
+	evolution_label.text = "%s tries to evolve into %s.\nDo you want to evolve %s?" % [monster.data.name, evolved_name, monster.data.name]
+	evolution_layer.visible = true
+	evolution_yes_button.grab_focus()
+	_evolution_decision_callback = on_decision
+
+func _on_evolution_yes_pressed() -> void:
+	evolution_layer.visible = false
+	if _evolution_decision_callback.is_valid():
+		_evolution_decision_callback.call(true)
+
+func _on_evolution_no_pressed() -> void:
+	evolution_layer.visible = false
+	if _evolution_decision_callback.is_valid():
+		_evolution_decision_callback.call(false)
+
+func _try_handle_pending_evolution() -> bool:
+	if battle == null:
+		return false
+	if battle.pending_evolutions.is_empty():
+		return false
+
+	var item = battle.pending_evolutions.pop_front()
+	var monster: MonsterInstance = item.monster
+	var learning_cb: Callable = item.learning_cb
+	_show_evolution_prompt(monster, func(accept: bool):
+		if accept:
+			monster.apply_evolution(Callable(battle, "log_message"))
+		else:
+			battle.log_message("%s did not evolve." % monster.data.name)
+
+		if message_box != null:
+			message_box.flush_action_messages()
+			show_battle_messages()
+
+		if learning_cb.is_valid():
+			_pending_learning.append({"cb": learning_cb, "monster": monster})
+	)
+
+	return true
+
+func _try_handle_pending_learning() -> bool:
+	if _pending_learning.is_empty():
+		return false
+
+	var item = _pending_learning.pop_front()
+	var cb: Callable = item.cb
+	var monster: MonsterInstance = item.monster
+	if cb.is_valid():
+		cb.call(monster)
+
+	if message_box != null and message_box.message_queue.size() > 0:
+		show_battle_messages()
+		return true
+
+	return false
+
+func queue_exp_step(cb: Callable, args: Array) -> void:
+	_pending_exp_steps.append({"cb": cb, "args": args})
+
+func queue_exp_step_front(cb: Callable, args: Array) -> void:
+	_pending_exp_steps.insert(0, {"cb": cb, "args": args})
+
+func start_pending_exp_processing() -> void:
+	_try_handle_pending_exp()
+
+func _try_handle_pending_exp() -> bool:
+	if _pending_exp_steps.is_empty():
+		return false
+
+	var item = _pending_exp_steps.pop_front()
+	var cb: Callable = item.cb
+	var args: Array = item.args
+	if cb.is_valid():
+		cb.callv(args)
+
+	if message_box != null and message_box.message_queue.size() > 0:
+		show_battle_messages()
+		return true
+
+	if not _pending_exp_steps.is_empty():
+		return _try_handle_pending_exp()
+
+	return false

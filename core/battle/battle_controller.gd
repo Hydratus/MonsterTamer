@@ -7,6 +7,7 @@ var action_queue: Array = []  # Gemischte Actions: BattleAction, SwitchAction, e
 var pending_player_actions := {}
 var waiting_for_player := false
 var current_state
+var pending_evolutions: Array = []
 
 # Prioritäten-Konstanten (höher = früher ausgeführt)
 const PRIORITY_ESCAPE := 300
@@ -20,6 +21,11 @@ func log_message(text: String):
 		scene.add_battle_message(text)
 	else:
 		print(text)  # Fallback für Debug
+
+func queue_evolution(monster: MonsterInstance, learning_cb: Callable) -> void:
+	if monster == null:
+		return
+	pending_evolutions.append({"monster": monster, "learning_cb": learning_cb})
 
 
 func start_battle(team1_monsters: Array[MonsterInstance], team2_monsters: Array[MonsterInstance]):

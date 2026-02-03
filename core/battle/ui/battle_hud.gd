@@ -20,6 +20,12 @@ var player_hp_label: Label
 var player_energy_bar: ProgressBar
 var player_energy_label: Label
 
+var _hp_lerp_speed := 8.0
+var _energy_lerp_speed := 8.0
+var _enemy_hp_target := 0.0
+var _player_hp_target := 0.0
+var _player_energy_target := 0.0
+
 func _ready():
 	# Setze die Größe der Control auf den gesamten Bildschirm
 	anchor_right = 1.0
@@ -129,7 +135,7 @@ func update_displays():
 		enemy_name_label.text = "Enemy: %s" % enemy_monster.data.name
 		enemy_level_label.text = "Level: %d" % enemy_monster.level
 		enemy_hp_bar.max_value = enemy_monster.get_max_hp()
-		enemy_hp_bar.value = enemy_monster.hp
+		_enemy_hp_target = enemy_monster.hp
 		enemy_hp_label.text = "%d/%d" % [enemy_monster.hp, enemy_monster.get_max_hp()]
 	else:
 		enemy_name_label.text = "Enemy: ---"
@@ -141,11 +147,11 @@ func update_displays():
 		player_name_label.text = "Player: %s" % player_monster.data.name
 		player_level_label.text = "Level: %d" % player_monster.level
 		player_hp_bar.max_value = player_monster.get_max_hp()
-		player_hp_bar.value = player_monster.hp
+		_player_hp_target = player_monster.hp
 		player_hp_label.text = "%d/%d" % [player_monster.hp, player_monster.get_max_hp()]
 		
 		player_energy_bar.max_value = player_monster.get_max_energy()
-		player_energy_bar.value = player_monster.energy
+		_player_energy_target = player_monster.energy
 		player_energy_label.text = "%d/%d" % [player_monster.energy, player_monster.get_max_energy()]
 	else:
 		player_name_label.text = "Player: ---"
@@ -153,7 +159,12 @@ func update_displays():
 		player_hp_label.text = "0/0"
 		player_energy_label.text = "0/0"
 
-func _process(_delta):
+func _process(delta):
 	# Aktualisiere die Anzeige jeden Frame
 	if enemy_monster != null or player_monster != null:
 		update_displays()
+		if enemy_monster != null:
+			enemy_hp_bar.value = lerp(enemy_hp_bar.value, _enemy_hp_target, clamp(delta * _hp_lerp_speed, 0.0, 1.0))
+		if player_monster != null:
+			player_hp_bar.value = lerp(player_hp_bar.value, _player_hp_target, clamp(delta * _hp_lerp_speed, 0.0, 1.0))
+			player_energy_bar.value = lerp(player_energy_bar.value, _player_energy_target, clamp(delta * _energy_lerp_speed, 0.0, 1.0))

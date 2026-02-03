@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_0tuo8")
 name = "Flamethrower"
-power = 50
+power = 55
 element = 1
 damage_type = 1
 metadata/_custom_type_script = "uid://byip331ngwvgq"

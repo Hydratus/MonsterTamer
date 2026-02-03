@@ -20,6 +20,7 @@ var _connected_monster: MonsterInstance = null  # Trackiere welches Monster die 
 
 # Attack-Info UI (Hover)
 var attack_info_name: Label
+var attack_info_description: Label
 var attack_info_power: Label
 var attack_info_element: Label
 var attack_info_energy: Label
@@ -95,13 +96,19 @@ func show_attacks(monster: MonsterInstance):
 	hbox.add_theme_constant_override("separation", 10)
 	vbox.add_child(hbox)
 	
+	# Angriffsbereich (links) mit Grid + Back-Button darunter
+	var attacks_box := VBoxContainer.new()
+	attacks_box.add_theme_constant_override("separation", 6)
+	attacks_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(attacks_box)
+
 	# Erstelle GridContainer für mehrspaltige Anzeige
 	var grid := GridContainer.new()
 	grid.columns = 2  # Zwei Spalten für Angriffe
 	grid.add_theme_constant_override("h_separation", 4)
 	grid.add_theme_constant_override("v_separation", 1)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hbox.add_child(grid)
+	attacks_box.add_child(grid)
 	_menu_columns = 2
 	
 	# Info-Panel rechts
@@ -138,11 +145,32 @@ func show_attacks(monster: MonsterInstance):
 	attack_info_priority = Label.new()
 	attack_info_priority.text = "Priority: -"
 	info_vbox.add_child(attack_info_priority)
+
+	# Beschreibung ganz rechts
+	var desc_panel := PanelContainer.new()
+	desc_panel.custom_minimum_size = Vector2(220, 0)
+	desc_panel.size_flags_horizontal = Control.SIZE_FILL
+	hbox.add_child(desc_panel)
+
+	var desc_vbox := VBoxContainer.new()
+	desc_vbox.add_theme_constant_override("separation", 4)
+	desc_panel.add_child(desc_vbox)
+
+	var desc_title := Label.new()
+	desc_title.text = "Description"
+	desc_title.add_theme_font_size_override("font_size", 12)
+	desc_vbox.add_child(desc_title)
+
+	attack_info_description = Label.new()
+	attack_info_description.text = ""
+	attack_info_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_vbox.add_child(attack_info_description)
 	
+	var attack_button_width := 220
 	for attack in monster.attacks:
 		var button := Button.new()
 		button.text = attack.name
-		button.custom_minimum_size = Vector2(150, 22)  # Kompaktere Höhe
+		button.custom_minimum_size = Vector2(attack_button_width, 22)  # Breite wie Description
 		button.add_theme_font_size_override("font_size", 11)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(func():
@@ -164,16 +192,27 @@ func show_attacks(monster: MonsterInstance):
 		grid.add_child(button)
 		_register_menu_button(button)
 	
-	# Back-Button als letzte Auswahl im Grid
+	# Back-Button zentriert unter den Attacks
+	var back_row := HBoxContainer.new()
+	back_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	attacks_box.add_child(back_row)
+
+	var back_spacer_left := Control.new()
+	back_spacer_left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	back_row.add_child(back_spacer_left)
+
 	var back_button := Button.new()
 	back_button.text = "← Back"
-	back_button.custom_minimum_size = Vector2(150, 0)
+	back_button.custom_minimum_size = Vector2(attack_button_width, 0)
 	back_button.add_theme_font_size_override("font_size", 12)
-	back_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	back_button.pressed.connect(func():
 		show_main_menu(current_monster, current_team, battle_controller)
 	)
-	grid.add_child(back_button)
+	back_row.add_child(back_button)
+
+	var back_spacer_right := Control.new()
+	back_spacer_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	back_row.add_child(back_spacer_right)
 	_register_menu_button(back_button)
 	
 	visible = true
@@ -427,6 +466,7 @@ func _update_attack_info(attack: AttackData) -> void:
 	if attack_info_name == null:
 		return
 	attack_info_name.text = attack.name
+	attack_info_description.text = attack.description
 	attack_info_power.text = "Power: %d" % attack.power
 	attack_info_element.text = "Element: %s" % Element.Type.keys()[attack.element]
 	attack_info_energy.text = "Energy Cost: %d" % attack.energy_cost
@@ -437,6 +477,7 @@ func _clear_attack_info() -> void:
 	if attack_info_name == null:
 		return
 	attack_info_name.text = "Hover: Attack"
+	attack_info_description.text = ""
 	attack_info_power.text = "Power: -"
 	attack_info_element.text = "Element: -"
 	attack_info_energy.text = "Energy Cost: -"

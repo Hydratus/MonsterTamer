@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="AttackLearnData" format=3 uid="uid://dgn2ju3sncx6m"]
+
+[ext_resource type="Resource" uid="uid://rxsud2do07b0" path="res://data/moves/FireCrunch.tres" id="1_lrabi"]
+[ext_resource type="Script" uid="uid://b23dqagtptegd" path="res://core/monsters/attack_learn_data.gd" id="2_exuuo"]
+
+[resource]
+script = ExtResource("2_exuuo")
+attack = ExtResource("1_lrabi")
+learn_level = 13
+metadata/_custom_type_script = "uid://b23dqagtptegd"

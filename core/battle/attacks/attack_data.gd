@@ -3,6 +3,8 @@ class_name AttackData
 
 @export var name: String
 
+@export_multiline var description: String = ""
+
 @export var power: int = 5
 @export var energy_cost: int = 1
 @export var accuracy: int = 100

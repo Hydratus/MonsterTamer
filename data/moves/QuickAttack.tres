@@ -1,10 +1,11 @@
-[gd_resource type="Resource" script_class="AttackData" load_steps=2 format=3 uid="uid://dkrjb4yrweo1q"]
+[gd_resource type="Resource" script_class="AttackData" format=3 uid="uid://dkrjb4yrweo1q"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_gacta"]
+[ext_resource type="Script" uid="uid://d3c72pjv8iek2" path="res://core/battle/stats/stat_change_data.gd" id="2_ads36"]
 
 [resource]
 script = ExtResource("1_gacta")
 name = "Quick Attack"
-power_multiplier = 0.7
+power = 25
 priority = 1
 metadata/_custom_type_script = "uid://byip331ngwvgq"

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="EvolutionData" format=3 uid="uid://ctl7seudr3sa5"]
+
+[ext_resource type="Resource" uid="uid://0tyw1amx8xfm" path="res://data/monsters/wolfinator/wolfinator.tres" id="1_tmscl"]
+[ext_resource type="Script" uid="uid://bx0qflxgcns4v" path="res://core/monsters/evolution_data.gd" id="2_fx1cm"]
+
+[resource]
+script = ExtResource("2_fx1cm")
+evolved_monster = ExtResource("1_tmscl")
+evolution_level = 13
+metadata/_custom_type_script = "uid://bx0qflxgcns4v"
