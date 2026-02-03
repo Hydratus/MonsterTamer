@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://sjntxa4cn3iu"
+path="res://.godot/imported/Fx.wav-5bc08f1608ac9de6fc884d6e36a719e9.sample"
+
+[deps]
+
+source_file="res://assets/sprites/Tests/Ninja Adventure - Asset Pack/Audio/Sounds/Magic & Skill/Fx.wav"
+dest_files=["res://.godot/imported/Fx.wav-5bc08f1608ac9de6fc884d6e36a719e9.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

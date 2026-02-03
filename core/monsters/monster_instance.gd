@@ -89,6 +89,7 @@ func _init(monster_data: MonsterData):
 	data = monster_data.duplicate()
 	level = data.level  # Kopiere das Start-Level von MonsterData
 	attacks = data.attacks.duplicate()
+	_apply_learnable_attacks_up_to_level()
 
 	for trait_effect in data.passive_traits:
 		add_trait(trait_effect)
@@ -384,6 +385,16 @@ func get_available_attacks_to_learn() -> Array[Resource]:
 			available.append(learn_data)
 	
 	return available
+
+func _apply_learnable_attacks_up_to_level() -> void:
+	if data == null:
+		return
+	for learn_data in data.learnable_attacks:
+		if learn_data == null:
+			continue
+		if learn_data.learn_level <= level and learn_data.attack != null:
+			if not attacks.has(learn_data.attack):
+				attacks.append(learn_data.attack)
 
 # Check for new attacks to learn
 func _check_attack_learning(logger: Callable = Callable()) -> void:

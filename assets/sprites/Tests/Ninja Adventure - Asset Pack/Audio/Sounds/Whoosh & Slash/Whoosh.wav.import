@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://bc5x5ehggj1um"
+path="res://.godot/imported/Whoosh.wav-50a242edcd7f06e4cd50e7f9b1e20f3d.sample"
+
+[deps]
+
+source_file="res://assets/sprites/Tests/Ninja Adventure - Asset Pack/Audio/Sounds/Whoosh & Slash/Whoosh.wav"
+dest_files=["res://.godot/imported/Whoosh.wav-50a242edcd7f06e4cd50e7f9b1e20f3d.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

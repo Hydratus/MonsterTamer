@@ -1,6 +1,8 @@
 extends Node2D
 class_name BattleScene
 
+signal battle_finished(winner_team_index: int)
+
 @onready var menu: BattleMenu = $BattleMenu
 
 var hud: BattleHUD
@@ -17,6 +19,7 @@ var _evolution_decision_callback: Callable
 # Team-Konfiguration im Inspector
 @export var player_team: Array[MonsterData] = []
 @export var enemy_team: Array[MonsterData] = []
+@export var auto_start: bool = true
 
 var battle: BattleController
 var battle_started := false  # Flag um doppelte Starts zu verhindern
@@ -47,7 +50,7 @@ func _ready():
 	
 	# Starte automatisch einen Kampf wenn Teams im Inspector konfiguriert sind
 	# (Nur wenn die Szene direkt geladen wird, nicht wenn sie von außen gestartet wird)
-	if player_team.size() > 0 and enemy_team.size() > 0 and not battle_started:
+	if auto_start and player_team.size() > 0 and enemy_team.size() > 0 and not battle_started:
 		# Konvertiere MonsterData zu MonsterInstance
 		var team1: Array[MonsterInstance] = []
 		var team2: Array[MonsterInstance] = []
@@ -159,6 +162,9 @@ func update_hud_with_active() -> void:
 	var enemy_active = battle.get_active_monster(1)
 	if player_active != null and enemy_active != null:
 		hud.update_monsters(player_active, enemy_active)
+
+func on_battle_finished(winner_team_index: int) -> void:
+	battle_finished.emit(winner_team_index)
 
 func add_battle_message(text: String):
 	if message_box != null:

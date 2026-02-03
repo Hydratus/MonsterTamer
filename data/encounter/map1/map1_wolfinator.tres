@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="EncounterEntry" format=3 uid="uid://5s8e71chtsiv"]
+
+[ext_resource type="Script" uid="uid://ndxg70wtpumi" path="res://core/world/encounter_entry.gd" id="1_jrc73"]
+[ext_resource type="Resource" uid="uid://0tyw1amx8xfm" path="res://data/monsters/wolfinator/wolfinator.tres" id="1_spt88"]
+
+[resource]
+script = ExtResource("1_jrc73")
+monster = ExtResource("1_spt88")
+min_level = 7
+max_level = 9
+weight = 10
+metadata/_custom_type_script = "uid://ndxg70wtpumi"

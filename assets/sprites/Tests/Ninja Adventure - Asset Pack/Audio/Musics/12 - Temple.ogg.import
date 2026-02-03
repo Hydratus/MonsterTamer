@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://dgflfcu2ou2ps"
+path="res://.godot/imported/12 - Temple.ogg-7f6053fa19c58d46f18f8745cdd067dd.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/sprites/Tests/Ninja Adventure - Asset Pack/Audio/Musics/12 - Temple.ogg"
+dest_files=["res://.godot/imported/12 - Temple.ogg-7f6053fa19c58d46f18f8745cdd067dd.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

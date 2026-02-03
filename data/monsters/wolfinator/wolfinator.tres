@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="2_55d8w"]
 [ext_resource type="Resource" uid="uid://dgn2ju3sncx6m" path="res://data/monsters/wolfinator/moves/Wolfinator_FireCrunch_Lv13.tres" id="2_ed4y7"]
 [ext_resource type="Script" uid="uid://dlkhfxldvfm2b" path="res://core/monsters/monster_data.gd" id="3_ed4y7"]
+[ext_resource type="Resource" uid="uid://dod75rmogaaw5" path="res://data/monsters/wolfinator/moves/Wolfinator_NormalAttack_Lv1.tres" id="3_n1xog"]
 
 [resource]
 script = ExtResource("3_ed4y7")
@@ -18,5 +19,5 @@ base_speed = 40
 base_exp = 300
 growth_rate = 2
 elements = Array[int]([0, 1])
-learnable_attacks = Array[Resource]([ExtResource("2_ed4y7")])
+learnable_attacks = Array[Resource]([ExtResource("2_ed4y7"), ExtResource("3_n1xog")])
 metadata/_custom_type_script = "uid://dlkhfxldvfm2b"

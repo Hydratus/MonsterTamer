@@ -6,5 +6,4 @@
 
 [node name="Main" type="Node2D" unique_id=969814577]
 script = ExtResource("1_o5qli")
-monster_a = ExtResource("3_sugp2")
-monster_b = ExtResource("2_0wfyh")
+starter_team = Array[Resource]([ExtResource("3_sugp2"), ExtResource("2_0wfyh")])

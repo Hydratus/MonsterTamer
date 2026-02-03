@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://degjbovi7vmbw"
+path="res://.godot/imported/Wind2.wav-575bb8a8a66c2089ea435f66576ff135.sample"
+
+[deps]
+
+source_file="res://assets/sprites/Tests/Ninja Adventure - Asset Pack/Audio/Sounds/Ambient/Wind2.wav"
+dest_files=["res://.godot/imported/Wind2.wav-575bb8a8a66c2089ea435f66576ff135.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2
