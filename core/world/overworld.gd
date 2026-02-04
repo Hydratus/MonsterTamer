@@ -27,7 +27,6 @@ var _npc_sprite: AnimatedSprite2D
 var _player_cell: Vector2i = Vector2i.ZERO
 var _pending_cell: Vector2i = Vector2i.ZERO
 var _npc_cell: Vector2i = Vector2i.ZERO
-var _blocked_cells: Array[Vector2i] = []
 var _message_layer: CanvasLayer
 var _message_panel: PanelContainer
 var _message_label: Label
@@ -38,6 +37,8 @@ var _rng := RandomNumberGenerator.new()
 var _battle_scene: Node2D
 var _in_battle := false
 var _last_facing: Vector2i = Vector2i(0, 1)
+var _walk_anim_lock: float = 0.0
+const WALK_ANIM_LOCK_TIME := 0.12
 
 func _ready() -> void:
 	_rng.randomize()
@@ -51,23 +52,43 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _in_battle or _is_moving:
 		return
+	if _message_visible:
+		if event.is_action_pressed("ui_accept"):
+			_try_interact()
+			get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("ui_accept"):
 		_try_interact()
 		get_viewport().set_input_as_handled()
 		return
-	if event.is_action_pressed("ui_up") or event.is_action_pressed("ui_down") or event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right"):
-		var dir := _get_direction_input()
-		if dir != Vector2i.ZERO:
-			_try_move(dir)
-			get_viewport().set_input_as_handled()
+	if event.is_action_pressed("ui_up"):
+		_try_move(Vector2i(0, -1))
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_down"):
+		_try_move(Vector2i(0, 1))
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_left"):
+		_try_move(Vector2i(-1, 0))
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_right"):
+		_try_move(Vector2i(1, 0))
+		get_viewport().set_input_as_handled()
 
 func _process(_delta: float) -> void:
 	if _in_battle or _is_moving:
+		return
+	if _message_visible:
 		return
 	_update_npc_cell()
 	var dir := _get_direction_input()
 	if dir != Vector2i.ZERO:
 		_try_move(dir)
+	else:
+		if _walk_anim_lock > 0.0:
+			_walk_anim_lock = max(0.0, _walk_anim_lock - _delta)
+			_play_walk_anim(_last_facing)
+		else:
+			_play_idle_anim(_last_facing)
 
 func _resolve_nodes() -> void:
 	_grass_layer = get_node_or_null(grass_layer_path) as TileMapLayer
@@ -134,23 +155,30 @@ func _try_move(direction: Vector2i) -> void:
 	_update_npc_cell()
 	_last_facing = direction
 	_play_walk_anim(direction)
+	_walk_anim_lock = WALK_ANIM_LOCK_TIME
 	var next_cell := _player_cell + direction
 	if not _is_cell_walkable(next_cell):
 		return
-	if _blocked_cells.has(next_cell):
-		return
+	if _player != null:
+		var target_pos := _get_player_target_pos(next_cell)
+		var delta := target_pos - _player.global_position
+		if _player.test_move(_player.global_transform, delta):
+			return
 
 	_pending_cell = next_cell
 	_target_position = _get_player_target_pos(next_cell)
 	_is_moving = true
 	var tween := create_tween()
-	tween.tween_property(_player, "global_position", _target_position, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(_player, "global_position", _target_position, 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.finished.connect(_on_step_finished)
 
 func _on_step_finished() -> void:
 	_is_moving = false
 	_player_cell = _pending_cell
-	_play_idle_anim(_last_facing)
+	if _walk_anim_lock > 0.0:
+		_play_walk_anim(_last_facing)
+	elif _get_direction_input() == Vector2i.ZERO:
+		_play_idle_anim(_last_facing)
 	if _in_battle:
 		return
 	if _is_grass_cell(_player_cell) and _rng.randf() <= encounter_chance:
@@ -270,6 +298,23 @@ func _play_anim(prefix: String, direction: Vector2i) -> void:
 		if _player_sprite.animation != anim_name:
 			_player_sprite.play(anim_name)
 
+func _play_npc_idle(direction: Vector2i) -> void:
+	if _npc_sprite == null:
+		return
+	var suffix := anim_down
+	if direction == Vector2i(0, -1):
+		suffix = anim_up
+	elif direction == Vector2i(0, 1):
+		suffix = anim_down
+	elif direction == Vector2i(-1, 0):
+		suffix = anim_left
+	elif direction == Vector2i(1, 0):
+		suffix = anim_right
+	var anim_name := "%s %s" % [anim_idle_prefix, suffix]
+	if _npc_sprite.sprite_frames != null and _npc_sprite.sprite_frames.has_animation(anim_name):
+		if _npc_sprite.animation != anim_name:
+			_npc_sprite.play(anim_name)
+
 func _try_interact() -> void:
 	_update_npc_cell()
 	if _message_visible:
@@ -278,19 +323,17 @@ func _try_interact() -> void:
 		return
 
 	if _player_cell.distance_to(_npc_cell) <= 1:
-		_message_label.text = "Hello! Stay safe in the tall grass."
-		_message_panel.visible = true
-		_message_visible = true
+		var delta := _npc_cell - _player_cell
+		if delta != Vector2i.ZERO and delta == _last_facing:
+			_play_npc_idle(_player_cell - _npc_cell)
+			_message_label.text = "Hello! Stay safe in the tall grass."
+			_message_panel.visible = true
+			_message_visible = true
 
 func _update_npc_cell() -> void:
 	if _npc == null:
 		return
-	var ref_pos := _npc.global_position
-	if _npc_sprite != null:
-		ref_pos = _npc_sprite.global_position
-	_npc_cell = _world_to_cell(ref_pos)
-	_blocked_cells.clear()
-	_blocked_cells.append(_npc_cell)
+	_npc_cell = _world_to_cell(_npc.global_position)
 
 func _ensure_party() -> void:
 	if Game.party.size() > 0:
