@@ -5,9 +5,7 @@ class_name Overworld
 @export var grass_layer_path: NodePath = NodePath("Grass")
 @export var dirt_layer_path: NodePath = NodePath("Dirt")
 @export var player_path: NodePath = NodePath("CharacterBody2D")
-@export var npc_path: NodePath = NodePath("NPC_1")
 @export var player_sprite_path: NodePath = NodePath("")
-@export var npc_sprite_path: NodePath = NodePath("")
 @export var anim_idle_prefix: String = "Idle"
 @export var anim_walk_prefix: String = "Walk"
 @export var anim_up: String = "Up"
@@ -21,12 +19,9 @@ class_name Overworld
 var _grass_layer: TileMapLayer
 var _dirt_layer: TileMapLayer
 var _player: CharacterBody2D
-var _npc: CharacterBody2D
 var _player_sprite: AnimatedSprite2D
-var _npc_sprite: AnimatedSprite2D
 var _player_cell: Vector2i = Vector2i.ZERO
 var _pending_cell: Vector2i = Vector2i.ZERO
-var _npc_cell: Vector2i = Vector2i.ZERO
 var _message_layer: CanvasLayer
 var _message_panel: PanelContainer
 var _message_label: Label
@@ -39,6 +34,9 @@ var _in_battle := false
 var _last_facing: Vector2i = Vector2i(0, 1)
 var _walk_anim_lock: float = 0.0
 const WALK_ANIM_LOCK_TIME := 0.12
+var _npcs: Array = []
+var _pending_npc_battle = null
+var _active_npc = null
 
 func _ready() -> void:
 	_rng.randomize()
@@ -79,7 +77,6 @@ func _process(_delta: float) -> void:
 		return
 	if _message_visible:
 		return
-	_update_npc_cell()
 	var dir := _get_direction_input()
 	if dir != Vector2i.ZERO:
 		_try_move(dir)
@@ -94,7 +91,6 @@ func _resolve_nodes() -> void:
 	_grass_layer = get_node_or_null(grass_layer_path) as TileMapLayer
 	_dirt_layer = get_node_or_null(dirt_layer_path) as TileMapLayer
 	_player = get_node_or_null(player_path) as CharacterBody2D
-	_npc = get_node_or_null(npc_path) as CharacterBody2D
 
 	if _grass_layer == null:
 		_grass_layer = get_node_or_null("Grass") as TileMapLayer
@@ -102,16 +98,12 @@ func _resolve_nodes() -> void:
 		_dirt_layer = get_node_or_null("Dirt") as TileMapLayer
 	if _player == null:
 		_player = _find_first_character_body(null)
-	if _npc == null:
-		_npc = _find_first_character_body(_player)
 	if player_sprite_path != NodePath(""):
 		_player_sprite = get_node_or_null(player_sprite_path) as AnimatedSprite2D
 	elif _player != null:
 		_player_sprite = _find_first_animated_sprite(_player)
-	if npc_sprite_path != NodePath(""):
-		_npc_sprite = get_node_or_null(npc_sprite_path) as AnimatedSprite2D
-	elif _npc != null:
-		_npc_sprite = _find_first_animated_sprite(_npc)
+	_collect_npcs()
+	_assign_npc_tile_layers()
 
 func _resolve_tile_size() -> void:
 	if _grass_layer != null and _grass_layer.tile_set != null:
@@ -126,7 +118,6 @@ func _resolve_tile_size() -> void:
 func _sync_cells() -> void:
 	if _player != null:
 		_player_cell = _world_to_cell(_get_player_ref_pos())
-	_update_npc_cell()
 
 func _create_message_ui() -> void:
 	_message_layer = CanvasLayer.new()
@@ -152,12 +143,13 @@ func _create_message_ui() -> void:
 	_message_panel.visible = false
 
 func _try_move(direction: Vector2i) -> void:
-	_update_npc_cell()
 	_last_facing = direction
 	_play_walk_anim(direction)
 	_walk_anim_lock = WALK_ANIM_LOCK_TIME
 	var next_cell := _player_cell + direction
 	if not _is_cell_walkable(next_cell):
+		return
+	if _is_cell_reserved_by_npc(next_cell):
 		return
 	if _player != null:
 		var target_pos := _get_player_target_pos(next_cell)
@@ -182,6 +174,7 @@ func _on_step_finished() -> void:
 	if _in_battle:
 		return
 	if _is_grass_cell(_player_cell) and _rng.randf() <= encounter_chance:
+		_play_idle_anim(_last_facing)
 		_start_random_battle()
 
 func _cell_to_world(cell: Vector2i) -> Vector2:
@@ -298,42 +291,33 @@ func _play_anim(prefix: String, direction: Vector2i) -> void:
 		if _player_sprite.animation != anim_name:
 			_player_sprite.play(anim_name)
 
-func _play_npc_idle(direction: Vector2i) -> void:
-	if _npc_sprite == null:
-		return
-	var suffix := anim_down
-	if direction == Vector2i(0, -1):
-		suffix = anim_up
-	elif direction == Vector2i(0, 1):
-		suffix = anim_down
-	elif direction == Vector2i(-1, 0):
-		suffix = anim_left
-	elif direction == Vector2i(1, 0):
-		suffix = anim_right
-	var anim_name := "%s %s" % [anim_idle_prefix, suffix]
-	if _npc_sprite.sprite_frames != null and _npc_sprite.sprite_frames.has_animation(anim_name):
-		if _npc_sprite.animation != anim_name:
-			_npc_sprite.play(anim_name)
-
 func _try_interact() -> void:
-	_update_npc_cell()
 	if _message_visible:
 		_message_panel.visible = false
 		_message_visible = false
+		if _pending_npc_battle != null:
+			var pending_npc = _pending_npc_battle
+			_pending_npc_battle = null
+			_start_npc_battle(pending_npc)
+		else:
+			_resume_npc_walks()
 		return
 
-	if _player_cell.distance_to(_npc_cell) <= 1:
-		var delta := _npc_cell - _player_cell
-		if delta != Vector2i.ZERO and delta == _last_facing:
-			_play_npc_idle(_player_cell - _npc_cell)
-			_message_label.text = "Hello! Stay safe in the tall grass."
-			_message_panel.visible = true
-			_message_visible = true
-
-func _update_npc_cell() -> void:
-	if _npc == null:
-		return
-	_npc_cell = _world_to_cell(_npc.global_position)
+	var npc = _get_npc_in_front()
+	if npc != null:
+		if npc.is_moving():
+			return
+		var dialogue = npc.get_dialogue()
+		var face_dir: Vector2i = _player_cell - npc.get_cell(_grass_layer)
+		npc.face_towards(face_dir)
+		npc.lock_facing(face_dir)
+		if npc.can_battle():
+			_pending_npc_battle = npc
+		_show_message(dialogue)
+		if dialogue == "" and _pending_npc_battle != null:
+			var pending_npc2 = _pending_npc_battle
+			_pending_npc_battle = null
+			_start_npc_battle(pending_npc2)
 
 func _ensure_party() -> void:
 	if Game.party.size() > 0:
@@ -369,6 +353,7 @@ func _start_random_battle() -> void:
 	var enemy_team: Array[MonsterInstance] = _build_enemy_team()
 	if enemy_team.is_empty():
 		return
+	_pause_npc_walks()
 
 	_in_battle = true
 	_battle_scene = preload("res://scenes/battle_scene.tscn").instantiate()
@@ -410,6 +395,94 @@ func _build_enemy_team() -> Array[MonsterInstance]:
 
 func _on_battle_finished(_winner_team_index: int) -> void:
 	_in_battle = false
+	if _active_npc != null:
+		_active_npc.on_battle_finished()
+		_active_npc = null
 	if _battle_scene != null:
 		_battle_scene.queue_free()
 		_battle_scene = null
+	_resume_npc_walks()
+
+func _start_npc_battle(npc) -> void:
+	if npc == null:
+		return
+	var enemy_raw = npc.build_team()
+	var enemy_team: Array[MonsterInstance] = []
+	for m in enemy_raw:
+		if m == null:
+			continue
+		enemy_team.append(m)
+	if enemy_team.is_empty():
+		return
+	_pause_npc_walks()
+
+	_active_npc = npc
+	_in_battle = true
+	_battle_scene = preload("res://scenes/battle_scene.tscn").instantiate()
+	_battle_scene.auto_start = false
+	add_child(_battle_scene)
+	_battle_scene.battle_finished.connect(_on_battle_finished)
+	var player_team: Array[MonsterInstance] = []
+	for monster in Game.party:
+		if monster == null:
+			continue
+		player_team.append(monster)
+	_battle_scene.start_battle(player_team, enemy_team)
+
+func _show_message(text: String) -> void:
+	if text == "":
+		return
+	_message_label.text = text
+	_message_panel.visible = true
+	_message_visible = true
+	_pause_npc_walks()
+
+func _pause_npc_walks() -> void:
+	for npc in _npcs:
+		if npc != null:
+			npc.pause_walk()
+
+func _resume_npc_walks() -> void:
+	for npc in _npcs:
+		if npc != null:
+			npc.resume_walk()
+
+func _get_npc_in_front():
+	if _npcs.is_empty():
+		return null
+	var target_cell := _player_cell + _last_facing
+	for npc in _npcs:
+		if npc == null:
+			continue
+		if npc.get_cell(_grass_layer) == target_cell:
+			return npc
+	return null
+
+func _collect_npcs() -> void:
+	_npcs.clear()
+	_find_npcs_recursive(self)
+
+func _find_npcs_recursive(root: Node) -> void:
+	for child in root.get_children():
+		if child is NPCController:
+			_npcs.append(child)
+		_find_npcs_recursive(child)
+
+func _assign_npc_tile_layers() -> void:
+	for npc in _npcs:
+		if npc != null:
+			npc.set_tile_layer(_grass_layer)
+
+
+func _is_cell_reserved_by_npc(cell: Vector2i) -> bool:
+	for npc in _npcs:
+		if npc == null:
+			continue
+		if npc.get_cell(_grass_layer) == cell:
+			return true
+		if npc.is_cell_reserved(cell):
+			return true
+		var next_cell: Vector2i = npc.get_next_target_cell()
+		if next_cell != Vector2i.ZERO and next_cell == cell:
+			return true
+	return false

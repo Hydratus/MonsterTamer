@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="NPCMonsterEntry" format=3 uid="uid://ogscvbev07l2"]
+
+[ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_wg3ld"]
+[ext_resource type="Script" uid="uid://choih6t5ybjci" path="res://core/world/npc_monster_entry.gd" id="2_dbyvq"]
+[ext_resource type="Resource" uid="uid://c8ovgmpw0mkpy" path="res://data/moves/FireBite.tres" id="2_di0d6"]
+[ext_resource type="Resource" uid="uid://by3ehbcb3vydg" path="res://data/moves/DrainBite.tres" id="3_eltqr"]
+[ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="3_rkk0s"]
+[ext_resource type="Resource" uid="uid://dkrjb4yrweo1q" path="res://data/moves/QuickAttack.tres" id="4_gc6s7"]
+[ext_resource type="Resource" uid="uid://bn0botltdcede" path="res://data/monsters/wolf/wolf.tres" id="5_u67g1"]
+[ext_resource type="Resource" uid="uid://bqmcnv14kkmv7" path="res://data/traits/BloodDrinker.tres" id="8_mwxb6"]
+[ext_resource type="Resource" uid="uid://b6ryw0k1onli1" path="res://data/traits/StrongBeginning.tres" id="9_eciet"]
+
+[resource]
+script = ExtResource("2_dbyvq")
+monster_data = ExtResource("5_u67g1")
+level = 12
+attacks_override = Array[ExtResource("1_wg3ld")]([ExtResource("2_di0d6"), ExtResource("3_eltqr"), ExtResource("4_gc6s7")])
+traits_override = Array[ExtResource("3_rkk0s")]([ExtResource("8_mwxb6"), ExtResource("9_eciet")])
+metadata/_custom_type_script = "uid://choih6t5ybjci"

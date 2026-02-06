@@ -15,6 +15,8 @@ var evolution_no_button: Button
 var _pending_learning: Array = []
 var _pending_exp_steps: Array = []
 var _evolution_decision_callback: Callable
+var _evolution_input_blocked := false
+var _evolution_prompt_token: int = 0
 
 # Team-Konfiguration im Inspector
 @export var player_team: Array[MonsterData] = []
@@ -248,20 +250,55 @@ func _show_evolution_prompt(monster: MonsterInstance, on_decision: Callable) -> 
 		var evolution_data := monster.data.evolution as EvolutionData
 		if evolution_data != null and evolution_data.evolved_monster != null:
 			evolved_name = evolution_data.evolved_monster.name
-	evolution_label.text = "%s tries to evolve into %s.\nDo you want to evolve %s?" % [monster.data.name, evolved_name, monster.data.name]
+	var text := "%s tries to evolve into %s.\nDo you want to evolve %s?" % [monster.data.name, evolved_name, monster.data.name]
 	evolution_layer.visible = true
 	evolution_yes_button.grab_focus()
 	_evolution_decision_callback = on_decision
+	_evolution_input_blocked = true
+	evolution_yes_button.disabled = true
+	evolution_no_button.disabled = true
+	evolution_label.text = ""
+	_evolution_prompt_token += 1
+	_run_evolution_prompt(_evolution_prompt_token, text)
 
 func _on_evolution_yes_pressed() -> void:
+	if _evolution_input_blocked:
+		return
 	evolution_layer.visible = false
 	if _evolution_decision_callback.is_valid():
 		_evolution_decision_callback.call(true)
 
 func _on_evolution_no_pressed() -> void:
+	if _evolution_input_blocked:
+		return
 	evolution_layer.visible = false
 	if _evolution_decision_callback.is_valid():
 		_evolution_decision_callback.call(false)
+
+func _run_evolution_prompt(token: int, text: String) -> void:
+	_evolution_typewriter(token, text)
+
+func _evolution_typewriter(token: int, text: String) -> void:
+	call_deferred("_evolution_typewriter_async", token, text)
+
+func _evolution_typewriter_async(token: int, text: String) -> void:
+	var per_char := 0.0125
+	if message_box != null:
+		per_char = message_box.time_per_char
+	var length := text.length()
+	for i in range(length):
+		if token != _evolution_prompt_token:
+			return
+		evolution_label.text = text.substr(0, i + 1)
+		await get_tree().create_timer(per_char).timeout
+	if token != _evolution_prompt_token:
+		return
+	await get_tree().create_timer(0.12).timeout
+	if token != _evolution_prompt_token:
+		return
+	_evolution_input_blocked = false
+	evolution_yes_button.disabled = false
+	evolution_no_button.disabled = false
 
 func _try_handle_pending_evolution() -> bool:
 	if battle == null:
@@ -272,6 +309,17 @@ func _try_handle_pending_evolution() -> bool:
 	var item = battle.pending_evolutions.pop_front()
 	var monster: MonsterInstance = item.monster
 	var learning_cb: Callable = item.learning_cb
+	var is_player := false
+	if monster != null and monster.decision != null:
+		is_player = monster.decision is PlayerDecision
+	if not is_player:
+		monster.apply_evolution(Callable(battle, "log_message"))
+		if message_box != null:
+			message_box.flush_action_messages()
+			show_battle_messages()
+		if learning_cb.is_valid():
+			_pending_learning.append({"cb": learning_cb, "monster": monster})
+		return true
 	_show_evolution_prompt(monster, func(accept: bool):
 		if accept:
 			monster.apply_evolution(Callable(battle, "log_message"))

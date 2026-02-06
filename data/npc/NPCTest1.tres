@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="NPCData" format=3 uid="uid://cwoxd5hg3gna5"]
+
+[ext_resource type="Script" uid="uid://xui3q43putk4" path="res://core/world/npc_data.gd" id="1_3bqhe"]
+[ext_resource type="Script" uid="uid://choih6t5ybjci" path="res://core/world/npc_monster_entry.gd" id="2_1oyur"]
+[ext_resource type="Resource" uid="uid://ogscvbev07l2" path="res://data/npc/NPCTest1_Wolf1.tres" id="3_1oyur"]
+[ext_resource type="Resource" uid="uid://btfpl3g37djlh" path="res://data/npc/NPCTest1_Wolf2.tres" id="4_87nq8"]
+[ext_resource type="Resource" uid="uid://de2qkivmoqgwn" path="res://data/npc/NPCTest1_Wolf3.tres" id="5_df2db"]
+[ext_resource type="Resource" uid="uid://c866onfk3mcu5" path="res://data/npc/NPCTest1_Wolf4.tres" id="6_8nd6v"]
+
+[resource]
+script = ExtResource("1_3bqhe")
+display_name = "Test NPC 1"
+dialogue_before = "Hey! Wanna battle?"
+dialogue_after = "You defeated me...
+How dare you!"
+team_entries = Array[ExtResource("2_1oyur")]([ExtResource("3_1oyur"), ExtResource("4_87nq8"), ExtResource("5_df2db"), ExtResource("6_8nd6v")])
+walk_path = Array[Vector2i]([Vector2i(-1, 0), Vector2i(-2, 0), Vector2i(-2, -1), Vector2i(-2, -2), Vector2i(-1, -2), Vector2i(0, -2), Vector2i(0, -1), Vector2i(0, 0)])
+walk_delay = 0.2
+walk_duration = 0.5
+walk_enabled = true
+metadata/_custom_type_script = "uid://xui3q43putk4"
