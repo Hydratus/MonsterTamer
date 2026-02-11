@@ -10,6 +10,7 @@ signal menu_changed(menu_name: String)  # Neues Signal für HUD-Sichtbarkeit
 
 const MENU_OFFSET_TOP_DEFAULT := -80.0
 const MENU_OFFSET_TOP_ATTACKS := -140.0
+const GAMEPAD_BTN_A := 0
 
 var current_monster: MonsterInstance
 var current_team: MonsterTeam
@@ -30,6 +31,7 @@ var attack_info_priority: Label
 # Navigation
 var _menu_buttons: Array[Button] = []
 var _menu_columns: int = 1
+var _last_attack_index_by_monster: Dictionary = {}
 
 func _ready():
 	# Verstecke das Menu initial
@@ -42,7 +44,7 @@ func _ensure_gamepad_accept() -> void:
 		InputMap.add_action("ui_accept")
 	
 	var a_event := InputEventJoypadButton.new()
-	a_event.button_index = JOY_BUTTON_A
+	a_event.button_index = GAMEPAD_BTN_A
 	if not InputMap.action_has_event("ui_accept", a_event):
 		InputMap.action_add_event("ui_accept", a_event)
 
@@ -90,6 +92,7 @@ func show_attacks(monster: MonsterInstance):
 	menu_changed.emit("attacks")
 	vbox.offset_top = MENU_OFFSET_TOP_ATTACKS
 	_clear_menu()
+	var attack_buttons: Array[Button] = []
 	
 	# Layout: links Angriffe, rechts Info-Panel
 	var hbox := HBoxContainer.new()
@@ -167,7 +170,8 @@ func show_attacks(monster: MonsterInstance):
 	desc_vbox.add_child(attack_info_description)
 	
 	var attack_button_width := 220
-	for attack in monster.attacks:
+	for i in range(monster.attacks.size()):
+		var attack := monster.attacks[i]
 		var button := Button.new()
 		button.text = attack.name
 		button.custom_minimum_size = Vector2(attack_button_width, 22)  # Breite wie Description
@@ -175,22 +179,15 @@ func show_attacks(monster: MonsterInstance):
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(func():
 			# Emitiere mit dem aktuellen Monster (zur Ausführungszeit)
+			_last_attack_index_by_monster[current_monster] = i
 			action_selected.emit(attack)
-		)
-		button.mouse_entered.connect(func():
-			_update_attack_info(attack)
-		)
-		button.mouse_exited.connect(func():
-			_clear_attack_info()
 		)
 		button.focus_entered.connect(func():
 			_update_attack_info(attack)
 		)
-		button.focus_exited.connect(func():
-			_clear_attack_info()
-		)
 		grid.add_child(button)
 		_register_menu_button(button)
+		attack_buttons.append(button)
 	
 	# Back-Button zentriert unter den Attacks
 	var back_row := HBoxContainer.new()
@@ -216,7 +213,7 @@ func show_attacks(monster: MonsterInstance):
 	_register_menu_button(back_button)
 	
 	visible = true
-	_focus_first_button()
+	_focus_last_attack_button(attack_buttons)
 
 func show_team(team: MonsterTeam):
 	current_team = team
@@ -486,6 +483,13 @@ func _clear_attack_info() -> void:
 
 func _register_menu_button(button: Button) -> void:
 	button.focus_mode = Control.FOCUS_ALL
+	button.mouse_entered.connect(func():
+		button.grab_focus()
+	)
+	var normal_box := button.get_theme_stylebox("normal", "Button")
+	if normal_box != null:
+		button.add_theme_stylebox_override("hover", normal_box)
+		button.add_theme_stylebox_override("hover_pressed", normal_box)
 	_menu_buttons.append(button)
 
 func _focus_first_button() -> void:
@@ -510,6 +514,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("ui_accept"):
 		_activate_focused_button()
 		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_cancel"):
+		if current_menu != "main":
+			show_main_menu(current_monster, current_team, battle_controller)
+			get_viewport().set_input_as_handled()
 
 func _move_focus(dx: int, dy: int) -> void:
 	var count: int = _menu_buttons.size()
@@ -547,3 +555,13 @@ func _activate_focused_button() -> void:
 		if button.has_focus():
 			button.emit_signal("pressed")
 			return
+
+func _focus_last_attack_button(attack_buttons: Array[Button]) -> void:
+	if attack_buttons.is_empty():
+		_focus_first_button()
+		return
+	var index := 0
+	if _last_attack_index_by_monster.has(current_monster):
+		index = int(_last_attack_index_by_monster[current_monster])
+	index = clamp(index, 0, attack_buttons.size() - 1)
+	attack_buttons[index].grab_focus()

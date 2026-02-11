@@ -10,12 +10,12 @@
 [resource]
 script = ExtResource("1_3bqhe")
 display_name = "Test NPC 1"
-dialogue_before = "Hey! Wanna battle?"
+dialogue_before = "Hey! Ausm Weg, Geringverdiener!"
 dialogue_after = "You defeated me...
 How dare you!"
 team_entries = Array[ExtResource("2_1oyur")]([ExtResource("3_1oyur"), ExtResource("4_87nq8"), ExtResource("5_df2db"), ExtResource("6_8nd6v")])
 walk_path = Array[Vector2i]([Vector2i(-1, 0), Vector2i(-2, 0), Vector2i(-2, -1), Vector2i(-2, -2), Vector2i(-1, -2), Vector2i(0, -2), Vector2i(0, -1), Vector2i(0, 0)])
-walk_delay = 0.2
+walk_delay = 0.0
 walk_duration = 0.5
 walk_enabled = true
 metadata/_custom_type_script = "uid://xui3q43putk4"

@@ -968,6 +968,7 @@ size = Vector2(14, 14)
 
 [node name="Overworld" type="Node2D" unique_id=1735293519]
 script = ExtResource("1_1c2b3")
+encounter_chance = 0.05
 encounter_table = Array[ExtResource("2_h0wcu")]([ExtResource("3_espw7"), ExtResource("4_o3ojk"), ExtResource("5_eccxn")])
 
 [node name="Dirt" type="TileMapLayer" parent="." unique_id=537473179]

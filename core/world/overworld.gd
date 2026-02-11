@@ -1,5 +1,8 @@
 extends Node2D
-class_name Overworld
+class_name OverworldScene
+
+const GAMEPAD_BTN_B := 1
+const GAMEPAD_BTN_START := 7
 
 @export var tile_size: int = 32
 @export var grass_layer_path: NodePath = NodePath("Grass")
@@ -8,6 +11,9 @@ class_name Overworld
 @export var player_sprite_path: NodePath = NodePath("")
 @export var anim_idle_prefix: String = "Idle"
 @export var anim_walk_prefix: String = "Walk"
+@export var anim_run_prefix: String = "Run"
+@export var walk_duration: float = 0.18
+@export var run_speed_multiplier: float = 1.6
 @export var anim_up: String = "Up"
 @export var anim_down: String = "Down"
 @export var anim_left: String = "Left"
@@ -34,21 +40,38 @@ var _in_battle := false
 var _last_facing: Vector2i = Vector2i(0, 1)
 var _walk_anim_lock: float = 0.0
 const WALK_ANIM_LOCK_TIME := 0.12
+var _last_running := false
 var _npcs: Array = []
 var _pending_npc_battle = null
 var _active_npc = null
+var _pause_menu
+var _pause_menu_open := false
 
 func _ready() -> void:
 	_rng.randomize()
+	_ensure_run_action()
+	_ensure_pause_action()
 	_resolve_nodes()
 	_resolve_tile_size()
 	_sync_cells()
 	_create_message_ui()
+	_create_pause_menu()
 	_ensure_party()
 	_ensure_encounters()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _in_battle or _is_moving:
+		return
+	if _pause_menu_open:
+		if event.is_action_pressed("pause_menu") or event.is_action_pressed("ui_cancel"):
+			_close_pause_menu()
+			get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("pause_menu"):
+		if _message_visible:
+			return
+		_open_pause_menu()
+		get_viewport().set_input_as_handled()
 		return
 	if _message_visible:
 		if event.is_action_pressed("ui_accept"):
@@ -74,6 +97,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(_delta: float) -> void:
 	if _in_battle or _is_moving:
+		return
+	if _pause_menu_open:
 		return
 	if _message_visible:
 		return
@@ -144,7 +169,9 @@ func _create_message_ui() -> void:
 
 func _try_move(direction: Vector2i) -> void:
 	_last_facing = direction
-	_play_walk_anim(direction)
+	var running := _is_run_pressed()
+	_last_running = running
+	_play_move_anim(direction, running)
 	_walk_anim_lock = WALK_ANIM_LOCK_TIME
 	var next_cell := _player_cell + direction
 	if not _is_cell_walkable(next_cell):
@@ -161,14 +188,17 @@ func _try_move(direction: Vector2i) -> void:
 	_target_position = _get_player_target_pos(next_cell)
 	_is_moving = true
 	var tween := create_tween()
-	tween.tween_property(_player, "global_position", _target_position, 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var duration := walk_duration
+	if running:
+		duration = walk_duration / run_speed_multiplier
+	tween.tween_property(_player, "global_position", _target_position, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.finished.connect(_on_step_finished)
 
 func _on_step_finished() -> void:
 	_is_moving = false
 	_player_cell = _pending_cell
 	if _walk_anim_lock > 0.0:
-		_play_walk_anim(_last_facing)
+		_play_move_anim(_last_facing, _last_running)
 	elif _get_direction_input() == Vector2i.ZERO:
 		_play_idle_anim(_last_facing)
 	if _in_battle:
@@ -271,6 +301,12 @@ func _get_direction_input() -> Vector2i:
 func _play_walk_anim(direction: Vector2i) -> void:
 	_play_anim(anim_walk_prefix, direction)
 
+func _play_move_anim(direction: Vector2i, running: bool) -> void:
+	if running:
+		if _play_anim_if_exists(anim_run_prefix, direction):
+			return
+	_play_anim(anim_walk_prefix, direction)
+
 func _play_idle_anim(direction: Vector2i) -> void:
 	_play_anim(anim_idle_prefix, direction)
 
@@ -290,6 +326,77 @@ func _play_anim(prefix: String, direction: Vector2i) -> void:
 	if _player_sprite.sprite_frames != null and _player_sprite.sprite_frames.has_animation(anim_name):
 		if _player_sprite.animation != anim_name:
 			_player_sprite.play(anim_name)
+
+func _play_anim_if_exists(prefix: String, direction: Vector2i) -> bool:
+	if _player_sprite == null:
+		return false
+	var dir := direction
+	if dir == Vector2i.ZERO:
+		dir = Vector2i(0, 1)
+	var suffix := anim_down
+	if dir == Vector2i(0, -1):
+		suffix = anim_up
+	elif dir == Vector2i(0, 1):
+		suffix = anim_down
+	elif dir == Vector2i(-1, 0):
+		suffix = anim_left
+	elif dir == Vector2i(1, 0):
+		suffix = anim_right
+	var anim_name := "%s %s" % [prefix, suffix]
+	if _player_sprite.sprite_frames != null and _player_sprite.sprite_frames.has_animation(anim_name):
+		if _player_sprite.animation != anim_name:
+			_player_sprite.play(anim_name)
+		return true
+	return false
+
+func _is_run_pressed() -> bool:
+	return Input.is_action_pressed("run")
+
+func _ensure_run_action() -> void:
+	if not InputMap.has_action("run"):
+		InputMap.add_action("run")
+	var shift_event := InputEventKey.new()
+	shift_event.keycode = KEY_SHIFT
+	if not InputMap.action_has_event("run", shift_event):
+		InputMap.action_add_event("run", shift_event)
+	var b_event := InputEventJoypadButton.new()
+	b_event.button_index = GAMEPAD_BTN_B as JoyButton
+	if not InputMap.action_has_event("run", b_event):
+		InputMap.action_add_event("run", b_event)
+
+func _ensure_pause_action() -> void:
+	if not InputMap.has_action("pause_menu"):
+		InputMap.add_action("pause_menu")
+	var esc_event := InputEventKey.new()
+	esc_event.keycode = KEY_ESCAPE
+	if not InputMap.action_has_event("pause_menu", esc_event):
+		InputMap.action_add_event("pause_menu", esc_event)
+	var start_event := InputEventJoypadButton.new()
+	start_event.button_index = GAMEPAD_BTN_START as JoyButton
+	if not InputMap.action_has_event("pause_menu", start_event):
+		InputMap.action_add_event("pause_menu", start_event)
+
+func _create_pause_menu() -> void:
+	var scene := preload("res://ui/menus/pause_menu.tscn")
+	_pause_menu = scene.instantiate()
+	add_child(_pause_menu)
+	_pause_menu.closed.connect(_on_pause_menu_closed)
+	_pause_menu.visible = false
+
+func _open_pause_menu() -> void:
+	if _pause_menu == null:
+		return
+	_pause_menu_open = true
+	_pause_menu.open(Game.party)
+
+func _close_pause_menu() -> void:
+	if _pause_menu == null:
+		return
+	_pause_menu_open = false
+	_pause_menu.close()
+
+func _on_pause_menu_closed() -> void:
+	_pause_menu_open = false
 
 func _try_interact() -> void:
 	if _message_visible:

@@ -230,7 +230,6 @@ func _distribute_exp_with_flush(defeated_monster: MonsterInstance):
 				Callable(self, "_process_exp_gain_with_flush"),
 				[opponent, exp_per_monster]
 			)
-		battle.scene.start_pending_exp_processing()
 	else:
 		for opponent in ordered_opponents:
 			_process_exp_gain_with_flush(opponent, exp_per_monster)
