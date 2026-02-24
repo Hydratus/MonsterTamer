@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://cg1wmx8pbcxos"]
+
+[ext_resource type="Script" uid="uid://564rgj7ohsyo" path="res://core/items/item_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "mythic_water_binding_rune"
+name = "Mythic Water Binding Rune"
+description = "A rare water binding rune used to capture monsters."
+category = 1
+target_type = 1
+overworld_usable = false
+rune_tier = 4
+rune_element = 3

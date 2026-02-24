@@ -5,6 +5,7 @@ signal message_completed  # Wird ausgelöst wenn eine Message vollständig angez
 signal all_messages_completed  # Wird ausgelöst wenn alle Messages abgearbeitet wurden
 
 var message_label: Label
+var prompt_label: Label
 var message_queue: Array[String] = []
 var current_message: String = ""
 var current_char_index: int = 0
@@ -14,10 +15,18 @@ var time_per_char: float = 0.0125  # 1/80 = 0.0125 Sekunden pro Buchstabe
 var time_since_last_char: float = 0.0
 var waiting_for_input: bool = false
 var current_action_messages: Array[String] = []  # Sammelt Messages einer Action
+var _static_message_active := false
 
 func _ready():
 	# Panel Setup - feste Größe
 	custom_minimum_size = Vector2(0, 70)  # Feste Höhe von 70px
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0, 0, 0, 0.85)
+	panel_style.set_border_width_all(2)
+	panel_style.border_color = Color(1, 1, 1, 1)
+	add_theme_stylebox_override("panel", panel_style)
+	focus_mode = Control.FOCUS_ALL
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	
 	# Positionierung: Unten über die gesamte Breite, 10px vom Rand (wie Enemy stats oben)
 	anchor_left = 0.0
@@ -40,12 +49,13 @@ func _ready():
 	message_label = Label.new()
 	message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	message_label.add_theme_font_size_override("font_size", 16)
+	message_label.add_theme_color_override("font_color", Color(1, 1, 1, 1))
 	message_label.custom_minimum_size = Vector2(0, 40)  # Feste Mindesthöhe für konsistente Größe
 	message_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	vbox.add_child(message_label)
 	
 	# Prompt für "Drücken um fortzufahren"
-	var prompt_label = Label.new()
+	prompt_label = Label.new()
 	prompt_label.text = "▼"
 	prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	prompt_label.add_theme_font_size_override("font_size", 14)
@@ -88,10 +98,13 @@ func _input(event):
 	# Beliebige Taste oder Mausklick zum Fortfahren
 	if event is InputEventKey and event.pressed and not event.echo:
 		_on_continue_pressed()
+		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		_on_continue_pressed()
+		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("ui_accept"):
 		_on_continue_pressed()
+		get_viewport().set_input_as_handled()
 
 func _on_continue_pressed():
 	if not waiting_for_input:
@@ -123,7 +136,11 @@ func start_displaying():
 		visible = false
 		return
 	
+	_static_message_active = false
+	if prompt_label != null:
+		prompt_label.visible = true
 	visible = true
+	grab_focus()
 	is_displaying = true
 	_show_next_message()
 
@@ -149,8 +166,33 @@ func clear_messages():
 	waiting_for_input = false
 	message_label.text = ""
 	visible = false
+	_static_message_active = false
+	if prompt_label != null:
+		prompt_label.visible = true
 
 func skip_all():
 	# Sofort alle Nachrichten überspringen
 	clear_messages()
 	all_messages_completed.emit()
+
+func show_static_message(text: String) -> void:
+	_static_message_active = true
+	message_queue.clear()
+	current_action_messages.clear()
+	current_message = ""
+	current_char_index = 0
+	is_displaying = false
+	waiting_for_input = false
+	message_label.text = text
+	visible = true
+	if prompt_label != null:
+		prompt_label.visible = false
+
+func clear_static_message() -> void:
+	if not _static_message_active:
+		return
+	_static_message_active = false
+	message_label.text = ""
+	if prompt_label != null:
+		prompt_label.visible = true
+	visible = false

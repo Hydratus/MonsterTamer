@@ -4,6 +4,7 @@ class_name BattleMenu
 signal action_selected(attack: AttackData)
 signal escape_battle
 signal menu_changed(menu_name: String)  # Neues Signal für HUD-Sichtbarkeit
+signal item_used(item: ItemData, target: MonsterInstance)
 
 @onready var control := $Control
 @onready var vbox := $Control/VBoxContainer
@@ -11,13 +12,13 @@ signal menu_changed(menu_name: String)  # Neues Signal für HUD-Sichtbarkeit
 const MENU_OFFSET_TOP_DEFAULT := -80.0
 const MENU_OFFSET_TOP_ATTACKS := -140.0
 const GAMEPAD_BTN_A := 0
+const ITEM_MENU_SCENE := preload("res://ui/menus/item_menu.tscn")
 
 var current_monster: MonsterInstance
 var current_team: MonsterTeam
 var battle_controller: BattleController  # Referenz zum BattleController für Aktionen
 var current_menu: String = "main"  # "main", "attacks", "team", "inventory", "escape"
 var _is_showing_menu := false  # Flag um doppelte show_main_menu() Aufrufe zu verhindern
-var _connected_monster: MonsterInstance = null  # Trackiere welches Monster die Signale verbunden hat
 
 # Attack-Info UI (Hover)
 var attack_info_name: Label
@@ -32,21 +33,33 @@ var attack_info_priority: Label
 var _menu_buttons: Array[Button] = []
 var _menu_columns: int = 1
 var _last_attack_index_by_monster: Dictionary = {}
+var _item_menu: ItemMenu
+var _menu_offsets_default: Dictionary = {}
+var _menu_offsets_item: Dictionary = {
+	"left": 20.0,
+	"top": -360.0,
+	"right": 820.0,
+	"bottom": -10.0
+}
+var _input_locked := false
 
 func _ready():
 	# Verstecke das Menu initial
 	visible = false
 	set_process_unhandled_input(true)
-	_ensure_gamepad_accept()
+	_menu_offsets_default = {
+		"left": vbox.offset_left,
+		"top": vbox.offset_top,
+		"right": vbox.offset_right,
+		"bottom": vbox.offset_bottom
+	}
 
-func _ensure_gamepad_accept() -> void:
-	if not InputMap.has_action("ui_accept"):
-		InputMap.add_action("ui_accept")
-	
-	var a_event := InputEventJoypadButton.new()
-	a_event.button_index = GAMEPAD_BTN_A
-	if not InputMap.action_has_event("ui_accept", a_event):
-		InputMap.action_add_event("ui_accept", a_event)
+func _apply_menu_offsets(offsets: Dictionary) -> void:
+	vbox.offset_left = float(offsets.get("left", vbox.offset_left))
+	vbox.offset_top = float(offsets.get("top", vbox.offset_top))
+	vbox.offset_right = float(offsets.get("right", vbox.offset_right))
+	vbox.offset_bottom = float(offsets.get("bottom", vbox.offset_bottom))
+
 
 func show_main_menu(monster: MonsterInstance, team: MonsterTeam = null, controller: BattleController = null):
 	# Verhindere gleichzeitige Aufrufe
@@ -61,6 +74,7 @@ func show_main_menu(monster: MonsterInstance, team: MonsterTeam = null, controll
 	current_menu = "main"
 	
 	menu_changed.emit("main")
+	_apply_menu_offsets(_menu_offsets_default)
 	vbox.offset_top = MENU_OFFSET_TOP_DEFAULT
 	
 	print("DEBUG show_main_menu: monster=%s, team ist %s, controller ist %s" % [monster.data.name, "null" if team == null else "gesetzt", "null" if controller == null else "gesetzt"])
@@ -90,6 +104,7 @@ func show_attacks(monster: MonsterInstance):
 	current_monster = monster
 	current_menu = "attacks"
 	menu_changed.emit("attacks")
+	_apply_menu_offsets(_menu_offsets_default)
 	vbox.offset_top = MENU_OFFSET_TOP_ATTACKS
 	_clear_menu()
 	var attack_buttons: Array[Button] = []
@@ -271,15 +286,7 @@ func show_inventory():
 	vbox.offset_top = MENU_OFFSET_TOP_DEFAULT
 	_clear_menu()
 	_menu_columns = 1
-	
-	var label := Label.new()
-	label.text = "🎒 Inventory\n\n(Noch nicht implementiert)"
-	vbox.add_child(label)
-	
-	# Back-Button
-	_add_back_button()
-	visible = true
-	_focus_first_button()
+	_show_item_menu()
 
 func show_escape_menu():
 	current_menu = "escape"
@@ -429,6 +436,29 @@ func _clear_menu() -> void:
 	_clear_attack_info()
 	_menu_buttons.clear()
 	_menu_columns = 1
+	_item_menu = null
+
+func _show_item_menu() -> void:
+	_apply_menu_offsets(_menu_offsets_item)
+	var item_menu := ITEM_MENU_SCENE.instantiate() as ItemMenu
+	item_menu.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	item_menu.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(item_menu)
+	_item_menu = item_menu
+	var team_list: Array[MonsterInstance] = []
+	if current_team != null:
+		team_list = current_team.monsters
+	item_menu.item_used.connect(func(item: ItemData, target: MonsterInstance):
+		item_used.emit(item, target)
+	)
+	item_menu.closed.connect(func():
+		show_main_menu(current_monster, current_team, battle_controller)
+	)
+	item_menu.set_require_focus_owner(false)
+	item_menu.set_allow_enter_from_tabs(true)
+	item_menu.open_inventory(team_list, true)
+	visible = true
+	item_menu.grab_first_focus()
 
 func _add_back_button() -> void:
 	# Erstelle HBoxContainer für Back-Button rechts neben Grid
@@ -499,6 +529,13 @@ func _focus_first_button() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
 		return
+	if _input_locked:
+		return
+	if current_menu == "inventory" and _item_menu != null and _item_menu.visible:
+		if event.is_action_pressed("ui_cancel"):
+			show_main_menu(current_monster, current_team, battle_controller)
+			get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("ui_up"):
 		_move_focus(0, -1)
 		get_viewport().set_input_as_handled()
@@ -519,6 +556,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			show_main_menu(current_monster, current_team, battle_controller)
 			get_viewport().set_input_as_handled()
 
+func set_input_locked(locked: bool) -> void:
+	_input_locked = locked
+	if _item_menu != null:
+		_item_menu.set_focus_enabled(not locked)
+		if locked:
+			_item_menu.release_focus()
+
+func focus_item_menu_first() -> void:
+	if _item_menu != null:
+		_item_menu.grab_first_focus()
+
 func _move_focus(dx: int, dy: int) -> void:
 	var count: int = _menu_buttons.size()
 	if count == 0:
@@ -532,7 +580,7 @@ func _move_focus(dx: int, dy: int) -> void:
 			current_index = i
 			break
 
-	var row: int = current_index / columns
+	var row: int = int(floor(float(current_index) / float(columns)))
 	var col: int = current_index % columns
 	var new_row: int = row + dy
 	var new_col: int = col + dx

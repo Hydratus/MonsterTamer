@@ -79,3 +79,31 @@ func get_alive_count() -> int:
 		if monster != null and monster.is_alive():
 			count += 1
 	return count
+
+func remove_monster(monster: MonsterInstance) -> bool:
+	if monster == null:
+		return false
+	var index := monsters.find(monster)
+	if index == -1:
+		return false
+	remove_monster_at(index)
+	return true
+
+func remove_monster_at(index: int) -> MonsterInstance:
+	if index < 0 or index >= monsters.size():
+		return null
+	var removed: MonsterInstance = monsters[index]
+	monsters.remove_at(index)
+	if monsters.is_empty():
+		active_monster_index = 0
+		return removed
+	if index < active_monster_index:
+		active_monster_index -= 1
+	elif index == active_monster_index:
+		active_monster_index = min(active_monster_index, monsters.size() - 1)
+		if monsters[active_monster_index] == null or not monsters[active_monster_index].is_alive():
+			for i in range(monsters.size()):
+				if monsters[i] != null and monsters[i].is_alive():
+					active_monster_index = i
+					break
+	return removed

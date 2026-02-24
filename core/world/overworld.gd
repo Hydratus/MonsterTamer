@@ -3,6 +3,7 @@ class_name OverworldScene
 
 const GAMEPAD_BTN_B := 1
 const GAMEPAD_BTN_START := 7
+const ITEM_DB = preload("res://core/items/item_db.gd")
 
 @export var tile_size: int = 32
 @export var grass_layer_path: NodePath = NodePath("Grass")
@@ -32,6 +33,7 @@ var _message_layer: CanvasLayer
 var _message_panel: PanelContainer
 var _message_label: Label
 var _message_visible := false
+var _message_queue: Array[String] = []
 var _is_moving := false
 var _target_position: Vector2
 var _rng := RandomNumberGenerator.new()
@@ -63,6 +65,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _in_battle or _is_moving:
 		return
 	if _pause_menu_open:
+		if _message_visible and (event.is_action_pressed("pause_menu") or event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_accept")):
+			_try_interact()
+			get_viewport().set_input_as_handled()
+			return
 		if event.is_action_pressed("pause_menu") or event.is_action_pressed("ui_cancel"):
 			_close_pause_menu()
 			get_viewport().set_input_as_handled()
@@ -94,6 +100,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("ui_right"):
 		_try_move(Vector2i(1, 0))
 		get_viewport().set_input_as_handled()
+
+func _input(event: InputEvent) -> void:
+	if not _message_visible:
+		return
+	if _pause_menu_open:
+		if event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause_menu"):
+			_try_interact()
+			get_viewport().set_input_as_handled()
+
 
 func _process(_delta: float) -> void:
 	if _in_battle or _is_moving:
@@ -146,6 +161,7 @@ func _sync_cells() -> void:
 
 func _create_message_ui() -> void:
 	_message_layer = CanvasLayer.new()
+	_message_layer.layer = 11
 	add_child(_message_layer)
 
 	_message_panel = PanelContainer.new()
@@ -157,12 +173,18 @@ func _create_message_ui() -> void:
 	_message_panel.offset_top = -80
 	_message_panel.offset_right = 160
 	_message_panel.offset_bottom = -20
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0, 0, 0, 0.85)
+	panel_style.set_border_width_all(2)
+	panel_style.border_color = Color(1, 1, 1, 1)
+	_message_panel.add_theme_stylebox_override("panel", panel_style)
 	_message_layer.add_child(_message_panel)
 
 	_message_label = Label.new()
 	_message_label.text = ""
 	_message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_message_label.add_theme_color_override("font_color", Color(1, 1, 1, 1))
 	_message_panel.add_child(_message_label)
 
 	_message_panel.visible = false
@@ -355,32 +377,18 @@ func _is_run_pressed() -> bool:
 func _ensure_run_action() -> void:
 	if not InputMap.has_action("run"):
 		InputMap.add_action("run")
-	var shift_event := InputEventKey.new()
-	shift_event.keycode = KEY_SHIFT
-	if not InputMap.action_has_event("run", shift_event):
-		InputMap.action_add_event("run", shift_event)
-	var b_event := InputEventJoypadButton.new()
-	b_event.button_index = GAMEPAD_BTN_B as JoyButton
-	if not InputMap.action_has_event("run", b_event):
-		InputMap.action_add_event("run", b_event)
 
 func _ensure_pause_action() -> void:
 	if not InputMap.has_action("pause_menu"):
 		InputMap.add_action("pause_menu")
-	var esc_event := InputEventKey.new()
-	esc_event.keycode = KEY_ESCAPE
-	if not InputMap.action_has_event("pause_menu", esc_event):
-		InputMap.action_add_event("pause_menu", esc_event)
-	var start_event := InputEventJoypadButton.new()
-	start_event.button_index = GAMEPAD_BTN_START as JoyButton
-	if not InputMap.action_has_event("pause_menu", start_event):
-		InputMap.action_add_event("pause_menu", start_event)
 
 func _create_pause_menu() -> void:
 	var scene := preload("res://ui/menus/pause_menu.tscn")
 	_pause_menu = scene.instantiate()
 	add_child(_pause_menu)
 	_pause_menu.closed.connect(_on_pause_menu_closed)
+	if _pause_menu.has_signal("item_used_message"):
+		_pause_menu.item_used_message.connect(_show_message)
 	_pause_menu.visible = false
 
 func _open_pause_menu() -> void:
@@ -402,6 +410,12 @@ func _try_interact() -> void:
 	if _message_visible:
 		_message_panel.visible = false
 		_message_visible = false
+		if not _message_queue.is_empty():
+			_show_next_message()
+			return
+		if _pause_menu_open and _pause_menu != null:
+			if _pause_menu.has_method("set_overlay_message_active"):
+				_pause_menu.set_overlay_message_active(false)
 		if _pending_npc_battle != null:
 			var pending_npc = _pending_npc_battle
 			_pending_npc_battle = null
@@ -418,9 +432,25 @@ func _try_interact() -> void:
 		var face_dir: Vector2i = _player_cell - npc.get_cell(_grass_layer)
 		npc.face_towards(face_dir)
 		npc.lock_facing(face_dir)
+		if npc.can_give_items():
+			npc.give_items()
+			_enqueue_message(dialogue)
+			var amount: int = int(max(npc.npc_data.give_item_amount, 1))
+			for item_id in npc.npc_data.give_item_ids:
+				if item_id == "":
+					continue
+				var item_data: ItemData = ITEM_DB.new().get_item(item_id)
+				var item_name: String = item_id
+				if item_data != null:
+					item_name = item_data.name
+				var line := "Received %s." % item_name
+				if amount > 1:
+					line = "Received %s x%d." % [item_name, amount]
+				_enqueue_message(line)
+			return
 		if npc.can_battle():
 			_pending_npc_battle = npc
-		_show_message(dialogue)
+		_enqueue_message(dialogue)
 		if dialogue == "" and _pending_npc_battle != null:
 			var pending_npc2 = _pending_npc_battle
 			_pending_npc_battle = null
@@ -467,6 +497,9 @@ func _start_random_battle() -> void:
 	_battle_scene.auto_start = false
 	add_child(_battle_scene)
 	_battle_scene.battle_finished.connect(_on_battle_finished)
+	_battle_scene.capture_allowed = true
+	_battle_scene.player_soulbinder_name = Game.player_name
+	_battle_scene.enemy_soulbinder_name = "Wild"
 	var player_team: Array[MonsterInstance] = []
 	for monster in Game.party:
 		if monster == null:
@@ -529,6 +562,12 @@ func _start_npc_battle(npc) -> void:
 	_battle_scene.auto_start = false
 	add_child(_battle_scene)
 	_battle_scene.battle_finished.connect(_on_battle_finished)
+	_battle_scene.capture_allowed = false
+	_battle_scene.player_soulbinder_name = Game.player_name
+	var npc_name: String = "NPC"
+	if npc.npc_data != null and npc.npc_data.display_name != "":
+		npc_name = npc.npc_data.display_name
+	_battle_scene.enemy_soulbinder_name = npc_name
 	var player_team: Array[MonsterInstance] = []
 	for monster in Game.party:
 		if monster == null:
@@ -537,12 +576,26 @@ func _start_npc_battle(npc) -> void:
 	_battle_scene.start_battle(player_team, enemy_team)
 
 func _show_message(text: String) -> void:
+	_enqueue_message(text)
+
+func _enqueue_message(text: String) -> void:
 	if text == "":
 		return
-	_message_label.text = text
+	_message_queue.append(text)
+	if not _message_visible:
+		_show_next_message()
+
+func _show_next_message() -> void:
+	if _message_queue.is_empty():
+		return
+	var next_text: String = _message_queue.pop_front()
+	_message_label.text = next_text
 	_message_panel.visible = true
 	_message_visible = true
 	_pause_npc_walks()
+	if _pause_menu_open and _pause_menu != null:
+		if _pause_menu.has_method("set_overlay_message_active"):
+			_pause_menu.set_overlay_message_active(true)
 
 func _pause_npc_walks() -> void:
 	for npc in _npcs:

@@ -1,0 +1,99 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/menus/item_menu.gd" id="1"]
+
+[node name="ItemMenu" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1")
+
+[node name="RootVBox" type="VBoxContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Tabs" type="TabContainer" parent="RootVBox"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Active" type="VBoxContainer" parent="RootVBox/Tabs"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ActiveScroll" type="ScrollContainer" parent="RootVBox/Tabs/Active"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ActiveList" type="VBoxContainer" parent="RootVBox/Tabs/Active/ActiveScroll"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BindingRunes" type="VBoxContainer" parent="RootVBox/Tabs"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BindingRunesScroll" type="ScrollContainer" parent="RootVBox/Tabs/BindingRunes"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BindingRunesList" type="VBoxContainer" parent="RootVBox/Tabs/BindingRunes/BindingRunesScroll"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Weapon" type="VBoxContainer" parent="RootVBox/Tabs"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="WeaponScroll" type="ScrollContainer" parent="RootVBox/Tabs/Weapon"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="WeaponList" type="VBoxContainer" parent="RootVBox/Tabs/Weapon/WeaponScroll"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Armor" type="VBoxContainer" parent="RootVBox/Tabs"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ArmorScroll" type="ScrollContainer" parent="RootVBox/Tabs/Armor"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ArmorList" type="VBoxContainer" parent="RootVBox/Tabs/Armor/ArmorScroll"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Accessoire" type="VBoxContainer" parent="RootVBox/Tabs"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="AccessoireScroll" type="ScrollContainer" parent="RootVBox/Tabs/Accessoire"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="AccessoireList" type="VBoxContainer" parent="RootVBox/Tabs/Accessoire/AccessoireScroll"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Footer" type="HBoxContainer" parent="RootVBox"]
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="BackButton" type="Button" parent="RootVBox/Footer"]
+text = "Back"

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://d313nvn0sn8d2"]
+
+[ext_resource type="Script" uid="uid://564rgj7ohsyo" path="res://core/items/item_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "lesser_water_binding_rune"
+name = "Lesser Water Binding Rune"
+description = "A weak water binding rune used to capture monsters."
+category = 1
+target_type = 1
+overworld_usable = false
+rune_element = 3

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://7ohbncr1c5fj"]
+
+[ext_resource type="Script" uid="uid://564rgj7ohsyo" path="res://core/items/item_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "improved_normal_binding_rune"
+name = "Improved Normal Binding Rune"
+description = "A stronger normal binding rune used to capture monsters."
+category = 1
+target_type = 1
+overworld_usable = false
+rune_tier = 1
+rune_element = 0

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://pjxpp8reh7id"]
+
+[ext_resource type="Script" uid="uid://564rgj7ohsyo" path="res://core/items/item_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "lesser_ghost_binding_rune"
+name = "Lesser Ghost Binding Rune"
+description = "A weak ghost binding rune used to capture monsters."
+category = 1
+target_type = 1
+overworld_usable = false
+rune_element = 4

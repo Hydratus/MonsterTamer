@@ -1,6 +1,7 @@
 extends RefCounted
 class_name BattleController
 
+
 var scene
 var teams: Array = []  # Array von MonsterTeam
 var action_queue: Array = []  # Gemischte Actions: BattleAction, SwitchAction, etc.
@@ -91,6 +92,19 @@ func submit_player_switch(monster: MonsterInstance):
 	# Der Switch ist die komplette Action für diese Runde
 	# Wir markieren, dass dieser Spieler seine Action "fertig" hat
 	pending_player_actions[monster] = null  # null bedeutet: Wechsel durchgeführt
+	check_all_player_actions()
+
+func submit_player_item(monster: MonsterInstance, item: ItemData, target: MonsterInstance) -> void:
+	if monster == null or item == null:
+		return
+	var action := ItemAction.new()
+	action.battle = self
+	action.actor = monster
+	action.target = target if target != null else monster
+	action.item = item
+	action.priority = PRIORITY_ITEM
+	action.initiative = monster.get_speed()
+	pending_player_actions[monster] = action
 	check_all_player_actions()
 
 
@@ -187,7 +201,7 @@ func resolve_actions() -> void:
 	action_queue.clear()
 
 # Führe einen Wechsel durch (wird von SwitchAction aufgerufen)
-func perform_switch(team_index: int, monster_index: int, initiator: MonsterInstance) -> bool:
+func perform_switch(team_index: int, monster_index: int, _initiator: MonsterInstance) -> bool:
 	if teams == null or team_index < 0 or team_index >= teams.size():
 		return false
 	

@@ -7,6 +7,10 @@ class_name NPCData
 @export var battle_once: bool = true
 @export var team_entries: Array[NPCMonsterEntry] = []
 
+@export var gives_items: bool = false
+@export var give_item_ids: Array[String] = []
+@export var give_item_amount: int = 1
+
 @export var walk_path: Array[Vector2i] = []
 @export var walk_path_relative: bool = true
 @export var walk_delay: float = 0.6

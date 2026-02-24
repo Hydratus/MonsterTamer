@@ -12,6 +12,10 @@ func _ready():
 			var instance := MonsterInstance.new(monster_data)
 			instance.decision = PlayerDecision.new()
 			Game.party.append(instance)
+	if Game.get_item_count("lesser_healing_potion") == 0:
+		Game.add_item("lesser_healing_potion", 3)
+	if Game.get_item_count("lesser_binding_rune") == 0:
+		Game.add_item("lesser_binding_rune", 10)
 
 	overworld = preload("res://scenes/world/overworld.tscn").instantiate()
 	add_child(overworld)

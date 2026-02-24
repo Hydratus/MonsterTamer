@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/items/item_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "lesser_healing_potion"
+name = "Lesser Healing Potion"
+description = "Heals 10-20 HP."
+category = 0
+heal_min = 10
+heal_max = 20
+target_type = 0
+battle_usable = true
+overworld_usable = true
+consumable = true

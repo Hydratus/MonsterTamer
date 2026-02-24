@@ -33,6 +33,10 @@ var level: int = 1
 var base_exp: int = 100
 @export var growth_rate: GrowthType = GrowthType.NORMAL
 
+# CAPTURE
+@export_range(1, 100)
+var base_catch_rate: int = 50
+
 # ELEMENTS
 @export var elements: Array[Element.Type] = []
 

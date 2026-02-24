@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://b0dxas6jnf330"]
+
+[ext_resource type="Script" uid="uid://564rgj7ohsyo" path="res://core/items/item_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "legendary_fire_binding_rune"
+name = "Legendary Fire Binding Rune"
+description = "A legendary fire binding rune used to capture monsters."
+category = 1
+target_type = 1
+overworld_usable = false
+rune_tier = 5
+rune_element = 1

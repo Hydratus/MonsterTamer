@@ -8,10 +8,12 @@
 [ext_resource type="Texture2D" uid="uid://jgps4m0htvk5" path="res://assets/sprites/Tests/Ninja Adventure - Asset Pack/Backgrounds/Tilesets/TilesetFloor.png" id="6_eccxn"]
 [ext_resource type="Texture2D" uid="uid://dnpa1oddb2d4b" path="res://assets/sprites/Tests/Ninja Adventure - Asset Pack/Actor/Characters/NinjaGreen/SeparateAnim/Idle.png" id="7_s753n"]
 [ext_resource type="Texture2D" uid="uid://bv0iwwxgwhodc" path="res://assets/sprites/Tests/Ninja Adventure - Asset Pack/Actor/Characters/NinjaGreen/SeparateAnim/Walk.png" id="8_ap4hg"]
+[ext_resource type="Script" uid="uid://uvhjmnix01t7" path="res://core/world/player.gd" id="8_player"]
 [ext_resource type="Script" uid="uid://dp0h7sb8bp7xc" path="res://core/world/npc_controller.gd" id="9_ap4hg"]
 [ext_resource type="Texture2D" uid="uid://mi0wv3fdxrvb" path="res://assets/sprites/Tests/Ninja Adventure - Asset Pack/Actor/Characters/NinjaRed/SeparateAnim/Idle.png" id="9_s753n"]
 [ext_resource type="Resource" uid="uid://cwoxd5hg3gna5" path="res://data/npc/NPCTest1.tres" id="10_7ppl7"]
 [ext_resource type="Texture2D" uid="uid://dqyy4i5pmt5xa" path="res://assets/sprites/Tests/Ninja Adventure - Asset Pack/Actor/Characters/NinjaRed/SeparateAnim/Walk.png" id="12_xwc2a"]
+[ext_resource type="Resource" uid="uid://kkxmwmdt68xt" path="res://data/npc/NPCTest2.tres" id="14_ic2ev"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_7ppl7"]
 texture = ExtResource("6_eccxn")
@@ -985,6 +987,7 @@ tile_set = SubResource("TileSet_xwc2a")
 [node name="Player" type="CharacterBody2D" parent="." unique_id=34422732]
 z_index = 2
 position = Vector2(136, 136)
+script = ExtResource("8_player")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="Player" unique_id=2135064895]
 texture_filter = 1
@@ -1004,6 +1007,13 @@ z_index = 2
 position = Vector2(232, 136)
 script = ExtResource("9_ap4hg")
 npc_data = ExtResource("10_7ppl7")
+tile_layer_path = null
+anim_idle_prefix = null
+anim_walk_prefix = null
+anim_up = null
+anim_down = null
+anim_left = null
+anim_right = null
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="NPC_1" unique_id=973171350]
 texture_filter = 1
@@ -1012,4 +1022,26 @@ sprite_frames = SubResource("SpriteFrames_1kq8k")
 animation = &"Walk Up"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_1" unique_id=2010006099]
+shape = SubResource("RectangleShape2D_ap4hg")
+
+[node name="NPC_2" type="CharacterBody2D" parent="." unique_id=2070245706]
+z_index = 2
+position = Vector2(248, 136)
+script = ExtResource("9_ap4hg")
+npc_data = ExtResource("14_ic2ev")
+tile_layer_path = null
+anim_idle_prefix = null
+anim_walk_prefix = null
+anim_up = null
+anim_down = null
+anim_left = null
+anim_right = null
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="NPC_2" unique_id=1869955275]
+texture_filter = 1
+position = Vector2(-2, 1)
+sprite_frames = SubResource("SpriteFrames_1kq8k")
+animation = &"Walk Up"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_2" unique_id=699829982]
 shape = SubResource("RectangleShape2D_ap4hg")

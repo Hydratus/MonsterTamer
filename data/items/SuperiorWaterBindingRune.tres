@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://be3vy5hahyd2q"]
+
+[ext_resource type="Script" uid="uid://564rgj7ohsyo" path="res://core/items/item_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "superior_water_binding_rune"
+name = "Superior Water Binding Rune"
+description = "An excellent water binding rune used to capture monsters."
+category = 1
+target_type = 1
+overworld_usable = false
+rune_tier = 3
+rune_element = 3

@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://cf8t10sptr8x"]
 
 [ext_resource type="Script" path="res://ui/menus/pause_menu.gd" id="1"]
+[ext_resource type="PackedScene" path="res://ui/menus/item_menu.tscn" id="2"]
 
 [node name="PauseMenu" type="CanvasLayer"]
 layer = 10
@@ -46,6 +47,9 @@ size_flags_vertical = 3
 [node name="ButtonTeam" type="Button" parent="Root/Window/WindowVBox/ContentRow/Sidebar"]
 text = "Team"
 
+[node name="ButtonItems" type="Button" parent="Root/Window/WindowVBox/ContentRow/Sidebar"]
+text = "Items"
+
 [node name="ButtonSettings" type="Button" parent="Root/Window/WindowVBox/ContentRow/Sidebar"]
 text = "Settings"
 
@@ -70,6 +74,15 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
+
+[node name="ItemsPanel" type="VBoxContainer" parent="Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack"]
+visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ItemMenu" parent="Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/ItemsPanel" instance=ExtResource("2")]
 
 [node name="TeamScroll" type="ScrollContainer" parent="Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/TeamPanel"]
 anchor_right = 1.0

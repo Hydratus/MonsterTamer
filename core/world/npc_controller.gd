@@ -15,6 +15,7 @@ var _sprite
 var _walk_index: int = 0
 var _is_moving := false
 var _has_battled := false
+var _has_given_items := false
 var _walk_paused := false
 var _pause_after_step := false
 var _walk_tween: Tween
@@ -204,6 +205,31 @@ func can_battle() -> bool:
 	if npc_data.battle_once and _has_battled:
 		return false
 	return true
+
+func can_give_items() -> bool:
+	if npc_data == null:
+		return false
+	if not npc_data.gives_items:
+		return false
+	if npc_data.give_item_ids.is_empty():
+		return false
+	if npc_data.battle_once and _has_given_items:
+		return false
+	return true
+
+func give_items() -> void:
+	if npc_data == null:
+		return
+	if not npc_data.gives_items:
+		return
+	var amount: int = int(max(npc_data.give_item_amount, 1))
+	for item_id in npc_data.give_item_ids:
+		if item_id == "":
+			continue
+		Game.add_item(item_id, amount)
+	if npc_data.battle_once:
+		_has_given_items = true
+		_has_battled = true
 
 func get_dialogue() -> String:
 	if npc_data == null:

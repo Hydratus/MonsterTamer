@@ -1,6 +1,8 @@
 extends Node2D
 class_name BattleScene
 
+const ItemDataClass = preload("res://core/items/item_data.gd")
+
 signal battle_finished(winner_team_index: int)
 
 @onready var menu: BattleMenu = $BattleMenu
@@ -17,6 +19,21 @@ var _pending_exp_steps: Array = []
 var _evolution_decision_callback: Callable
 var _evolution_input_blocked := false
 var _evolution_prompt_token: int = 0
+var _resume_menu_after_message := false
+var _release_layer: CanvasLayer
+var _release_panel: PanelContainer
+var _release_list: VBoxContainer
+var _pending_release_team: MonsterTeam
+var _pending_release_new_monster: MonsterInstance
+var _release_prompt_active := false
+var _resume_after_release := false
+var _battle_end_after_capture := false
+
+var player_soulbinder_name: String = "Player"
+var enemy_soulbinder_name: String = "Enemy"
+var capture_allowed := true
+
+const TEAM_SIZE_CAP := 5
 
 # Team-Konfiguration im Inspector
 @export var player_team: Array[MonsterData] = []
@@ -49,6 +66,7 @@ func _ready():
 	message_box.all_messages_completed.connect(_on_messages_completed)
 
 	_create_evolution_prompt_ui()
+	_create_release_prompt_ui()
 	
 	# Starte automatisch einen Kampf wenn Teams im Inspector konfiguriert sind
 	# (Nur wenn die Szene direkt geladen wird, nicht wenn sie von außen gestartet wird)
@@ -109,6 +127,8 @@ func show_player_menu(monster: MonsterInstance):
 	# Trenne alte Signale wenn noch verbunden
 	if menu.action_selected.is_connected(Callable(self, "_on_menu_action_selected")):
 		menu.action_selected.disconnect(Callable(self, "_on_menu_action_selected"))
+	if menu.item_used.is_connected(Callable(self, "_on_menu_item_used")):
+		menu.item_used.disconnect(Callable(self, "_on_menu_item_used"))
 	if menu.escape_battle.is_connected(Callable(self, "_on_menu_escape_battle")):
 		menu.escape_battle.disconnect(Callable(self, "_on_menu_escape_battle"))
 	if menu.menu_changed.is_connected(Callable(self, "_on_menu_changed")):
@@ -116,6 +136,7 @@ func show_player_menu(monster: MonsterInstance):
 	
 	# Verbinde neue Signale
 	menu.action_selected.connect(Callable(self, "_on_menu_action_selected"))
+	menu.item_used.connect(Callable(self, "_on_menu_item_used"))
 	menu.escape_battle.connect(Callable(self, "_on_menu_escape_battle"))
 	menu.menu_changed.connect(Callable(self, "_on_menu_changed"))
 	
@@ -136,6 +157,33 @@ func _on_menu_escape_battle():
 	print("DEBUG: Escape-Button geklickt")
 	menu.hide_menu()
 	# Hier könnte später die Fluchtlogik implementiert werden
+
+func _on_menu_item_used(item: ItemData, target: MonsterInstance):
+	var active_monster = menu.current_monster
+	if active_monster == null or item == null:
+		return
+	var actual_target: MonsterInstance = target if target != null else active_monster
+	if item.target_type == ItemData.TargetType.ENEMY:
+		actual_target = battle.get_opponent(active_monster)
+		if actual_target == null:
+			_resume_menu_after_message = true
+			_show_instant_battle_message("Couldn't use!")
+			return
+	if not _can_use_item_in_battle(item, actual_target):
+		_resume_menu_after_message = true
+		_show_instant_battle_message("Couldn't use!")
+		return
+	menu.hide_menu()
+	battle.submit_player_item(active_monster, item, actual_target)
+
+func _can_use_item_in_battle(item: ItemData, target: MonsterInstance) -> bool:
+	if item == null or target == null:
+		return false
+	if item.category == ItemDataClass.Category.SOULBINDER:
+		return capture_allowed and target.is_alive()
+	if item.heal_max > 0:
+		return target.hp < target.get_max_hp()
+	return false
 
 func _on_menu_changed(menu_name: String):
 	# Verberge HUD wenn Team oder Inventory geöffnet werden
@@ -184,9 +232,42 @@ func show_battle_messages():
 			# Keine Messages, gehe sofort weiter
 			_on_messages_completed()
 
+func _show_instant_battle_message(text: String) -> void:
+	if message_box == null:
+		return
+	if menu != null:
+		menu.set_input_locked(true)
+	message_box.clear_messages()
+	message_box.message_queue.append(text)
+	message_box.start_displaying()
+
+func _show_bottom_prompt(text: String) -> void:
+	if message_box == null:
+		return
+	message_box.show_static_message(text)
+
+func _clear_bottom_prompt() -> void:
+	if message_box == null:
+		return
+	message_box.clear_static_message()
+
 func _on_messages_completed():
 	# Alle Messages wurden angezeigt, gehe zurück zum Battle Controller
 	message_box.clear_messages()  # Bereite MessageBox für nächste Action vor
+	if _resume_menu_after_message:
+		_resume_menu_after_message = false
+		if menu != null:
+			menu.set_input_locked(false)
+			if menu.current_menu == "inventory":
+				menu.focus_item_menu_first()
+		return
+	if _try_handle_pending_release():
+		return
+	if _battle_end_after_capture and not _release_prompt_active:
+		_battle_end_after_capture = false
+		if battle != null:
+			battle.change_state(BattleEndState.new())
+		return
 	if _try_handle_pending_learning():
 		return
 	if _try_handle_pending_evolution():
@@ -196,6 +277,175 @@ func _on_messages_completed():
 	if battle != null and battle.current_state != null:
 		if battle.current_state.has_method("on_messages_completed"):
 			battle.current_state.on_messages_completed(battle)
+
+func perform_capture_attempt(actor: MonsterInstance, target: MonsterInstance, item: ItemData) -> void:
+	if battle == null or actor == null or target == null:
+		return
+	var chance := _calculate_capture_chance(target, item)
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var roll := rng.randf_range(0.0, 100.0)
+	var user_name := get_item_user_name(actor)
+	battle.log_message("%s uses %s!" % [user_name, item.name])
+	if roll <= chance:
+		battle.log_message("%s was successfully bound!" % target.data.name)
+		_handle_capture_success(target)
+	else:
+		battle.log_message("%s broke free!" % target.data.name)
+
+func _calculate_capture_chance(target: MonsterInstance, item: ItemData) -> float:
+	var base_rate := float(clamp(target.data.base_catch_rate, 1, 100))
+	var hp_ratio := 1.0
+	var max_hp := target.get_max_hp()
+	if max_hp > 0:
+		hp_ratio = float(target.hp) / float(max_hp)
+	hp_ratio = clamp(hp_ratio, 0.0, 1.0)
+	var hp_factor := 1.0 - (0.5 * hp_ratio)
+	var level_factor := 100.0 / (100.0 + float(target.level) * 2.0)
+	var rune_factor: float = item.get_rune_tier_multiplier()
+	var element_factor: float = _get_rune_element_multiplier(target, item)
+	var chance: float = base_rate * rune_factor * element_factor * hp_factor * level_factor
+	return clamp(chance, 1.0, 95.0)
+
+func _get_rune_element_multiplier(target: MonsterInstance, item: ItemData) -> float:
+	if item.rune_element == ItemDataClass.RuneElement.UNIVERSAL:
+		return 1.0
+	var target_elements := target.data.elements
+	if target_elements.is_empty():
+		return 1.0
+	if target_elements.has(item.rune_element):
+		return 1.5
+	return 1.0 / 1.5
+
+func _handle_capture_success(target: MonsterInstance) -> void:
+	if battle == null:
+		return
+	var player_team_ref: MonsterTeam = battle.teams[0]
+	var enemy_team_ref: MonsterTeam = battle.teams[1]
+	if enemy_team_ref != null:
+		enemy_team_ref.monsters.clear()
+	var captured_data := target.data.duplicate()
+	captured_data.level = target.level
+	var captured_instance := MonsterInstance.new(captured_data)
+	captured_instance.decision = PlayerDecision.new()
+	if player_team_ref != null:
+		player_team_ref.monsters.append(captured_instance)
+	if Game.party.find(captured_instance) == -1:
+		Game.party.append(captured_instance)
+	if player_team_ref != null and player_team_ref.monsters.size() > TEAM_SIZE_CAP:
+		_pending_release_team = player_team_ref
+		_pending_release_new_monster = captured_instance
+	_battle_end_after_capture = true
+	if battle != null:
+		battle.action_queue.clear()
+
+func _create_release_prompt_ui() -> void:
+	_release_layer = CanvasLayer.new()
+	add_child(_release_layer)
+
+	var root := Control.new()
+	root.anchor_right = 1.0
+	root.anchor_bottom = 1.0
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	_release_layer.add_child(root)
+
+	_release_panel = PanelContainer.new()
+	_release_panel.anchor_left = 0.5
+	_release_panel.anchor_top = 0.5
+	_release_panel.anchor_right = 0.5
+	_release_panel.anchor_bottom = 0.5
+	_release_panel.offset_left = -200
+	_release_panel.offset_top = -140
+	_release_panel.offset_right = 200
+	_release_panel.offset_bottom = 140
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0, 0, 0, 0.85)
+	panel_style.set_border_width_all(2)
+	panel_style.border_color = Color(1, 1, 1, 1)
+	_release_panel.add_theme_stylebox_override("panel", panel_style)
+	root.add_child(_release_panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	_release_panel.add_child(vbox)
+
+	_release_list = VBoxContainer.new()
+	_release_list.add_theme_constant_override("separation", 4)
+	vbox.add_child(_release_list)
+
+	_release_layer.visible = false
+
+func _try_handle_pending_release() -> bool:
+	if _pending_release_team == null or _release_prompt_active:
+		return false
+	_show_release_prompt()
+	return true
+
+func _show_release_prompt() -> void:
+	_release_prompt_active = true
+	_release_layer.visible = true
+	_show_bottom_prompt("Team is full. Choose a monster to release.")
+	_clear_release_list()
+	var team := _pending_release_team
+	if team != null:
+		for i in range(team.monsters.size()):
+			var monster = team.monsters[i]
+			if monster == null:
+				continue
+			var suffix := ""
+			if monster == _pending_release_new_monster:
+				suffix = " (New)"
+			var button := Button.new()
+			button.text = "%s Lv%d%s" % [monster.data.name, monster.level, suffix]
+			var index := i
+			button.pressed.connect(func():
+				_on_release_selected(index)
+			)
+			_release_list.add_child(button)
+	if _release_list.get_child_count() > 0:
+		_release_list.get_child(0).grab_focus()
+	_resume_after_release = true
+
+func _clear_release_list() -> void:
+	for child in _release_list.get_children():
+		child.queue_free()
+
+func _on_release_selected(index: int) -> void:
+	if _pending_release_team == null:
+		return
+	var removed: MonsterInstance = _pending_release_team.remove_monster_at(index)
+	if removed != null:
+		var party_index := Game.party.find(removed)
+		if party_index != -1:
+			Game.party.remove_at(party_index)
+	_pending_release_team = null
+	_pending_release_new_monster = null
+	_release_prompt_active = false
+	_release_layer.visible = false
+	_clear_bottom_prompt()
+	_update_release_after_selection()
+
+func _update_release_after_selection() -> void:
+	update_hud_with_active()
+	if not _resume_after_release:
+		return
+	_resume_after_release = false
+	if _battle_end_after_capture:
+		_battle_end_after_capture = false
+		if battle != null:
+			battle.change_state(BattleEndState.new())
+		return
+	if battle != null and battle.current_state != null:
+		if battle.current_state.has_method("on_messages_completed"):
+			battle.current_state.on_messages_completed(battle)
+
+func get_item_user_name(actor: MonsterInstance) -> String:
+	if actor != null and actor.decision != null:
+		if actor.decision is PlayerDecision:
+			return player_soulbinder_name
+		if actor.decision is AIDecision:
+			return enemy_soulbinder_name
+	return "Soulbinder"
 
 func _create_evolution_prompt_ui() -> void:
 	evolution_layer = CanvasLayer.new()
@@ -254,17 +504,17 @@ func _show_evolution_prompt(monster: MonsterInstance, on_decision: Callable) -> 
 	evolution_layer.visible = true
 	evolution_yes_button.grab_focus()
 	_evolution_decision_callback = on_decision
-	_evolution_input_blocked = true
-	evolution_yes_button.disabled = true
-	evolution_no_button.disabled = true
+	_evolution_input_blocked = false
+	evolution_yes_button.disabled = false
+	evolution_no_button.disabled = false
 	evolution_label.text = ""
-	_evolution_prompt_token += 1
-	_run_evolution_prompt(_evolution_prompt_token, text)
+	_show_bottom_prompt(text)
 
 func _on_evolution_yes_pressed() -> void:
 	if _evolution_input_blocked:
 		return
 	evolution_layer.visible = false
+	_clear_bottom_prompt()
 	if _evolution_decision_callback.is_valid():
 		_evolution_decision_callback.call(true)
 
@@ -272,6 +522,7 @@ func _on_evolution_no_pressed() -> void:
 	if _evolution_input_blocked:
 		return
 	evolution_layer.visible = false
+	_clear_bottom_prompt()
 	if _evolution_decision_callback.is_valid():
 		_evolution_decision_callback.call(false)
 
