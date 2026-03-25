@@ -4,6 +4,7 @@ class_name NPCData
 @export var display_name: String = ""
 @export_multiline var dialogue_before: String = ""
 @export_multiline var dialogue_after: String = ""
+@export var interaction_id: String = ""
 @export var battle_once: bool = true
 @export var team_entries: Array[NPCMonsterEntry] = []
 

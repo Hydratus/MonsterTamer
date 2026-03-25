@@ -1,5 +1,4 @@
 extends Node2D
-class_name OverworldScene
 
 const GAMEPAD_BTN_B := 1
 const GAMEPAD_BTN_START := 7
@@ -22,6 +21,13 @@ const ITEM_DB = preload("res://core/items/item_db.gd")
 @export var encounter_chance: float = 0.10
 @export var encounter_table: Array[EncounterEntry] = []
 @export var starter_team: Array[MonsterData] = []
+@export var dungeon_options: Array[Dictionary] = [
+	{
+		"name": "Test Dungeon",
+		"scene": "res://scenes/world/dungeon_test.tscn",
+		"payload": {"floor": 1}
+	}
+]
 
 var _grass_layer: TileMapLayer
 var _dirt_layer: TileMapLayer
@@ -34,6 +40,8 @@ var _message_panel: PanelContainer
 var _message_label: Label
 var _message_visible := false
 var _message_queue: Array[String] = []
+var _scene_label_layer: CanvasLayer
+var _scene_label: Label
 var _is_moving := false
 var _target_position: Vector2
 var _rng := RandomNumberGenerator.new()
@@ -48,6 +56,14 @@ var _pending_npc_battle = null
 var _active_npc = null
 var _pause_menu
 var _pause_menu_open := false
+var _last_interaction_id: String = ""
+var _last_interaction_npc = null
+var _dungeon_menu_layer: CanvasLayer
+var _dungeon_menu_panel: PanelContainer
+var _dungeon_menu_title: Label
+var _dungeon_menu_container: VBoxContainer
+var _dungeon_menu_open := false
+var _dungeon_menu_buttons: Array[Button] = []
 
 func _ready() -> void:
 	_rng.randomize()
@@ -57,7 +73,9 @@ func _ready() -> void:
 	_resolve_tile_size()
 	_sync_cells()
 	_create_message_ui()
+	_create_scene_label()
 	_create_pause_menu()
+	_create_dungeon_menu()
 	_ensure_party()
 	_ensure_encounters()
 
@@ -67,39 +85,64 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _pause_menu_open:
 		if _message_visible and (event.is_action_pressed("pause_menu") or event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_accept")):
 			_try_interact()
-			get_viewport().set_input_as_handled()
+			var viewport := get_viewport()
+			if viewport != null:
+				viewport.set_input_as_handled()
 			return
 		if event.is_action_pressed("pause_menu") or event.is_action_pressed("ui_cancel"):
 			_close_pause_menu()
-			get_viewport().set_input_as_handled()
+			var viewport := get_viewport()
+			if viewport != null:
+				viewport.set_input_as_handled()
+		return
+	if _dungeon_menu_open:
+		if event.is_action_pressed("ui_cancel"):
+			_close_dungeon_menu()
+			var viewport := get_viewport()
+			if viewport != null:
+				viewport.set_input_as_handled()
 		return
 	if event.is_action_pressed("pause_menu"):
 		if _message_visible:
 			return
 		_open_pause_menu()
-		get_viewport().set_input_as_handled()
+		var viewport := get_viewport()
+		if viewport != null:
+			viewport.set_input_as_handled()
 		return
 	if _message_visible:
 		if event.is_action_pressed("ui_accept"):
 			_try_interact()
-			get_viewport().set_input_as_handled()
+			var viewport := get_viewport()
+			if viewport != null:
+				viewport.set_input_as_handled()
 		return
 	if event.is_action_pressed("ui_accept"):
 		_try_interact()
-		get_viewport().set_input_as_handled()
+		var viewport := get_viewport()
+		if viewport != null:
+			viewport.set_input_as_handled()
 		return
 	if event.is_action_pressed("ui_up"):
 		_try_move(Vector2i(0, -1))
-		get_viewport().set_input_as_handled()
+		var viewport := get_viewport()
+		if viewport != null:
+			viewport.set_input_as_handled()
 	elif event.is_action_pressed("ui_down"):
 		_try_move(Vector2i(0, 1))
-		get_viewport().set_input_as_handled()
+		var viewport := get_viewport()
+		if viewport != null:
+			viewport.set_input_as_handled()
 	elif event.is_action_pressed("ui_left"):
 		_try_move(Vector2i(-1, 0))
-		get_viewport().set_input_as_handled()
+		var viewport := get_viewport()
+		if viewport != null:
+			viewport.set_input_as_handled()
 	elif event.is_action_pressed("ui_right"):
 		_try_move(Vector2i(1, 0))
-		get_viewport().set_input_as_handled()
+		var viewport := get_viewport()
+		if viewport != null:
+			viewport.set_input_as_handled()
 
 func _input(event: InputEvent) -> void:
 	if not _message_visible:
@@ -107,13 +150,17 @@ func _input(event: InputEvent) -> void:
 	if _pause_menu_open:
 		if event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause_menu"):
 			_try_interact()
-			get_viewport().set_input_as_handled()
+			var viewport := get_viewport()
+			if viewport != null:
+				viewport.set_input_as_handled()
 
 
 func _process(_delta: float) -> void:
 	if _in_battle or _is_moving:
 		return
 	if _pause_menu_open:
+		return
+	if _dungeon_menu_open:
 		return
 	if _message_visible:
 		return
@@ -188,6 +235,141 @@ func _create_message_ui() -> void:
 	_message_panel.add_child(_message_label)
 
 	_message_panel.visible = false
+
+func _create_scene_label() -> void:
+	_scene_label_layer = CanvasLayer.new()
+	_scene_label_layer.layer = 12
+	add_child(_scene_label_layer)
+
+	_scene_label = Label.new()
+	_scene_label.text = "Scene: %s" % _get_scene_title()
+	_scene_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_scene_label.anchor_left = 0.5
+	_scene_label.anchor_right = 0.5
+	_scene_label.anchor_top = 0.0
+	_scene_label.anchor_bottom = 0.0
+	_scene_label.offset_left = -160
+	_scene_label.offset_right = 160
+	_scene_label.offset_top = 6
+	_scene_label.offset_bottom = 28
+	_scene_label_layer.add_child(_scene_label)
+
+func _create_dungeon_menu() -> void:
+	_dungeon_menu_layer = CanvasLayer.new()
+	_dungeon_menu_layer.layer = 13
+	add_child(_dungeon_menu_layer)
+
+	_dungeon_menu_panel = PanelContainer.new()
+	_dungeon_menu_panel.anchor_left = 0.5
+	_dungeon_menu_panel.anchor_top = 0.5
+	_dungeon_menu_panel.anchor_right = 0.5
+	_dungeon_menu_panel.anchor_bottom = 0.5
+	_dungeon_menu_panel.offset_left = -180
+	_dungeon_menu_panel.offset_top = -110
+	_dungeon_menu_panel.offset_right = 180
+	_dungeon_menu_panel.offset_bottom = 110
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0, 0, 0, 0.9)
+	panel_style.set_border_width_all(2)
+	panel_style.border_color = Color(1, 1, 1, 1)
+	_dungeon_menu_panel.add_theme_stylebox_override("panel", panel_style)
+	_dungeon_menu_layer.add_child(_dungeon_menu_panel)
+
+	var outer := VBoxContainer.new()
+	outer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	outer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	outer.add_theme_constant_override("separation", 6)
+	_dungeon_menu_panel.add_child(outer)
+
+	_dungeon_menu_title = Label.new()
+	_dungeon_menu_title.text = "Choose a dungeon"
+	_dungeon_menu_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_dungeon_menu_title.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+	outer.add_child(_dungeon_menu_title)
+
+	_dungeon_menu_container = VBoxContainer.new()
+	_dungeon_menu_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_dungeon_menu_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_dungeon_menu_container.add_theme_constant_override("separation", 4)
+	outer.add_child(_dungeon_menu_container)
+
+	_rebuild_dungeon_buttons()
+	_dungeon_menu_panel.visible = false
+
+func _rebuild_dungeon_buttons() -> void:
+	_dungeon_menu_buttons.clear()
+	for child in _dungeon_menu_container.get_children():
+		child.queue_free()
+
+	if dungeon_options.is_empty():
+		var empty_label := Label.new()
+		empty_label.text = "No dungeons available"
+		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty_label.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+		_dungeon_menu_container.add_child(empty_label)
+		return
+
+	for i in range(dungeon_options.size()):
+		var option := dungeon_options[i]
+		var name_text := str(option.get("name", "Dungeon"))
+		var button := Button.new()
+		button.text = name_text
+		button.focus_mode = Control.FOCUS_ALL
+		button.pressed.connect(_on_dungeon_button_pressed.bind(i))
+		_dungeon_menu_container.add_child(button)
+		_dungeon_menu_buttons.append(button)
+
+	var cancel_button := Button.new()
+	cancel_button.text = "Cancel"
+	cancel_button.focus_mode = Control.FOCUS_ALL
+	cancel_button.pressed.connect(_close_dungeon_menu)
+	_dungeon_menu_container.add_child(cancel_button)
+	_dungeon_menu_buttons.append(cancel_button)
+
+func _open_dungeon_menu(title: String) -> void:
+	if _dungeon_menu_panel == null or _dungeon_menu_panel.get_parent() == null:
+		_create_dungeon_menu()
+	_dungeon_menu_title.text = title
+	_rebuild_dungeon_buttons()
+	if _dungeon_menu_layer != null:
+		_dungeon_menu_layer.visible = true
+	_dungeon_menu_panel.visible = true
+	_dungeon_menu_open = true
+	_pause_npc_walks()
+	_last_interaction_id = ""
+	_last_interaction_npc = null
+	if _dungeon_menu_buttons.size() > 0:
+		_dungeon_menu_buttons[0].grab_focus()
+
+func _close_dungeon_menu() -> void:
+	_dungeon_menu_open = false
+	if _dungeon_menu_panel != null:
+		_dungeon_menu_panel.visible = false
+	_resume_npc_walks()
+	var viewport := get_viewport()
+	if viewport != null:
+		viewport.gui_release_focus()
+
+func _on_dungeon_button_pressed(index: int) -> void:
+	if index < 0 or index >= dungeon_options.size():
+		return
+	var option := dungeon_options[index]
+	var scene_path := str(option.get("scene", ""))
+	if scene_path == "":
+		return
+	var payload: Dictionary = {}
+	if option.has("payload") and option["payload"] is Dictionary:
+		payload = option["payload"]
+	_close_dungeon_menu()
+	_request_world_change(scene_path, payload)
+
+func _get_scene_title() -> String:
+	var path := get_scene_file_path()
+	if path == "":
+		return name
+	var parts := path.split("/")
+	var file_name := parts[parts.size() - 1]
+	return file_name.replace(".tscn", "")
 
 func _try_move(direction: Vector2i) -> void:
 	_last_facing = direction
@@ -413,6 +595,8 @@ func _try_interact() -> void:
 		if not _message_queue.is_empty():
 			_show_next_message()
 			return
+		if _handle_custom_message_closed():
+			return
 		if _pause_menu_open and _pause_menu != null:
 			if _pause_menu.has_method("set_overlay_message_active"):
 				_pause_menu.set_overlay_message_active(false)
@@ -427,6 +611,20 @@ func _try_interact() -> void:
 	var npc = _get_npc_in_front()
 	if npc != null:
 		if npc.is_moving():
+			return
+		if npc.npc_data != null and npc.npc_data.interaction_id != "":
+			_last_interaction_id = npc.npc_data.interaction_id
+			_last_interaction_npc = npc
+			if npc.npc_data != null and npc.npc_data.interaction_id == "dungeon_select":
+				var prompt: String = npc.get_dialogue()
+				if prompt == "":
+					prompt = "Choose a dungeon"
+				_message_label.text = prompt
+				_message_panel.visible = true
+				_message_visible = true
+				_open_dungeon_menu(prompt)
+				return
+		if _handle_custom_npc_interaction(npc):
 			return
 		var dialogue = npc.get_dialogue()
 		var face_dir: Vector2i = _player_cell - npc.get_cell(_grass_layer)
@@ -455,6 +653,29 @@ func _try_interact() -> void:
 			var pending_npc2 = _pending_npc_battle
 			_pending_npc_battle = null
 			_start_npc_battle(pending_npc2)
+
+func _handle_custom_npc_interaction(_npc) -> bool:
+	return false
+
+func _handle_custom_message_closed() -> bool:
+	return false
+
+func _request_world_change(scene_path: String, payload: Dictionary = {}) -> void:
+	var manager := get_tree().get_first_node_in_group("world_manager")
+	if manager == null:
+		manager = get_tree().current_scene
+	if manager != null and manager.has_method("change_world"):
+		manager.change_world(scene_path, payload)
+		return
+	var parent := get_parent()
+	while parent != null:
+		if parent.has_method("change_world"):
+			parent.change_world(scene_path, payload)
+			return
+		parent = parent.get_parent()
+	var result := get_tree().change_scene_to_file(scene_path)
+	if result != OK:
+		push_error("World change failed: %s" % scene_path)
 
 func _ensure_party() -> void:
 	if Game.party.size() > 0:

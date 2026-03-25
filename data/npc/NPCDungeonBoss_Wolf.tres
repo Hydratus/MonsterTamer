@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="NPCMonsterEntry" format=3]
+
+[ext_resource type="Script" path="res://core/world/npc_monster_entry.gd" id="1_npc_entry"]
+[ext_resource type="Resource" path="res://data/monsters/wolf/wolf.tres" id="2_monster"]
+
+[resource]
+script = ExtResource("1_npc_entry")
+monster_data = ExtResource("2_monster")
+level = 8

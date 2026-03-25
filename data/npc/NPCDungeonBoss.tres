@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="NPCData" format=3]
+
+[ext_resource type="Script" path="res://core/world/npc_data.gd" id="1_npc_data"]
+[ext_resource type="Script" path="res://core/world/npc_monster_entry.gd" id="2_npc_entry"]
+[ext_resource type="Resource" path="res://data/npc/NPCDungeonBoss_Wolf.tres" id="3_entry"]
+
+[resource]
+script = ExtResource("1_npc_data")
+display_name = "Dungeon Boss"
+dialogue_before = "You made it. Let's battle!"
+dialogue_after = "Impressive."
+interaction_id = "dungeon_boss"
+team_entries = Array[ExtResource("2_npc_entry")]([ExtResource("3_entry")])
+battle_once = false
+walk_enabled = false
