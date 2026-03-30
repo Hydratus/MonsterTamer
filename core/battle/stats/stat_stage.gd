@@ -1,5 +1,5 @@
 extends RefCounted
-class_name StatStage
+class_name MTStatStage
 
 const MIN_STAGE := -5
 const MAX_STAGE := 5

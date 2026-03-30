@@ -1,5 +1,5 @@
 extends RefCounted
-class_name DamageType
+class_name MTDamageType
 
 enum Type {
 	PHYSICAL,

@@ -1,5 +1,5 @@
-extends BattleAction
-class_name AttackAction
+extends MTBattleAction
+class_name MTAttackAction
 
 # --------------------------------------------------
 # ATTACK DATA
@@ -10,8 +10,8 @@ var energy_cost: int = 0
 @export_range(0, 100)
 var accuracy: int = 100
 
-var attack_element: Element.Type = Element.Type.NORMAL
-var damage_type: DamageType.Type = DamageType.Type.PHYSICAL
+var attack_element: MTElement.Type = MTElement.Type.NORMAL
+var damage_type: MTDamageType.Type = MTDamageType.Type.PHYSICAL
 
 # 🩸 Attack-eigener Lifesteal (z. B. Drain Bite)
 @export_range(0.0, 1.0, 0.01)
@@ -27,17 +27,17 @@ var crit_multiplier: float = 1.5
 # --------------------------------------------------
 # STAT CHANGES (BUFFS / DEBUFFS)
 # --------------------------------------------------
-var stat_changes: Array[StatChangeData] = []
+var stat_changes: Array[MTStatChangeData] = []
 
 # --------------------------------------------------
 # TARGET TEAM (statt target direkt, um dynamische Wechsel zu unterstützen)
 # --------------------------------------------------
-var opponent_team: MonsterTeam = null  # Das gegnerische Team
+var opponent_team: MTMonsterTeam = null  # Das gegnerische Team
 
 # --------------------------------------------------
 # EXECUTE
 # --------------------------------------------------
-func execute(controller = null) -> Variant:
+func execute(_controller = null) -> Variant:
 	# Bestimme das aktive gegnerische Monster (zur Ausführungszeit, nicht Planungszeit!)
 	if opponent_team == null:
 		# Fallback: Verwende das alte target System
@@ -80,7 +80,7 @@ func execute(controller = null) -> Variant:
 	var dealt_damage: int = 0
 
 	if power > 0:
-		var result := DamageCalculator.calculate_damage(self)
+		var result := MTDamageCalculator.calculate_damage(self)
 
 		var damage: int = result.damage
 		var effectiveness_text: String = result.effectiveness_text
@@ -169,7 +169,7 @@ func execute(controller = null) -> Variant:
 			change.stages
 		)
 
-		var stat_name: String = MonsterInstance.StatType.keys()[change.stat]
+		var stat_name: String = MTMonsterInstance.StatType.keys()[change.stat]
 
 		if delta == 0:
 			if change.stages > 0:
@@ -205,12 +205,12 @@ func execute(controller = null) -> Variant:
 # --------------------------------------------------
 # EXP DISTRIBUTION WITH FLUSH
 # --------------------------------------------------
-func _distribute_exp_with_flush(defeated_monster: MonsterInstance):
+func _distribute_exp_with_flush(defeated_monster: MTMonsterInstance):
 	if defeated_monster.opponents_fought.is_empty():
 		return
 	
 	# Sammle lebende Gegner
-	var alive_opponents: Array[MonsterInstance] = []
+	var alive_opponents: Array[MTMonsterInstance] = []
 	for opponent in defeated_monster.opponents_fought:
 		if opponent != null and opponent.is_alive():
 			alive_opponents.append(opponent)
@@ -234,13 +234,13 @@ func _distribute_exp_with_flush(defeated_monster: MonsterInstance):
 		for opponent in ordered_opponents:
 			_process_exp_gain_with_flush(opponent, exp_per_monster)
 
-func _check_level_up_with_flush(monster: MonsterInstance):
+func _check_level_up_with_flush(monster: MTMonsterInstance):
 	while monster.current_exp >= monster.exp_to_next_level and monster.level < 100:
 		monster.current_exp -= monster.exp_to_next_level
 		_level_up_with_flush(monster)
 		monster.exp_to_next_level = monster._get_required_exp_for_level(monster.level + 1)
 
-func _level_up_with_flush(monster: MonsterInstance):
+func _level_up_with_flush(monster: MTMonsterInstance):
 	if monster.level >= 100:
 		return
 	
@@ -273,16 +273,16 @@ func _level_up_with_flush(monster: MonsterInstance):
 		battle.scene.update_hud_with_active()
 	
 	# Level-Up Nachricht mit allen Stat-Erhöhungen (auch +0)
-	var stat_changes = []
-	stat_changes.append("HP+%d" % hp_gain)
-	stat_changes.append("Energy+%d" % energy_gain)
-	stat_changes.append("Strength+%d" % str_gain)
-	stat_changes.append("Magic+%d" % mag_gain)
-	stat_changes.append("Defense+%d" % def_gain)
-	stat_changes.append("Resistance+%d" % res_gain)
-	stat_changes.append("Speed+%d" % spd_gain)
+	var levelup_stat_changes: Array[String] = []
+	levelup_stat_changes.append("HP+%d" % hp_gain)
+	levelup_stat_changes.append("Energy+%d" % energy_gain)
+	levelup_stat_changes.append("Strength+%d" % str_gain)
+	levelup_stat_changes.append("Magic+%d" % mag_gain)
+	levelup_stat_changes.append("Defense+%d" % def_gain)
+	levelup_stat_changes.append("Resistance+%d" % res_gain)
+	levelup_stat_changes.append("Speed+%d" % spd_gain)
 	
-	var stat_text = " | ".join(stat_changes)
+	var stat_text = " | ".join(levelup_stat_changes)
 	
 	battle_log("🎉 %s leveled up to level %d!" % [monster.data.name, monster.level])
 	battle_log(stat_text)
@@ -305,7 +305,7 @@ func _level_up_with_flush(monster: MonsterInstance):
 	# Check for new attacks/traits (jedes als eigener Block)
 	_check_learning_with_flush(monster)
 
-func _process_exp_gain_with_flush(monster: MonsterInstance, exp_remaining: int):
+func _process_exp_gain_with_flush(monster: MTMonsterInstance, exp_remaining: int):
 	if monster == null or exp_remaining <= 0:
 		return
 
@@ -333,12 +333,12 @@ func _process_exp_gain_with_flush(monster: MonsterInstance, exp_remaining: int):
 				[monster, remaining]
 			)
 
-func _order_exp_recipients(opponents: Array[MonsterInstance]) -> Array[MonsterInstance]:
+func _order_exp_recipients(opponents: Array[MTMonsterInstance]) -> Array[MTMonsterInstance]:
 	if battle == null or opponents.is_empty():
 		return opponents
 
-	var active_first: Array[MonsterInstance] = []
-	var bench: Array[MonsterInstance] = []
+	var active_first: Array[MTMonsterInstance] = []
+	var bench: Array[MTMonsterInstance] = []
 	for opponent in opponents:
 		var is_active := false
 		for team in battle.teams:
@@ -354,7 +354,7 @@ func _order_exp_recipients(opponents: Array[MonsterInstance]) -> Array[MonsterIn
 
 	return active_first + bench
 
-func _check_learning_with_flush(monster: MonsterInstance):
+func _check_learning_with_flush(monster: MTMonsterInstance):
 	# Check attacks
 	var available_attacks = monster.get_available_attacks_to_learn()
 	for learn_data in available_attacks:
@@ -368,7 +368,7 @@ func _check_learning_with_flush(monster: MonsterInstance):
 	# Check traits
 	var available_traits = monster.get_available_traits_to_learn()
 	for learn_data in available_traits:
-		monster.add_trait(learn_data.trait_data as TraitData)
+		monster.add_trait(learn_data.trait_data as MTTraitData)
 		battle_log("✨ %s learned trait %s!" % [monster.data.name, learn_data.trait_data.name])
 		# Flush nach jedem erlernten Trait für separaten Block
 		if battle != null and battle.scene != null:

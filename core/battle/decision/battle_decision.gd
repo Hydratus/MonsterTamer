@@ -1,6 +1,6 @@
 extends RefCounted
-class_name BattleDecision
+class_name MTBattleDecision
 
-func decide(monster: MonsterInstance, battle: BattleController) -> BattleAction:
-	push_error("BattleDecision.decide() not implemented")
+func decide(monster: MTMonsterInstance, battle: MTBattleController) -> MTBattleAction:
+	push_error("MTBattleDecision.decide() not implemented")
 	return null

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="AttackData" format=3 uid="uid://bidaharg8r0uw"]
+
+[ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
+
+[resource]
+script = ExtResource("1_atsc")
+name = "Iron Charge"
+description = "Charges forward with bone-crushing force. Devastating physical impact."
+power = 80
+energy_cost = 4
+element = 0
+metadata/_custom_type_script = "uid://byip331ngwvgq"

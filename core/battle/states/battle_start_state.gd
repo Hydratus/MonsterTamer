@@ -1,5 +1,5 @@
-extends BattleState
-class_name BattleStartState
+extends MTBattleState
+class_name MTBattleStartState
 
 func enter(battle):
 	print("=== Battle Start ===")
@@ -24,7 +24,7 @@ func enter(battle):
 		battle.scene.show_battle_messages()
 		return
 
-	battle.change_state(StartRoundState.new())
+	battle.change_state(MTStartRoundState.new())
 
 func on_messages_completed(battle):
-	battle.change_state(StartRoundState.new())
+	battle.change_state(MTStartRoundState.new())

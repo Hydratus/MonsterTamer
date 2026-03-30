@@ -1,19 +1,19 @@
 extends RefCounted
-class_name MonsterTeam
+class_name MTMonsterTeam
 
 # Das Team mit allen Monstern
-var monsters: Array[MonsterInstance] = []
+var monsters: Array[MTMonsterInstance] = []
 
 # Index des aktuell aktiven Monsters
 var active_monster_index: int = 0
 
 # Initialisiere das Team
-func _init(team_monsters: Array[MonsterInstance]):
+func _init(team_monsters: Array[MTMonsterInstance]):
 	monsters = team_monsters
 	active_monster_index = 0
 
 # Bekomme das aktuelle aktive Monster
-func get_active_monster() -> MonsterInstance:
+func get_active_monster() -> MTMonsterInstance:
 	if active_monster_index < 0 or active_monster_index >= monsters.size():
 		return null
 	return monsters[active_monster_index]
@@ -32,7 +32,7 @@ func switch_to_monster(index: int) -> bool:
 	# Setze alle Stat-Stages des alten aktiven Monsters auf 0 (Buffs/Debuffs entfernen)
 	var old_monster = get_active_monster()
 	if old_monster != null:
-		for stat in MonsterInstance.StatType.values():
+		for stat in MTMonsterInstance.StatType.values():
 			old_monster.stat_stages[stat] = 0
 	
 	active_monster_index = index
@@ -49,7 +49,7 @@ func switch_to_next_alive() -> bool:
 			# Setze alle Stat-Stages des alten aktiven Monsters auf 0 (Buffs/Debuffs entfernen)
 			var old_monster = get_active_monster()
 			if old_monster != null:
-				for stat in MonsterInstance.StatType.values():
+				for stat in MTMonsterInstance.StatType.values():
 					old_monster.stat_stages[stat] = 0
 			
 			active_monster_index = i
@@ -65,8 +65,8 @@ func has_alive_monsters() -> bool:
 	return false
 
 # Bekomme alle lebenden Monster
-func get_alive_monsters() -> Array[MonsterInstance]:
-	var alive: Array[MonsterInstance] = []
+func get_alive_monsters() -> Array[MTMonsterInstance]:
+	var alive: Array[MTMonsterInstance] = []
 	for monster in monsters:
 		if monster != null and monster.is_alive():
 			alive.append(monster)
@@ -80,7 +80,7 @@ func get_alive_count() -> int:
 			count += 1
 	return count
 
-func remove_monster(monster: MonsterInstance) -> bool:
+func remove_monster(monster: MTMonsterInstance) -> bool:
 	if monster == null:
 		return false
 	var index := monsters.find(monster)
@@ -89,10 +89,10 @@ func remove_monster(monster: MonsterInstance) -> bool:
 	remove_monster_at(index)
 	return true
 
-func remove_monster_at(index: int) -> MonsterInstance:
+func remove_monster_at(index: int) -> MTMonsterInstance:
 	if index < 0 or index >= monsters.size():
 		return null
-	var removed: MonsterInstance = monsters[index]
+	var removed: MTMonsterInstance = monsters[index]
 	monsters.remove_at(index)
 	if monsters.is_empty():
 		active_monster_index = 0

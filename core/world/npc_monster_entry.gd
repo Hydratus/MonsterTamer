@@ -1,7 +1,7 @@
 extends Resource
-class_name NPCMonsterEntry
+class_name MTNPCMonsterEntry
 
-@export var monster_data: MonsterData
+@export var monster_data: MTMonsterData
 @export var level: int = -1
-@export var attacks_override: Array[AttackData] = []
-@export var traits_override: Array[TraitData] = []
+@export var attacks_override: Array[MTAttackData] = []
+@export var traits_override: Array[MTTraitData] = []

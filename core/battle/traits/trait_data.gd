@@ -1,5 +1,5 @@
 extends Resource
-class_name TraitData
+class_name MTTraitData
 
 @export var name: String
 @export var description: String
@@ -8,7 +8,7 @@ class_name TraitData
 # ----------------------------
 # STAT MODIFIERS
 # ----------------------------
-@export var stat_modifiers: Array[TraitStatModifier] = []
+@export var stat_modifiers: Array[MTTraitStatModifier] = []
 
 # ----------------------------
 # DAMAGE MODIFIERS
@@ -16,10 +16,10 @@ class_name TraitData
 @export var damage_multiplier: float = 1.0
 
 @export var filter_damage_type: bool = false
-@export var affected_damage_type: DamageType.Type = DamageType.Type.PHYSICAL
+@export var affected_damage_type: MTDamageType.Type = MTDamageType.Type.PHYSICAL
 
 @export var filter_element: bool = false
-@export var affected_element: Element.Type = Element.Type.NORMAL
+@export var affected_element: MTElement.Type = MTElement.Type.NORMAL
 
 @export_range(0.0, 1.0, 0.01)
 var lifesteal_ratio: float = 0.0
@@ -36,7 +36,7 @@ var regen_energy_ratio: float = 0.0
 # ----------------------------
 # ROUND START EFFECTS
 # ----------------------------
-@export var round_start_stat: MonsterInstance.StatType = -1
+@export var round_start_stat: MTMonsterInstance.StatType = MTMonsterInstance.StatType.STRENGTH
 
 @export_range(-6, 6)
 var round_start_stages: int = 0
@@ -55,16 +55,16 @@ var active_below_hp_ratio: float = 1.0
 # DAMAGE MODIFICATION
 # =========================================================
 func modify_damage(
-	attacker: MonsterInstance,
-	defender: MonsterInstance,
+	attacker: MTMonsterInstance,
+	_defender: MTMonsterInstance,
 	base_damage: float,
-	action: BattleAction
+	action: MTBattleAction
 ) -> float:
 
 	# ----------------------------
 	# CONTEXT CHECK
 	# ----------------------------
-	# DamageCalculator = Angriff
+	# MTDamageCalculator = Angriff
 	if only_when_defending:
 		return base_damage
 

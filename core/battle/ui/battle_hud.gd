@@ -1,8 +1,8 @@
 extends Control
-class_name BattleHUD
+class_name MTBattleHUD
 
-var enemy_monster: MonsterInstance = null
-var player_monster: MonsterInstance = null
+var enemy_monster: MTMonsterInstance = null
+var player_monster: MTMonsterInstance = null
 
 # Enemy Panel (Top Left)
 var enemy_panel: PanelContainer
@@ -118,7 +118,7 @@ func _ready():
 	player_energy_label.add_theme_font_size_override("font_size", 12)
 	player_vbox.add_child(player_energy_label)
 
-func update_monsters(player_mon: MonsterInstance, enemy_mon: MonsterInstance):
+func update_monsters(player_mon: MTMonsterInstance, enemy_mon: MTMonsterInstance):
 	player_monster = player_mon
 	enemy_monster = enemy_mon
 	

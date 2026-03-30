@@ -1,5 +1,5 @@
 extends CanvasLayer
-class_name PauseMenuUI
+class_name MTPauseMenuUI
 
 signal closed
 signal item_used_message(text: String)
@@ -239,13 +239,13 @@ func _on_items_closed() -> void:
 	if _active_section == "items":
 		_items_to_sidebar()
 
-func _on_item_used(item: ItemDataClass, target: MonsterInstance) -> void:
+func _on_item_used(item: ItemDataClass, target: MTMonsterInstance) -> void:
 	if item == null or target == null:
 		return
 	_apply_item_overworld(item, target)
 	_item_menu.refresh()
 
-func _apply_item_overworld(item: ItemDataClass, target: MonsterInstance) -> void:
+func _apply_item_overworld(item: ItemDataClass, target: MTMonsterInstance) -> void:
 	if item.heal_max > 0:
 		var rng := RandomNumberGenerator.new()
 		rng.randomize()

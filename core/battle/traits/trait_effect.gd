@@ -1,5 +1,5 @@
 extends Resource
-class_name TraitEffect
+class_name MTTraitEffect
 
 # Wird beim Hinzufügen aufgerufen
 func on_apply(monster) -> void:

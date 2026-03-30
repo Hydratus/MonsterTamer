@@ -1,5 +1,5 @@
-extends BattleState
-class_name BattleEndState
+extends MTBattleState
+class_name MTBattleEndState
 
 func enter(battle):
 	print("=== Battle End ===")
@@ -12,27 +12,19 @@ func enter(battle):
 	var team1 = battle.teams[0]
 	var team2 = battle.teams[1]
 	
-	# Bekomme das aktive Monster jedes Teams
-	var monster1 = team1.get_active_monster()
-	var monster2 = team2.get_active_monster()
-	
-	# Bestimme Gewinner und Verlierer
-	var winner: MonsterInstance = null
-	var loser: MonsterInstance = null
+	# Bestimme Gewinnerteam
 	var winner_team_index := -1
+	if battle.forced_battle_result != -2:
+		winner_team_index = battle.forced_battle_result
 	
-	if team2 != null and not team2.has_alive_monsters():
+	if winner_team_index == -1 and team2 != null and not team2.has_alive_monsters():
 		# Team 1 gewinnt
-		winner = monster1
-		loser = monster2
 		winner_team_index = 0
-	elif team1 != null and not team1.has_alive_monsters():
+	elif winner_team_index == -1 and team1 != null and not team1.has_alive_monsters():
 		# Team 2 gewinnt
-		winner = monster2
-		loser = monster1
 		winner_team_index = 1
 	
-	# EXP werden bereits in ResolveActionsState verteilt
+	# EXP werden bereits in MTResolveActionsState verteilt
 	# Hier nur noch sicherstellen, dass alles korrekt dokumentiert wird
 	print("Battle ended!")
 	if battle.scene != null and battle.scene.has_method("on_battle_finished"):

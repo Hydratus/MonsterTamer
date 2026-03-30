@@ -1,5 +1,5 @@
 extends Resource
-class_name GrowthRate
+class_name MTGrowthRate
 
 # Definiert, wie schnell ein Monster Level aufsteigt
 enum Type {

@@ -1,5 +1,5 @@
 extends Resource
-class_name AttackLearnData
+class_name MTAttackLearnData
 
 # Die Attacke die gelernt wird
 @export var attack: Resource

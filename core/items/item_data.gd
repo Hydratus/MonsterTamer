@@ -1,5 +1,5 @@
 extends Resource
-class_name ItemData
+class_name MTItemData
 
 enum Category {
 	ACTIVE = 0,

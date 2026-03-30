@@ -1,5 +1,5 @@
 extends RefCounted
-class_name BattleState
+class_name MTBattleState
 
 func enter(_battle): 
 	pass

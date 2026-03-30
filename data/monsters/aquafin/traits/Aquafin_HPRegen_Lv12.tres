@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="TraitLearnData" format=3 uid="uid://blrn2aqhp2v2b"]
+
+[ext_resource type="Script" uid="uid://cafl7xqqcugnp" path="res://core/monsters/trait_learn_data.gd" id="1_tlsc"]
+[ext_resource type="Resource" uid="uid://dox6h5tqnr2yj" path="res://data/traits/HPRegen.tres" id="2_hprg"]
+
+[resource]
+script = ExtResource("1_tlsc")
+trait_data = ExtResource("2_hprg")
+learn_level = 12
+metadata/_custom_type_script = "uid://cafl7xqqcugnp"

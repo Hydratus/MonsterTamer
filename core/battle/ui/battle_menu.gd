@@ -1,10 +1,11 @@
 extends CanvasLayer
-class_name BattleMenu
+class_name MTBattleMenu
 
-signal action_selected(attack: AttackData)
+signal action_selected(attack: MTAttackData)
+signal rest_selected
 signal escape_battle
 signal menu_changed(menu_name: String)  # Neues Signal für HUD-Sichtbarkeit
-signal item_used(item: ItemData, target: MonsterInstance)
+signal item_used(item: MTItemData, target: MTMonsterInstance)
 
 @onready var control := $Control
 @onready var vbox := $Control/VBoxContainer
@@ -14,9 +15,9 @@ const MENU_OFFSET_TOP_ATTACKS := -140.0
 const GAMEPAD_BTN_A := 0
 const ITEM_MENU_SCENE := preload("res://ui/menus/item_menu.tscn")
 
-var current_monster: MonsterInstance
-var current_team: MonsterTeam
-var battle_controller: BattleController  # Referenz zum BattleController für Aktionen
+var current_monster: MTMonsterInstance
+var current_team: MTMonsterTeam
+var battle_controller: MTBattleController  # Referenz zum MTBattleController für Aktionen
 var current_menu: String = "main"  # "main", "attacks", "team", "inventory", "escape"
 var _is_showing_menu := false  # Flag um doppelte show_main_menu() Aufrufe zu verhindern
 
@@ -33,7 +34,9 @@ var attack_info_priority: Label
 var _menu_buttons: Array[Button] = []
 var _menu_columns: int = 1
 var _last_attack_index_by_monster: Dictionary = {}
-var _item_menu: ItemMenu
+var _item_menu: MTItemMenu
+var _rest_button: Button
+var _back_button: Button
 var _menu_offsets_default: Dictionary = {}
 var _menu_offsets_item: Dictionary = {
 	"left": 20.0,
@@ -61,7 +64,7 @@ func _apply_menu_offsets(offsets: Dictionary) -> void:
 	vbox.offset_bottom = float(offsets.get("bottom", vbox.offset_bottom))
 
 
-func show_main_menu(monster: MonsterInstance, team: MonsterTeam = null, controller: BattleController = null):
+func show_main_menu(monster: MTMonsterInstance, team: MTMonsterTeam = null, controller: MTBattleController = null):
 	# Verhindere gleichzeitige Aufrufe
 	if _is_showing_menu:
 		return
@@ -100,7 +103,7 @@ func show_main_menu(monster: MonsterInstance, team: MonsterTeam = null, controll
 	_focus_first_button()
 	_is_showing_menu = false
 
-func show_attacks(monster: MonsterInstance):
+func show_attacks(monster: MTMonsterInstance):
 	current_monster = monster
 	current_menu = "attacks"
 	menu_changed.emit("attacks")
@@ -149,7 +152,7 @@ func show_attacks(monster: MonsterInstance):
 	info_vbox.add_child(attack_info_power)
 	
 	attack_info_element = Label.new()
-	attack_info_element.text = "Element: -"
+	attack_info_element.text = "MTElement: -"
 	info_vbox.add_child(attack_info_element)
 	
 	attack_info_energy = Label.new()
@@ -206,12 +209,24 @@ func show_attacks(monster: MonsterInstance):
 	
 	# Back-Button zentriert unter den Attacks
 	var back_row := HBoxContainer.new()
+	back_row.add_theme_constant_override("separation", 8)
 	back_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	attacks_box.add_child(back_row)
 
 	var back_spacer_left := Control.new()
 	back_spacer_left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	back_row.add_child(back_spacer_left)
+
+	var rest_button := Button.new()
+	rest_button.text = "Rest (+25% EN)"
+	rest_button.custom_minimum_size = Vector2(attack_button_width, 0)
+	rest_button.add_theme_font_size_override("font_size", 12)
+	rest_button.pressed.connect(func():
+		rest_selected.emit()
+	)
+	back_row.add_child(rest_button)
+	_register_menu_button(rest_button)
+	_rest_button = rest_button
 
 	var back_button := Button.new()
 	back_button.text = "← Back"
@@ -226,11 +241,14 @@ func show_attacks(monster: MonsterInstance):
 	back_spacer_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	back_row.add_child(back_spacer_right)
 	_register_menu_button(back_button)
+	_back_button = back_button
+	_rest_button.focus_neighbor_right = _back_button.get_path()
+	_back_button.focus_neighbor_left = _rest_button.get_path()
 	
 	visible = true
 	_focus_last_attack_button(attack_buttons)
 
-func show_team(team: MonsterTeam):
+func show_team(team: MTMonsterTeam):
 	current_team = team
 	current_menu = "team"
 	menu_changed.emit("team")
@@ -364,7 +382,7 @@ func _handle_menu_action(action: String) -> void:
 		"escape":
 			show_escape_menu()
 
-func _show_monster_options(team: MonsterTeam, index: int, monster: MonsterInstance) -> void:
+func _show_monster_options(team: MTMonsterTeam, index: int, monster: MTMonsterInstance) -> void:
 	_clear_menu()
 	_menu_columns = 1
 	
@@ -408,9 +426,9 @@ func _show_monster_options(team: MonsterTeam, index: int, monster: MonsterInstan
 				if battle_controller.teams[1] == team:
 					team_index = 1
 			
-			# Erstelle SwitchAction
-			var switch_action = SwitchAction.new(team_index, index, current_monster)
-			print("DEBUG: Reiche SwitchAction ein für Team %d, Monster Index %d" % [team_index, index])
+			# Erstelle MTSwitchAction
+			var switch_action = MTSwitchAction.new(team_index, index, current_monster)
+			print("DEBUG: Reiche MTSwitchAction ein für Team %d, Monster Index %d" % [team_index, index])
 			
 			# Registriere als Spieler-Aktion (nicht direkt zur Queue)
 			battle_controller.pending_player_actions[current_monster] = switch_action
@@ -433,6 +451,8 @@ func _clear_menu() -> void:
 	for child in vbox.get_children():
 		vbox.remove_child(child)
 		child.queue_free()
+		_rest_button = null
+		_back_button = null
 	_clear_attack_info()
 	_menu_buttons.clear()
 	_menu_columns = 1
@@ -440,15 +460,15 @@ func _clear_menu() -> void:
 
 func _show_item_menu() -> void:
 	_apply_menu_offsets(_menu_offsets_item)
-	var item_menu := ITEM_MENU_SCENE.instantiate() as ItemMenu
+	var item_menu := ITEM_MENU_SCENE.instantiate() as MTItemMenu
 	item_menu.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	item_menu.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(item_menu)
 	_item_menu = item_menu
-	var team_list: Array[MonsterInstance] = []
+	var team_list: Array[MTMonsterInstance] = []
 	if current_team != null:
 		team_list = current_team.monsters
-	item_menu.item_used.connect(func(item: ItemData, target: MonsterInstance):
+	item_menu.item_used.connect(func(item: MTItemData, target: MTMonsterInstance):
 		item_used.emit(item, target)
 	)
 	item_menu.closed.connect(func():
@@ -489,13 +509,13 @@ func hide_menu():
 	_is_showing_menu = false  # Stelle sicher, dass das Flag zurückgesetzt wird
 	visible = false
 
-func _update_attack_info(attack: AttackData) -> void:
+func _update_attack_info(attack: MTAttackData) -> void:
 	if attack_info_name == null:
 		return
 	attack_info_name.text = attack.name
 	attack_info_description.text = attack.description
 	attack_info_power.text = "Power: %d" % attack.power
-	attack_info_element.text = "Element: %s" % Element.Type.keys()[attack.element]
+	attack_info_element.text = "MTElement: %s" % MTElement.Type.keys()[attack.element]
 	attack_info_energy.text = "Energy Cost: %d" % attack.energy_cost
 	attack_info_accuracy.text = "Accuracy: %d%%" % attack.accuracy
 	attack_info_priority.text = "Priority: %d" % attack.priority
@@ -506,7 +526,7 @@ func _clear_attack_info() -> void:
 	attack_info_name.text = "Hover: Attack"
 	attack_info_description.text = ""
 	attack_info_power.text = "Power: -"
-	attack_info_element.text = "Element: -"
+	attack_info_element.text = "MTElement: -"
 	attack_info_energy.text = "Energy Cost: -"
 	attack_info_accuracy.text = "Accuracy: -"
 	attack_info_priority.text = "Priority: -"
@@ -568,6 +588,12 @@ func focus_item_menu_first() -> void:
 		_item_menu.grab_first_focus()
 
 func _move_focus(dx: int, dy: int) -> void:
+	if current_menu == "attacks" and dx > 0 and _rest_button != null and _back_button != null and _rest_button.has_focus():
+		_back_button.grab_focus()
+		return
+	if current_menu == "attacks" and dx < 0 and _rest_button != null and _back_button != null and _back_button.has_focus():
+		_rest_button.grab_focus()
+		return
 	var count: int = _menu_buttons.size()
 	if count == 0:
 		return

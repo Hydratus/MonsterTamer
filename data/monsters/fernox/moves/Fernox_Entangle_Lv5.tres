@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="AttackLearnData" format=3 uid="uid://blrn7fren5v7g"]
+
+[ext_resource type="Resource" uid="uid://ben5tng1m7q6t" path="res://data/moves/Entangle.tres" id="1_engl"]
+[ext_resource type="Script" uid="uid://b23dqagtptegd" path="res://core/monsters/attack_learn_data.gd" id="2_alsc"]
+
+[resource]
+script = ExtResource("2_alsc")
+attack = ExtResource("1_engl")
+learn_level = 5
+metadata/_custom_type_script = "uid://b23dqagtptegd"

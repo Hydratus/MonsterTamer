@@ -4,6 +4,12 @@ const GAMEPAD_BTN_B := 1
 const GAMEPAD_BTN_START := 7
 const ITEM_DB = preload("res://core/items/item_db.gd")
 
+const META_UNLOCK_OPTIONS: Array[Dictionary] = [
+	{"id": "starting_gold", "name": "Start Gold +25", "cost": 20, "max_level": 3},
+	{"id": "merchant_discount", "name": "Merchant Discount +10%", "cost": 25, "max_level": 3},
+	{"id": "quest_boost", "name": "Quest Chance +5%", "cost": 30, "max_level": 2}
+]
+
 @export var tile_size: int = 32
 @export var grass_layer_path: NodePath = NodePath("Grass")
 @export var dirt_layer_path: NodePath = NodePath("Dirt")
@@ -19,13 +25,41 @@ const ITEM_DB = preload("res://core/items/item_db.gd")
 @export var anim_left: String = "Left"
 @export var anim_right: String = "Right"
 @export var encounter_chance: float = 0.10
-@export var encounter_table: Array[EncounterEntry] = []
-@export var starter_team: Array[MonsterData] = []
+@export var encounter_table: Array[MTEncounterEntry] = []
+@export var starter_team: Array[MTMonsterData] = []
 @export var dungeon_options: Array[Dictionary] = [
 	{
-		"name": "Test Dungeon",
+		"name": "Test Dungeon (Cavern)",
 		"scene": "res://scenes/world/dungeon_test.tscn",
-		"payload": {"floor": 1}
+		"payload": {
+			"floor": 1,
+			"floor_count": 5,
+			"habitat": "cavern",
+			"seed": 0,
+			"base_encounter_chance": 0.05
+		}
+	},
+	{
+		"name": "Ruins Trial",
+		"scene": "res://scenes/world/dungeon_test.tscn",
+		"payload": {
+			"floor": 1,
+			"floor_count": 4,
+			"habitat": "ruins",
+			"seed": 1337,
+			"base_encounter_chance": 0.14
+		}
+	},
+	{
+		"name": "Swamp Depths",
+		"scene": "res://scenes/world/dungeon_test.tscn",
+		"payload": {
+			"floor": 1,
+			"floor_count": 6,
+			"habitat": "swamp",
+			"seed": 98765,
+			"base_encounter_chance": 0.18
+		}
 	}
 ]
 
@@ -301,6 +335,38 @@ func _rebuild_dungeon_buttons() -> void:
 	for child in _dungeon_menu_container.get_children():
 		child.queue_free()
 
+	var essence_text := "Soul Essence: %d" % int(Game.soul_essence if Game != null else 0)
+	var essence_label := Label.new()
+	essence_label.text = essence_text
+	essence_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	essence_label.add_theme_color_override("font_color", Color(0.75, 0.95, 1.0, 1.0))
+	_dungeon_menu_container.add_child(essence_label)
+
+	for unlock_def in META_UNLOCK_OPTIONS:
+		var unlock_id := str(unlock_def.get("id", ""))
+		var max_level: int = int(unlock_def.get("max_level", 1))
+		var current_level: int = 0
+		if Game != null:
+			current_level = Game.get_meta_unlock_level(unlock_id)
+		var unlock_button := Button.new()
+		if current_level >= max_level:
+			unlock_button.text = "%s [MAX]" % str(unlock_def.get("name", unlock_id))
+			unlock_button.disabled = true
+		else:
+			unlock_button.text = "%s (Cost: %d SE) [Lv %d/%d]" % [
+				str(unlock_def.get("name", unlock_id)),
+				int(unlock_def.get("cost", 0)),
+				current_level,
+				max_level
+			]
+			unlock_button.pressed.connect(_on_meta_unlock_button_pressed.bind(unlock_id, int(unlock_def.get("cost", 0)), max_level))
+		unlock_button.focus_mode = Control.FOCUS_ALL
+		_dungeon_menu_container.add_child(unlock_button)
+		_dungeon_menu_buttons.append(unlock_button)
+
+	var spacer := HSeparator.new()
+	_dungeon_menu_container.add_child(spacer)
+
 	if dungeon_options.is_empty():
 		var empty_label := Label.new()
 		empty_label.text = "No dungeons available"
@@ -325,6 +391,22 @@ func _rebuild_dungeon_buttons() -> void:
 	cancel_button.pressed.connect(_close_dungeon_menu)
 	_dungeon_menu_container.add_child(cancel_button)
 	_dungeon_menu_buttons.append(cancel_button)
+
+func _on_meta_unlock_button_pressed(unlock_id: String, cost: int, max_level: int) -> void:
+	if Game == null:
+		_enqueue_message("Meta unlock failed: Game singleton missing.")
+		return
+	if Game.buy_meta_unlock(unlock_id, cost, max_level):
+		_enqueue_message("Unlocked %s. Soul Essence left: %d" % [unlock_id, Game.soul_essence])
+		_rebuild_dungeon_buttons()
+		if _dungeon_menu_buttons.size() > 0:
+			_dungeon_menu_buttons[0].grab_focus()
+		return
+	var current_level: int = Game.get_meta_unlock_level(unlock_id)
+	if current_level >= max_level:
+		_enqueue_message("%s is already at max level." % unlock_id)
+	else:
+		_enqueue_message("Not enough Soul Essence for %s (Cost: %d)." % [unlock_id, cost])
 
 func _open_dungeon_menu(title: String) -> void:
 	if _dungeon_menu_panel == null or _dungeon_menu_panel.get_parent() == null:
@@ -360,6 +442,10 @@ func _on_dungeon_button_pressed(index: int) -> void:
 	var payload: Dictionary = {}
 	if option.has("payload") and option["payload"] is Dictionary:
 		payload = option["payload"]
+	print("[DungeonMenu] selected=%s scene=%s payload=%s" % [
+		str(option.get("name", "Dungeon")), scene_path, str(payload)])
+	if Game != null:
+		Game.flags["dungeon_run_active"] = false
 	_close_dungeon_menu()
 	_request_world_change(scene_path, payload)
 
@@ -407,7 +493,7 @@ func _on_step_finished() -> void:
 		_play_idle_anim(_last_facing)
 	if _in_battle:
 		return
-	if _is_grass_cell(_player_cell) and _rng.randf() <= encounter_chance:
+	if _is_grass_cell(_player_cell) and _rng.randf() < encounter_chance:
 		_play_idle_anim(_last_facing)
 		_start_random_battle()
 
@@ -637,7 +723,7 @@ func _try_interact() -> void:
 			for item_id in npc.npc_data.give_item_ids:
 				if item_id == "":
 					continue
-				var item_data: ItemData = ITEM_DB.new().get_item(item_id)
+				var item_data: MTItemData = ITEM_DB.new().get_item(item_id)
 				var item_name: String = item_id
 				if item_data != null:
 					item_name = item_data.name
@@ -683,24 +769,24 @@ func _ensure_party() -> void:
 	for monster_data in starter_team:
 		if monster_data == null:
 			continue
-		var instance := MonsterInstance.new(monster_data)
-		instance.decision = PlayerDecision.new()
+		var instance := MTMonsterInstance.new(monster_data)
+		instance.decision = MTPlayerDecision.new()
 		Game.party.append(instance)
 
 func _ensure_encounters() -> void:
 	if not encounter_table.is_empty():
 		return
-	var slime := load("res://data/monsters/slime/slime.tres") as MonsterData
-	var wolf := load("res://data/monsters/wolf/wolf.tres") as MonsterData
+	var slime := load("res://data/monsters/slime/slime.tres") as MTMonsterData
+	var wolf := load("res://data/monsters/wolf/wolf.tres") as MTMonsterData
 	if slime != null:
-		var slime_entry := EncounterEntry.new()
+		var slime_entry := MTEncounterEntry.new()
 		slime_entry.monster = slime
 		slime_entry.min_level = 2
 		slime_entry.max_level = 6
 		slime_entry.weight = 10
 		encounter_table.append(slime_entry)
 	if wolf != null:
-		var wolf_entry := EncounterEntry.new()
+		var wolf_entry := MTEncounterEntry.new()
 		wolf_entry.monster = wolf
 		wolf_entry.min_level = 4
 		wolf_entry.max_level = 8
@@ -708,7 +794,7 @@ func _ensure_encounters() -> void:
 		encounter_table.append(wolf_entry)
 
 func _start_random_battle() -> void:
-	var enemy_team: Array[MonsterInstance] = _build_enemy_team()
+	var enemy_team: Array[MTMonsterInstance] = _build_enemy_team()
 	if enemy_team.is_empty():
 		return
 	_pause_npc_walks()
@@ -719,16 +805,17 @@ func _start_random_battle() -> void:
 	add_child(_battle_scene)
 	_battle_scene.battle_finished.connect(_on_battle_finished)
 	_battle_scene.capture_allowed = true
+	_battle_scene.escape_allowed = true
 	_battle_scene.player_soulbinder_name = Game.player_name
 	_battle_scene.enemy_soulbinder_name = "Wild"
-	var player_team: Array[MonsterInstance] = []
+	var player_team: Array[MTMonsterInstance] = []
 	for monster in Game.party:
 		if monster == null:
 			continue
 		player_team.append(monster)
 	_battle_scene.start_battle(player_team, enemy_team)
 
-func _build_enemy_team() -> Array[MonsterInstance]:
+func _build_enemy_team() -> Array[MTMonsterInstance]:
 	var entries := encounter_table.filter(func(e): return e != null and e.weight > 0 and e.monster != null)
 	if entries.is_empty():
 		return []
@@ -738,7 +825,7 @@ func _build_enemy_team() -> Array[MonsterInstance]:
 		total_weight += e.weight
 
 	var roll := _rng.randi_range(1, total_weight)
-	var chosen: EncounterEntry = entries[0]
+	var chosen: MTEncounterEntry = entries[0]
 	var running := 0
 	for e in entries:
 		running += e.weight
@@ -750,8 +837,8 @@ func _build_enemy_team() -> Array[MonsterInstance]:
 	var enemy_data := chosen.monster.duplicate()
 	enemy_data.level = level
 
-	var enemy := MonsterInstance.new(enemy_data)
-	enemy.decision = AIDecision.new()
+	var enemy := MTMonsterInstance.new(enemy_data)
+	enemy.decision = MTAIDecision.new()
 	return [enemy]
 
 func _on_battle_finished(_winner_team_index: int) -> void:
@@ -768,7 +855,7 @@ func _start_npc_battle(npc) -> void:
 	if npc == null:
 		return
 	var enemy_raw = npc.build_team()
-	var enemy_team: Array[MonsterInstance] = []
+	var enemy_team: Array[MTMonsterInstance] = []
 	for m in enemy_raw:
 		if m == null:
 			continue
@@ -784,12 +871,13 @@ func _start_npc_battle(npc) -> void:
 	add_child(_battle_scene)
 	_battle_scene.battle_finished.connect(_on_battle_finished)
 	_battle_scene.capture_allowed = false
+	_battle_scene.escape_allowed = false
 	_battle_scene.player_soulbinder_name = Game.player_name
 	var npc_name: String = "NPC"
 	if npc.npc_data != null and npc.npc_data.display_name != "":
 		npc_name = npc.npc_data.display_name
 	_battle_scene.enemy_soulbinder_name = npc_name
-	var player_team: Array[MonsterInstance] = []
+	var player_team: Array[MTMonsterInstance] = []
 	for monster in Game.party:
 		if monster == null:
 			continue
@@ -845,7 +933,7 @@ func _collect_npcs() -> void:
 
 func _find_npcs_recursive(root: Node) -> void:
 	for child in root.get_children():
-		if child is NPCController:
+		if child is MTNPCController:
 			_npcs.append(child)
 		_find_npcs_recursive(child)
 

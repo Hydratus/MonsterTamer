@@ -1,11 +1,11 @@
-extends BattleDecision
-class_name AIDecision
+extends MTBattleDecision
+class_name MTAIDecision
 
-func decide(monster: MonsterInstance, battle: BattleController):
+func decide(monster: MTMonsterInstance, battle: MTBattleController):
 	if monster.attacks.is_empty():
 		return _basic_attack(monster, battle)
 
-	var attack: AttackData = _choose_attack(monster)
+	var attack: MTAttackData = _choose_attack(monster)
 	if attack == null:
 		return _basic_attack(monster, battle)
 
@@ -16,9 +16,9 @@ func decide(monster: MonsterInstance, battle: BattleController):
 # Fallback: einfacher Angriff
 # --------------------------------------------------
 func _basic_attack(
-	monster: MonsterInstance,
-	battle: BattleController
-) -> BattleAction:
+	monster: MTMonsterInstance,
+	battle: MTBattleController
+) -> MTBattleAction:
 
 	# Bestimme das gegnerische Team dynamisch
 	var team_index = -1
@@ -34,7 +34,7 @@ func _basic_attack(
 	if opponent_team == null:
 		return null
 
-	var action := AttackAction.new()
+	var action := MTAttackAction.new()
 	action.battle = battle
 	action.actor = monster
 	action.opponent_team = opponent_team
@@ -49,7 +49,7 @@ func _basic_attack(
 	action.energy_cost = 0
 	action.accuracy = 100
 	action.attack_element = monster.data.element
-	action.damage_type = DamageType.Type.PHYSICAL
+	action.damage_type = MTDamageType.Type.PHYSICAL
 	action.crit_rate = 0.10
 
 	return action
@@ -58,18 +58,18 @@ func _basic_attack(
 # --------------------------------------------------
 # Angriffsauswahl
 # --------------------------------------------------
-func _choose_attack(monster: MonsterInstance) -> AttackData:
+func _choose_attack(monster: MTMonsterInstance) -> MTAttackData:
 	return monster.attacks.pick_random()
 
 
 # --------------------------------------------------
-# AttackData → AttackAction
+# MTAttackData → MTAttackAction
 # --------------------------------------------------
 func _create_attack_action(
-	monster: MonsterInstance,
-	attack: AttackData,
-	battle: BattleController
-) -> BattleAction:
+	monster: MTMonsterInstance,
+	attack: MTAttackData,
+	battle: MTBattleController
+) -> MTBattleAction:
 
 	# Bestimme das gegnerische Team dynamisch
 	var team_index = -1
@@ -85,7 +85,7 @@ func _create_attack_action(
 	if opponent_team == null:
 		return null
 
-	var action := AttackAction.new()
+	var action := MTAttackAction.new()
 	action.battle = battle
 	action.actor = monster
 	action.opponent_team = opponent_team

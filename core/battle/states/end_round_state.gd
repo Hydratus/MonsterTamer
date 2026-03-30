@@ -1,5 +1,5 @@
-extends BattleState
-class_name EndRoundState
+extends MTBattleState
+class_name MTEndRoundState
 
 func enter(battle):
 	print("--- Round End ---")
@@ -20,19 +20,19 @@ func enter(battle):
 	for team in battle.teams:
 		var monster = team.get_active_monster()
 		if monster != null and not monster.is_alive():
-			battle.change_state(CheckEndState.new())
+			battle.change_state(MTCheckEndState.new())
 			return
 
 	# 🔄 NÄCHSTE RUNDE STARTEN
-	battle.change_state(StartRoundState.new())
+	battle.change_state(MTStartRoundState.new())
 
 func on_messages_completed(battle):
 	# 🏁 Prüfen ob aktive Monster besiegt wurden
 	for team in battle.teams:
 		var monster = team.get_active_monster()
 		if monster != null and not monster.is_alive():
-			battle.change_state(CheckEndState.new())
+			battle.change_state(MTCheckEndState.new())
 			return
 
 	# 🔄 NÄCHSTE RUNDE STARTEN
-	battle.change_state(StartRoundState.new())
+	battle.change_state(MTStartRoundState.new())

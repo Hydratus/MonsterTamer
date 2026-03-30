@@ -1,5 +1,5 @@
 extends RefCounted
-class_name TypeChart
+class_name MTTypeChart
 
 
 # -------------------------------------------------
@@ -14,31 +14,31 @@ class_name TypeChart
 # -------------------------------------------------
 
 static var chart := {
-	Element.Type.FIRE: {
-		Element.Type.PLANT: 2.0,
-		Element.Type.WATER: 0.5,
-		Element.Type.FIRE: 0.5,
+	MTElement.Type.FIRE: {
+		MTElement.Type.PLANT: 2.0,
+		MTElement.Type.WATER: 0.5,
+		MTElement.Type.FIRE: 0.5,
 	},
 
-	Element.Type.WATER: {
-		Element.Type.FIRE: 2.0,
-		Element.Type.PLANT: 0.5,
-		Element.Type.WATER: 0.5,
+	MTElement.Type.WATER: {
+		MTElement.Type.FIRE: 2.0,
+		MTElement.Type.PLANT: 0.5,
+		MTElement.Type.WATER: 0.5,
 	},
 
-	Element.Type.PLANT: {
-		Element.Type.WATER: 2.0,
-		Element.Type.FIRE: 0.5,
-		Element.Type.PLANT: 0.5,
+	MTElement.Type.PLANT: {
+		MTElement.Type.WATER: 2.0,
+		MTElement.Type.FIRE: 0.5,
+		MTElement.Type.PLANT: 0.5,
 	},
 
 	# Beispiel Immunität
-	Element.Type.NORMAL: {
-		Element.Type.GHOST: 0.0
+	MTElement.Type.NORMAL: {
+		MTElement.Type.GHOST: 0.0
 	},
 
-	Element.Type.GHOST: {
-		Element.Type.NORMAL: 0.0
+	MTElement.Type.GHOST: {
+		MTElement.Type.NORMAL: 0.0
 	}
 }
 

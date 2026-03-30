@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="MTMonsterData" format=3 uid="uid://bstbk5y4c5dfg"]
+
+[ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
+[ext_resource type="Resource" uid="uid://bw7nrfjda4m3y" path="res://data/moves/NormalAttack.tres" id="2_norm"]
+[ext_resource type="Resource" uid="uid://dkrjb4yrweo1q" path="res://data/moves/QuickAttack.tres" id="3_qkak"]
+[ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="4_trsc"]
+[ext_resource type="Resource" uid="uid://citlotilv0hbx" path="res://data/traits/StrongBody.tres" id="5_stbd"]
+[ext_resource type="Script" uid="uid://dlkhfxldvfm2b" path="res://core/monsters/monster_data.gd" id="6_mdsc"]
+[ext_resource type="Resource" uid="uid://blrn6stic8v6f" path="res://data/monsters/stoneback/moves/Stoneback_IronCharge_Lv8.tres" id="7_lrn1"]
+
+[resource]
+script = ExtResource("6_mdsc")
+name = "Stoneback"
+base_max_hp = 80
+base_max_energy = 15
+base_strength = 50
+base_magic = 10
+base_defense = 70
+base_resistance = 50
+base_speed = 4
+base_exp = 100
+base_catch_rate = 50
+growth_rate = 2
+elements = Array[int]([0])
+attacks = Array[ExtResource("1_atsc")]([ExtResource("2_norm"), ExtResource("3_qkak")])
+passive_traits = Array[ExtResource("4_trsc")]([ExtResource("5_stbd")])
+learnable_attacks = Array[Resource]([ExtResource("7_lrn1")])
+learnable_traits = Array[Resource]([])
+metadata/_custom_type_script = "uid://dlkhfxldvfm2b"

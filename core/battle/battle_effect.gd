@@ -1,5 +1,5 @@
 extends RefCounted
-class_name BattleEffect
+class_name MTBattleEffect
 
 var source
 var target

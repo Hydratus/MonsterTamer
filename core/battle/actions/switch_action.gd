@@ -1,13 +1,13 @@
 extends RefCounted
-class_name SwitchAction
+class_name MTSwitchAction
 
 var team_index: int
 var monster_index: int
-var initiator: MonsterInstance
+var initiator: MTMonsterInstance
 var priority: int = 100  # Switch-Priorität (höher = früher)
 var initiative: int = 0  # Initiative zum Tiebreak (Speed des aktuellen Monsters)
 
-func _init(_team_index: int, _monster_index: int, _initiator: MonsterInstance) -> void:
+func _init(_team_index: int, _monster_index: int, _initiator: MTMonsterInstance) -> void:
 	team_index = _team_index
 	monster_index = _monster_index
 	initiator = _initiator
@@ -17,7 +17,7 @@ func _init(_team_index: int, _monster_index: int, _initiator: MonsterInstance) -
 		initiative = initiator.get_speed()
 
 func execute(controller) -> void:
-	# controller ist die BattleController-Instanz
+	# controller ist die MTBattleController-Instanz
 	var success = controller.perform_switch(team_index, monster_index, initiator)
 	if success:
 		var team = controller.teams[team_index]

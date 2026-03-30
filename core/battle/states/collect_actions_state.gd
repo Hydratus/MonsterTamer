@@ -1,7 +1,7 @@
-extends BattleState
-class_name CollectActionsState
+extends MTBattleState
+class_name MTCollectActionsState
 
-func enter(battle: BattleController):
+func enter(battle: MTBattleController):
 	battle.action_queue.clear()
 	battle.pending_player_actions.clear()
 	battle.waiting_for_player = false
@@ -17,7 +17,7 @@ func enter(battle: BattleController):
 			push_error("Monster %s hat keine Decision zugewiesen!" % monster.data.name)
 			continue
 
-		if monster.decision is PlayerDecision:
+		if monster.decision is MTPlayerDecision:
 			battle.waiting_for_player = true
 			battle.scene.show_player_menu(monster)
 		else:
@@ -30,4 +30,4 @@ func enter(battle: BattleController):
 
 	# Falls kein Player im Kampf - direkt zu Resolve
 	if not battle.waiting_for_player:
-		battle.change_state(ResolveActionsState.new())
+		battle.change_state(MTResolveActionsState.new())

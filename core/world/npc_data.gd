@@ -1,12 +1,12 @@
 extends Resource
-class_name NPCData
+class_name MTNPCData
 
 @export var display_name: String = ""
 @export_multiline var dialogue_before: String = ""
 @export_multiline var dialogue_after: String = ""
 @export var interaction_id: String = ""
 @export var battle_once: bool = true
-@export var team_entries: Array[NPCMonsterEntry] = []
+@export var team_entries: Array[MTNPCMonsterEntry] = []
 
 @export var gives_items: bool = false
 @export var give_item_ids: Array[String] = []

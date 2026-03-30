@@ -1,5 +1,5 @@
-extends BattleState
-class_name CheckEndState
+extends MTBattleState
+class_name MTCheckEndState
 
 func enter(battle):
 	# Leere vorherige Messages
@@ -13,7 +13,7 @@ func enter(battle):
 		
 		if not team.has_alive_monsters():
 			print("Team %d hat keine lebenden Monster mehr - KAMPF VORBEI" % i)
-			battle.change_state(BattleEndState.new())
+			battle.change_state(MTBattleEndState.new())
 			return
 	
 	# Wenn nicht, versuche das aktive Monster zu wechseln
@@ -37,15 +37,15 @@ func enter(battle):
 				monster_switched = true
 			else:
 				print("DEBUG: Konnte nicht wechseln - Sicherheit aktiviert")
-				battle.change_state(BattleEndState.new())
+				battle.change_state(MTBattleEndState.new())
 				return
 	
 	# Zeige Messages wenn Monster gewechselt wurden
 	if monster_switched:
 		battle.scene.show_battle_messages()
 	else:
-		battle.change_state(CollectActionsState.new())
+		battle.change_state(MTCollectActionsState.new())
 
 func on_messages_completed(battle):
 	# Nach den Switch-Messages starte neue Runde
-	battle.change_state(StartRoundState.new())
+	battle.change_state(MTStartRoundState.new())

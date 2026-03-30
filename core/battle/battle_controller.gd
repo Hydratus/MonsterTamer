@@ -1,14 +1,19 @@
 extends RefCounted
-class_name BattleController
+class_name MTBattleController
+
+const EscapeActionClass = preload("res://core/battle/actions/escape_action.gd")
+const RestActionClass = preload("res://core/battle/actions/rest_action.gd")
 
 
 var scene
-var teams: Array = []  # Array von MonsterTeam
-var action_queue: Array = []  # Gemischte Actions: BattleAction, SwitchAction, etc.
+var teams: Array = []  # Array von MTMonsterTeam
+var action_queue: Array = []  # Gemischte Actions: MTBattleAction, MTSwitchAction, etc.
 var pending_player_actions := {}
 var waiting_for_player := false
 var current_state
 var pending_evolutions: Array = []
+var escape_resolved := false
+var forced_battle_result: int = -2
 
 # Prioritäten-Konstanten (höher = früher ausgeführt)
 const PRIORITY_ESCAPE := 300
@@ -23,24 +28,24 @@ func log_message(text: String):
 	else:
 		print(text)  # Fallback für Debug
 
-func queue_evolution(monster: MonsterInstance, learning_cb: Callable) -> void:
+func queue_evolution(monster: MTMonsterInstance, learning_cb: Callable) -> void:
 	if monster == null:
 		return
 	pending_evolutions.append({"monster": monster, "learning_cb": learning_cb})
 
 
-func start_battle(team1_monsters: Array[MonsterInstance], team2_monsters: Array[MonsterInstance]):
-	# Teams werden jetzt direkt von BattleScene erstellt und über die 'teams' Variable gesetzt
+func start_battle(team1_monsters: Array[MTMonsterInstance], team2_monsters: Array[MTMonsterInstance]):
+	# Teams werden jetzt direkt von MTBattleScene erstellt und über die 'teams' Variable gesetzt
 	# Diese Funktion wird nicht mehr verwendet, aber bleibt für Kompatibilität
 	
 	# Nur für den Fall, dass sie noch von irgendwo aufgerufen wird:
 	if teams.is_empty():
 		teams = [
-			MonsterTeam.new(team1_monsters),
-			MonsterTeam.new(team2_monsters)
+			MTMonsterTeam.new(team1_monsters),
+			MTMonsterTeam.new(team2_monsters)
 		]
 	
-	change_state(BattleStartState.new())
+	change_state(MTBattleStartState.new())
 
 
 func change_state(state):
@@ -51,15 +56,15 @@ func change_state(state):
 
 
 # --------------------------------------------------
-# Player Action (über BattleMenu + AttackData)
+# Player Action (über MTBattleMenu + MTAttackData)
 # --------------------------------------------------
 
-func submit_player_attack(monster: MonsterInstance, attack: AttackData):
+func submit_player_attack(monster: MTMonsterInstance, attack: MTAttackData):
 	var opponent_team = get_opponent_team(0)  # Team 0 ist Spieler
 	if opponent_team == null:
 		return
 
-	var action := AttackAction.new()
+	var action := MTAttackAction.new()
 	action.battle = self
 	action.actor = monster
 	action.opponent_team = opponent_team  # Speichere das gegnerische Team statt direktes Ziel
@@ -88,21 +93,44 @@ func submit_player_attack(monster: MonsterInstance, attack: AttackData):
 
 
 # Spieler wechselt ein Monster (wird als Aktion beendet behandelt)
-func submit_player_switch(monster: MonsterInstance):
+func submit_player_switch(monster: MTMonsterInstance):
 	# Der Switch ist die komplette Action für diese Runde
 	# Wir markieren, dass dieser Spieler seine Action "fertig" hat
 	pending_player_actions[monster] = null  # null bedeutet: Wechsel durchgeführt
 	check_all_player_actions()
 
-func submit_player_item(monster: MonsterInstance, item: ItemData, target: MonsterInstance) -> void:
+func submit_player_item(monster: MTMonsterInstance, item: MTItemData, target: MTMonsterInstance) -> void:
 	if monster == null or item == null:
 		return
-	var action := ItemAction.new()
+	var action := MTItemAction.new()
 	action.battle = self
 	action.actor = monster
 	action.target = target if target != null else monster
 	action.item = item
 	action.priority = PRIORITY_ITEM
+	action.initiative = monster.get_speed()
+	pending_player_actions[monster] = action
+	check_all_player_actions()
+
+func submit_player_escape(monster: MTMonsterInstance) -> void:
+	if monster == null:
+		return
+	var action: MTBattleAction = EscapeActionClass.new()
+	action.battle = self
+	action.actor = monster
+	action.opponent = get_opponent(monster)
+	action.priority = PRIORITY_ESCAPE
+	action.initiative = monster.get_speed()
+	pending_player_actions[monster] = action
+	check_all_player_actions()
+
+func submit_player_rest(monster: MTMonsterInstance) -> void:
+	if monster == null:
+		return
+	var action: MTBattleAction = RestActionClass.new()
+	action.battle = self
+	action.actor = monster
+	action.priority = PRIORITY_ATTACK
 	action.initiative = monster.get_speed()
 	pending_player_actions[monster] = action
 	check_all_player_actions()
@@ -113,11 +141,11 @@ func check_all_player_actions():
 	for team in teams:
 		var monster = team.get_active_monster()
 		if monster != null and monster.is_alive():
-			if monster.decision != null and monster.decision is PlayerDecision:
+			if monster.decision != null and monster.decision is MTPlayerDecision:
 				if not pending_player_actions.has(monster):
 					return
 
-	# Füge alle Aktionen zur Queue hinzu (BattleAction, SwitchAction, etc.)
+	# Füge alle Aktionen zur Queue hinzu (MTBattleAction, MTSwitchAction, etc.)
 	for monster_key in pending_player_actions.keys():
 		var action = pending_player_actions[monster_key]
 		if action != null:
@@ -125,7 +153,7 @@ func check_all_player_actions():
 	
 	pending_player_actions.clear()
 	# Jetzt zur Auflösung
-	change_state(ResolveActionsState.new())
+	change_state(MTResolveActionsState.new())
 
 
 # --------------------------------------------------
@@ -133,7 +161,7 @@ func check_all_player_actions():
 # --------------------------------------------------
 
 # Bekomme das aktive Monster eines Teams
-func get_active_monster(team_index: int) -> MonsterInstance:
+func get_active_monster(team_index: int) -> MTMonsterInstance:
 	if team_index < 0 or team_index >= teams.size():
 		return null
 	return teams[team_index].get_active_monster()
@@ -147,7 +175,7 @@ func get_opponent_team(team_index: int):
 	return null
 
 # Bekomme das aktive gegnerische Monster
-func get_opponent(monster: MonsterInstance) -> MonsterInstance:
+func get_opponent(monster: MTMonsterInstance) -> MTMonsterInstance:
 	for i in range(teams.size()):
 		if teams[i].get_active_monster() == monster:
 			var opponent_team = get_opponent_team(i)
@@ -160,7 +188,7 @@ func switch_monster(team_index: int, monster_index: int) -> bool:
 		return false
 	return teams[team_index].switch_to_monster(monster_index)
 
-# Neue API: Reiche eine Action ein (kann BattleAction, SwitchAction, etc. sein)
+# Neue API: Reiche eine Action ein (kann MTBattleAction, MTSwitchAction, etc. sein)
 func submit_action(action) -> void:
 	if action == null:
 		return
@@ -200,8 +228,8 @@ func resolve_actions() -> void:
 	
 	action_queue.clear()
 
-# Führe einen Wechsel durch (wird von SwitchAction aufgerufen)
-func perform_switch(team_index: int, monster_index: int, _initiator: MonsterInstance) -> bool:
+# Führe einen Wechsel durch (wird von MTSwitchAction aufgerufen)
+func perform_switch(team_index: int, monster_index: int, _initiator: MTMonsterInstance) -> bool:
 	if teams == null or team_index < 0 or team_index >= teams.size():
 		return false
 	

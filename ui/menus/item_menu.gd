@@ -1,11 +1,11 @@
 extends Control
-class_name ItemMenu
+class_name MTItemMenu
 
 const ITEM_DB = preload("res://core/items/item_db.gd")
 const ItemDataClass = preload("res://core/items/item_data.gd")
 
 signal closed
-signal item_used(item: ItemData, target: MonsterInstance)
+signal item_used(item: MTItemData, target: MTMonsterInstance)
 
 @onready var _tabs: TabContainer = $RootVBox/Tabs as TabContainer
 @onready var _active_list: VBoxContainer = $RootVBox/Tabs/Active/ActiveScroll/ActiveList as VBoxContainer
@@ -22,7 +22,7 @@ signal item_used(item: ItemData, target: MonsterInstance)
 
 var _team: Array = []
 var _mode := "items"
-var _pending_item: ItemData
+var _pending_item: MTItemData
 var _buttons: Array[Button] = []
 var _allow_back := true
 var _auto_focus_content := true
@@ -63,7 +63,8 @@ func _process(delta: float) -> void:
 	if _buttons.is_empty():
 		return
 	var focus_owner: Control = get_viewport().gui_get_focus_owner() as Control
-	var focus_in_list := focus_owner != null and _buttons.has(focus_owner)
+	var focus_button: Button = focus_owner as Button
+	var focus_in_list := focus_button != null and _buttons.has(focus_button)
 	if _require_focus_owner and not focus_in_list:
 		return
 	if not focus_in_list:
@@ -102,11 +103,12 @@ func _handle_nav_event(event: InputEvent) -> bool:
 	if not visible:
 		return false
 	var focus_owner: Control = get_viewport().gui_get_focus_owner() as Control
+	var focus_button: Button = focus_owner as Button
 	var focus_in_menu := focus_owner != null and is_ancestor_of(focus_owner)
 	if event.is_action_pressed("ui_accept"):
 		if not focus_in_menu:
 			return false
-		if focus_owner != null and _buttons.has(focus_owner):
+		if focus_button != null and _buttons.has(focus_button):
 			_move_button_focus(0)
 			focus_owner.emit_signal("pressed")
 			return true
@@ -126,7 +128,7 @@ func _handle_nav_event(event: InputEvent) -> bool:
 		return false
 	if _buttons.is_empty():
 		return false
-	var focus_in_list := focus_owner != null and _buttons.has(focus_owner)
+	var focus_in_list := focus_button != null and _buttons.has(focus_button)
 	if event.is_action_pressed("ui_down"):
 		_nav_hold_dir = 1
 		_nav_repeat_timer = NAV_REPEAT_DELAY
@@ -251,7 +253,7 @@ func _show_items_for_tab(tab_index: int) -> void:
 	_buttons.clear()
 
 	var items := ITEM_DB.new().get_all_items()
-	var filtered: Array[ItemData] = []
+	var filtered: Array[MTItemData] = []
 	for item in items:
 		if item.category == tab_index:
 			var count: int = Game.get_item_count(item.id)
@@ -284,15 +286,15 @@ func _show_items_for_tab(tab_index: int) -> void:
 	if _auto_focus_content:
 		grab_first_focus()
 
-func _on_item_pressed(item: ItemData) -> void:
+func _on_item_pressed(item: MTItemData) -> void:
 	if item == null:
 		return
-	if item.target_type == ItemData.TargetType.SELF_TEAM and _team.size() > 0:
+	if item.target_type == MTItemData.TargetType.SELF_TEAM and _team.size() > 0:
 		_show_targets(item)
 		return
 	item_used.emit(item, null)
 
-func _show_targets(item: ItemData) -> void:
+func _show_targets(item: MTItemData) -> void:
 	_mode = "targets"
 	_pending_item = item
 	var list := _get_list_for_tab(_tabs.current_tab)
@@ -323,11 +325,11 @@ func _get_list_for_tab(tab_index: int) -> VBoxContainer:
 	match tab_index:
 		ItemDataClass.Category.SOULBINDER:
 			return _binding_runes_list
-		ItemData.Category.WEAPON:
+		MTItemData.Category.WEAPON:
 			return _weapon_list
-		ItemData.Category.ARMOR:
+		MTItemData.Category.ARMOR:
 			return _armor_list
-		ItemData.Category.ACCESSOIRE:
+		MTItemData.Category.ACCESSOIRE:
 			return _accessoire_list
 		_:
 			return _active_list
@@ -336,11 +338,11 @@ func _get_scroll_for_tab(tab_index: int) -> ScrollContainer:
 	match tab_index:
 		ItemDataClass.Category.SOULBINDER:
 			return _binding_runes_scroll
-		ItemData.Category.WEAPON:
+		MTItemData.Category.WEAPON:
 			return _weapon_scroll
-		ItemData.Category.ARMOR:
+		MTItemData.Category.ARMOR:
 			return _armor_scroll
-		ItemData.Category.ACCESSOIRE:
+		MTItemData.Category.ACCESSOIRE:
 			return _accessoire_scroll
 		_:
 			return _active_scroll

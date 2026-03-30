@@ -1,5 +1,5 @@
-extends BattleState
-class_name StartRoundState
+extends MTBattleState
+class_name MTStartRoundState
 
 func enter(battle):
 	print("--- Round Start ---")
@@ -22,7 +22,7 @@ func enter(battle):
 				trait_effect.round_start_stages
 			)
 
-			var stat_name: String = MonsterInstance.StatType.keys()[
+			var stat_name: String = MTMonsterInstance.StatType.keys()[
 				trait_effect.round_start_stat
 			]
 
@@ -60,7 +60,7 @@ func enter(battle):
 		battle.scene.show_battle_messages()
 		return
 
-	battle.change_state(CollectActionsState.new())
+	battle.change_state(MTCollectActionsState.new())
 
 func on_messages_completed(battle):
-	battle.change_state(CollectActionsState.new())
+	battle.change_state(MTCollectActionsState.new())

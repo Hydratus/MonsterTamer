@@ -1,14 +1,14 @@
 extends Node2D
-class_name BattleScene
+class_name MTBattleScene
 
 const ItemDataClass = preload("res://core/items/item_data.gd")
 
 signal battle_finished(winner_team_index: int)
 
-@onready var menu: BattleMenu = $BattleMenu
+@onready var menu: MTBattleMenu = _resolve_menu()
 
-var hud: BattleHUD
-var message_box: BattleMessageBox
+var hud: MTBattleHUD
+var message_box: MTBattleMessageBox
 var evolution_layer: CanvasLayer
 var evolution_panel: PanelContainer
 var evolution_label: Label
@@ -23,34 +23,40 @@ var _resume_menu_after_message := false
 var _release_layer: CanvasLayer
 var _release_panel: PanelContainer
 var _release_list: VBoxContainer
-var _pending_release_team: MonsterTeam
-var _pending_release_new_monster: MonsterInstance
+var _pending_release_team: MTMonsterTeam
+var _pending_release_new_monster: MTMonsterInstance
 var _release_prompt_active := false
 var _resume_after_release := false
 var _battle_end_after_capture := false
+var _player_participants: Dictionary = {}
 
 var player_soulbinder_name: String = "Player"
 var enemy_soulbinder_name: String = "Enemy"
 var capture_allowed := true
+var escape_allowed := true
 
 const TEAM_SIZE_CAP := 5
 
 # Team-Konfiguration im Inspector
-@export var player_team: Array[MonsterData] = []
-@export var enemy_team: Array[MonsterData] = []
+@export var player_team: Array[MTMonsterData] = []
+@export var enemy_team: Array[MTMonsterData] = []
 @export var auto_start: bool = true
 
-var battle: BattleController
+var battle: MTBattleController
 var battle_started := false  # Flag um doppelte Starts zu verhindern
-var player_team_instance: MonsterTeam  # Referenz auf das Spieler-Team
+var player_team_instance: MTMonsterTeam  # Referenz auf das Spieler-Team
 
 
 func _ready():
+	if menu == null:
+		push_error("Battle menu node not found. Expected 'BattleMenu' or 'MTBattleMenu'.")
+		return
+
 	# Erstelle HUD als CanvasLayer
 	var hud_layer = CanvasLayer.new()
 	add_child(hud_layer)
 	
-	hud = BattleHUD.new()
+	hud = MTBattleHUD.new()
 	hud_layer.add_child(hud)
 	hud.anchor_right = 1.0
 	hud.anchor_bottom = 1.0
@@ -61,7 +67,7 @@ func _ready():
 	var message_layer = CanvasLayer.new()
 	add_child(message_layer)
 	
-	message_box = BattleMessageBox.new()
+	message_box = MTBattleMessageBox.new()
 	message_layer.add_child(message_box)
 	message_box.all_messages_completed.connect(_on_messages_completed)
 
@@ -71,20 +77,20 @@ func _ready():
 	# Starte automatisch einen Kampf wenn Teams im Inspector konfiguriert sind
 	# (Nur wenn die Szene direkt geladen wird, nicht wenn sie von außen gestartet wird)
 	if auto_start and player_team.size() > 0 and enemy_team.size() > 0 and not battle_started:
-		# Konvertiere MonsterData zu MonsterInstance
-		var team1: Array[MonsterInstance] = []
-		var team2: Array[MonsterInstance] = []
+		# Konvertiere MTMonsterData zu MTMonsterInstance
+		var team1: Array[MTMonsterInstance] = []
+		var team2: Array[MTMonsterInstance] = []
 		
 		for monster_data in player_team:
 			if monster_data != null:
-				var monster_instance = MonsterInstance.new(monster_data)
-				monster_instance.decision = PlayerDecision.new()  # Spieler kontrolliert Team 1
+				var monster_instance = MTMonsterInstance.new(monster_data)
+				monster_instance.decision = MTPlayerDecision.new()  # Spieler kontrolliert Team 1
 				team1.append(monster_instance)
 		
 		for monster_data in enemy_team:
 			if monster_data != null:
-				var monster_instance = MonsterInstance.new(monster_data)
-				monster_instance.decision = AIDecision.new()  # KI kontrolliert Team 2
+				var monster_instance = MTMonsterInstance.new(monster_data)
+				monster_instance.decision = MTAIDecision.new()  # KI kontrolliert Team 2
 				team2.append(monster_instance)
 		
 		# Starte Kampf
@@ -92,9 +98,17 @@ func _ready():
 			start_battle(team1, team2)
 
 
-func start_battle(team1: Array[MonsterInstance], team2: Array[MonsterInstance]):
+func _resolve_menu() -> MTBattleMenu:
+	var node := get_node_or_null("BattleMenu")
+	if node == null:
+		node = get_node_or_null("MTBattleMenu")
+	return node as MTBattleMenu
+
+
+func start_battle(team1: Array[MTMonsterInstance], team2: Array[MTMonsterInstance]):
 	battle_started = true
-	battle = BattleController.new()
+	_player_participants.clear()
+	battle = MTBattleController.new()
 	battle.scene = self
 	
 	# Debug: Zeige wie viele Monster in jedem Team sind
@@ -102,17 +116,21 @@ func start_battle(team1: Array[MonsterInstance], team2: Array[MonsterInstance]):
 	print("Team 2: %d Monster" % team2.size())
 	
 	# Erstelle Teams SOFORT und speichere Referenz BEVOR battle.start_battle() aufgerufen wird
-	player_team_instance = MonsterTeam.new(team1)
-	var enemy_team_instance = MonsterTeam.new(team2)
+	player_team_instance = MTMonsterTeam.new(team1)
+	var enemy_team_instance = MTMonsterTeam.new(team2)
 	
-	# Übergebe die Teams an BattleController
+	# Übergebe die Teams an MTBattleController
 	battle.teams = [player_team_instance, enemy_team_instance]
 	
 	# Starte Battle (wird jetzt show_player_menu() aufrufen, aber player_team_instance ist schon gesetzt)
-	battle.change_state(BattleStartState.new())
+	battle.change_state(MTBattleStartState.new())
 
 
-func show_player_menu(monster: MonsterInstance):
+func show_player_menu(monster: MTMonsterInstance):
+	if menu == null:
+		push_error("Battle menu is missing; cannot show player menu.")
+		return
+
 	print("DEBUG show_player_menu: monster=%s, player_team_instance ist %s" % [monster.data.name, "null" if player_team_instance == null else "gesetzt"])
 	
 	# Aktualisiere HUD
@@ -127,6 +145,8 @@ func show_player_menu(monster: MonsterInstance):
 	# Trenne alte Signale wenn noch verbunden
 	if menu.action_selected.is_connected(Callable(self, "_on_menu_action_selected")):
 		menu.action_selected.disconnect(Callable(self, "_on_menu_action_selected"))
+	if menu.rest_selected.is_connected(Callable(self, "_on_menu_rest_selected")):
+		menu.rest_selected.disconnect(Callable(self, "_on_menu_rest_selected"))
 	if menu.item_used.is_connected(Callable(self, "_on_menu_item_used")):
 		menu.item_used.disconnect(Callable(self, "_on_menu_item_used"))
 	if menu.escape_battle.is_connected(Callable(self, "_on_menu_escape_battle")):
@@ -136,34 +156,57 @@ func show_player_menu(monster: MonsterInstance):
 	
 	# Verbinde neue Signale
 	menu.action_selected.connect(Callable(self, "_on_menu_action_selected"))
+	menu.rest_selected.connect(Callable(self, "_on_menu_rest_selected"))
 	menu.item_used.connect(Callable(self, "_on_menu_item_used"))
 	menu.escape_battle.connect(Callable(self, "_on_menu_escape_battle"))
 	menu.menu_changed.connect(Callable(self, "_on_menu_changed"))
+	_player_participants[monster] = true
 	
 	menu.show_main_menu(monster, player_team_instance, battle)
 
-func _on_menu_action_selected(attack: AttackData):
+func _on_menu_action_selected(attack: MTAttackData):
 	# Nutze das aktuell aktive Monster aus dem Menu
 	var active_monster = menu.current_monster
 	if active_monster == null:
 		push_error("Kein aktives Monster im Menu!")
+		return
+	if active_monster.energy < attack.energy_cost:
+		_resume_menu_after_message = true
+		_show_instant_battle_message("%s is too exhausted to use %s!" % [active_monster.data.name, attack.name])
 		return
 	
 	print("DEBUG: Angriff ausgewählt für %s: %s" % [active_monster.data.name, attack.name])
 	menu.hide_menu()
 	battle.submit_player_attack(active_monster, attack)
 
-func _on_menu_escape_battle():
-	print("DEBUG: Escape-Button geklickt")
+func _on_menu_rest_selected():
+	if menu == null or battle == null:
+		return
+	var active_monster = menu.current_monster
+	if active_monster == null:
+		return
 	menu.hide_menu()
-	# Hier könnte später die Fluchtlogik implementiert werden
+	battle.submit_player_rest(active_monster)
 
-func _on_menu_item_used(item: ItemData, target: MonsterInstance):
+func _on_menu_escape_battle():
+	if menu == null or battle == null:
+		return
+	var active_monster = menu.current_monster
+	if active_monster == null:
+		return
+	if not escape_allowed:
+		_resume_menu_after_message = true
+		_show_instant_battle_message("Escape is not possible here.")
+		return
+	menu.hide_menu()
+	battle.submit_player_escape(active_monster)
+
+func _on_menu_item_used(item: MTItemData, target: MTMonsterInstance):
 	var active_monster = menu.current_monster
 	if active_monster == null or item == null:
 		return
-	var actual_target: MonsterInstance = target if target != null else active_monster
-	if item.target_type == ItemData.TargetType.ENEMY:
+	var actual_target: MTMonsterInstance = target if target != null else active_monster
+	if item.target_type == MTItemData.TargetType.ENEMY:
 		actual_target = battle.get_opponent(active_monster)
 		if actual_target == null:
 			_resume_menu_after_message = true
@@ -176,7 +219,7 @@ func _on_menu_item_used(item: ItemData, target: MonsterInstance):
 	menu.hide_menu()
 	battle.submit_player_item(active_monster, item, actual_target)
 
-func _can_use_item_in_battle(item: ItemData, target: MonsterInstance) -> bool:
+func _can_use_item_in_battle(item: MTItemData, target: MTMonsterInstance) -> bool:
 	if item == null or target == null:
 		return false
 	if item.category == ItemDataClass.Category.SOULBINDER:
@@ -203,7 +246,8 @@ func submit_action_to_battle(action) -> void:
 		battle.submit_action(action)
 
 func hide_ui() -> void:
-	menu.hide_menu()
+	if menu != null:
+		menu.hide_menu()
 
 func update_hud_with_active() -> void:
 	if hud == null or battle == null:
@@ -214,7 +258,27 @@ func update_hud_with_active() -> void:
 		hud.update_monsters(player_active, enemy_active)
 
 func on_battle_finished(winner_team_index: int) -> void:
+	_restore_reserve_monster_energy()
 	battle_finished.emit(winner_team_index)
+
+func _restore_reserve_monster_energy() -> void:
+	if battle == null:
+		return
+	if battle.teams.size() <= 0:
+		return
+	var player_team_data: MTMonsterTeam = battle.teams[0]
+	if player_team_data == null:
+		return
+	for monster in player_team_data.monsters:
+		if monster == null:
+			continue
+		if _player_participants.has(monster):
+			continue
+		var max_energy: int = monster.get_max_energy()
+		if max_energy <= 0:
+			continue
+		var recover_amount: int = max(1, int(ceil(float(max_energy) * 0.08)))
+		monster.energy = min(max_energy, monster.energy + recover_amount)
 
 func add_battle_message(text: String):
 	if message_box != null:
@@ -222,7 +286,8 @@ func add_battle_message(text: String):
 
 func show_battle_messages():
 	if message_box != null:
-		menu.hide_menu()
+		if menu != null:
+			menu.hide_menu()
 		if hud != null:
 			hud.visible = true
 		# Starte nur wenn es Messages gibt
@@ -266,7 +331,7 @@ func _on_messages_completed():
 	if _battle_end_after_capture and not _release_prompt_active:
 		_battle_end_after_capture = false
 		if battle != null:
-			battle.change_state(BattleEndState.new())
+			battle.change_state(MTBattleEndState.new())
 		return
 	if _try_handle_pending_learning():
 		return
@@ -278,7 +343,7 @@ func _on_messages_completed():
 		if battle.current_state.has_method("on_messages_completed"):
 			battle.current_state.on_messages_completed(battle)
 
-func perform_capture_attempt(actor: MonsterInstance, target: MonsterInstance, item: ItemData) -> void:
+func perform_capture_attempt(actor: MTMonsterInstance, target: MTMonsterInstance, item: MTItemData) -> void:
 	if battle == null or actor == null or target == null:
 		return
 	var chance := _calculate_capture_chance(target, item)
@@ -293,7 +358,7 @@ func perform_capture_attempt(actor: MonsterInstance, target: MonsterInstance, it
 	else:
 		battle.log_message("%s broke free!" % target.data.name)
 
-func _calculate_capture_chance(target: MonsterInstance, item: ItemData) -> float:
+func _calculate_capture_chance(target: MTMonsterInstance, item: MTItemData) -> float:
 	var base_rate := float(clamp(target.data.base_catch_rate, 1, 100))
 	var hp_ratio := 1.0
 	var max_hp := target.get_max_hp()
@@ -307,7 +372,7 @@ func _calculate_capture_chance(target: MonsterInstance, item: ItemData) -> float
 	var chance: float = base_rate * rune_factor * element_factor * hp_factor * level_factor
 	return clamp(chance, 1.0, 95.0)
 
-func _get_rune_element_multiplier(target: MonsterInstance, item: ItemData) -> float:
+func _get_rune_element_multiplier(target: MTMonsterInstance, item: MTItemData) -> float:
 	if item.rune_element == ItemDataClass.RuneElement.UNIVERSAL:
 		return 1.0
 	var target_elements := target.data.elements
@@ -317,17 +382,17 @@ func _get_rune_element_multiplier(target: MonsterInstance, item: ItemData) -> fl
 		return 1.5
 	return 1.0 / 1.5
 
-func _handle_capture_success(target: MonsterInstance) -> void:
+func _handle_capture_success(target: MTMonsterInstance) -> void:
 	if battle == null:
 		return
-	var player_team_ref: MonsterTeam = battle.teams[0]
-	var enemy_team_ref: MonsterTeam = battle.teams[1]
+	var player_team_ref: MTMonsterTeam = battle.teams[0]
+	var enemy_team_ref: MTMonsterTeam = battle.teams[1]
 	if enemy_team_ref != null:
 		enemy_team_ref.monsters.clear()
 	var captured_data := target.data.duplicate()
 	captured_data.level = target.level
-	var captured_instance := MonsterInstance.new(captured_data)
-	captured_instance.decision = PlayerDecision.new()
+	var captured_instance := MTMonsterInstance.new(captured_data)
+	captured_instance.decision = MTPlayerDecision.new()
 	if player_team_ref != null:
 		player_team_ref.monsters.append(captured_instance)
 	if Game.party.find(captured_instance) == -1:
@@ -413,7 +478,7 @@ func _clear_release_list() -> void:
 func _on_release_selected(index: int) -> void:
 	if _pending_release_team == null:
 		return
-	var removed: MonsterInstance = _pending_release_team.remove_monster_at(index)
+	var removed: MTMonsterInstance = _pending_release_team.remove_monster_at(index)
 	if removed != null:
 		var party_index := Game.party.find(removed)
 		if party_index != -1:
@@ -433,17 +498,17 @@ func _update_release_after_selection() -> void:
 	if _battle_end_after_capture:
 		_battle_end_after_capture = false
 		if battle != null:
-			battle.change_state(BattleEndState.new())
+			battle.change_state(MTBattleEndState.new())
 		return
 	if battle != null and battle.current_state != null:
 		if battle.current_state.has_method("on_messages_completed"):
 			battle.current_state.on_messages_completed(battle)
 
-func get_item_user_name(actor: MonsterInstance) -> String:
+func get_item_user_name(actor: MTMonsterInstance) -> String:
 	if actor != null and actor.decision != null:
-		if actor.decision is PlayerDecision:
+		if actor.decision is MTPlayerDecision:
 			return player_soulbinder_name
-		if actor.decision is AIDecision:
+		if actor.decision is MTAIDecision:
 			return enemy_soulbinder_name
 	return "Soulbinder"
 
@@ -494,10 +559,10 @@ func _create_evolution_prompt_ui() -> void:
 
 	evolution_layer.visible = false
 
-func _show_evolution_prompt(monster: MonsterInstance, on_decision: Callable) -> void:
+func _show_evolution_prompt(monster: MTMonsterInstance, on_decision: Callable) -> void:
 	var evolved_name := monster.data.name
 	if monster.data != null and monster.data.evolution != null:
-		var evolution_data := monster.data.evolution as EvolutionData
+		var evolution_data := monster.data.evolution as MTEvolutionData
 		if evolution_data != null and evolution_data.evolved_monster != null:
 			evolved_name = evolution_data.evolved_monster.name
 	var text := "%s tries to evolve into %s.\nDo you want to evolve %s?" % [monster.data.name, evolved_name, monster.data.name]
@@ -558,11 +623,11 @@ func _try_handle_pending_evolution() -> bool:
 		return false
 
 	var item = battle.pending_evolutions.pop_front()
-	var monster: MonsterInstance = item.monster
+	var monster: MTMonsterInstance = item.monster
 	var learning_cb: Callable = item.learning_cb
 	var is_player := false
 	if monster != null and monster.decision != null:
-		is_player = monster.decision is PlayerDecision
+		is_player = monster.decision is MTPlayerDecision
 	if not is_player:
 		monster.apply_evolution(Callable(battle, "log_message"))
 		if message_box != null:
@@ -593,7 +658,7 @@ func _try_handle_pending_learning() -> bool:
 
 	var item = _pending_learning.pop_front()
 	var cb: Callable = item.cb
-	var monster: MonsterInstance = item.monster
+	var monster: MTMonsterInstance = item.monster
 	if cb.is_valid():
 		cb.call(monster)
 

@@ -1,9 +1,9 @@
-extends BattleAction
-class_name ItemAction
+extends MTBattleAction
+class_name MTItemAction
 
 const ItemDataClass = preload("res://core/items/item_data.gd")
 
-var item: ItemData
+var item: MTItemData
 var amount: int = 0
 
 func execute(controller = null) -> Variant:

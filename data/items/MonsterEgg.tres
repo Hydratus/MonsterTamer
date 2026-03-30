@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="MTItemData" format=3 uid="uid://ys6ouf64oyl"]
+
+[ext_resource type="Script" uid="uid://564rgj7ohsyo" path="res://core/items/item_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "monster_egg"
+name = "Monster Egg"
+description = "A warm egg found in the dungeon. It will hatch when you descend to the next floor."
+battle_usable = false
+overworld_usable = false
+consumable = false

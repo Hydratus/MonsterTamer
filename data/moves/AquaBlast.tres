@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AttackData" format=3 uid="uid://baq2blast7m3n"]
+
+[ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
+
+[resource]
+script = ExtResource("1_atsc")
+name = "Aqua Blast"
+description = "An explosive burst of compressed water. High power, slightly imprecise."
+power = 65
+energy_cost = 4
+accuracy = 90
+damage_type = 1
+element = 3
+metadata/_custom_type_script = "uid://byip331ngwvgq"

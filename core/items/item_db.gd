@@ -1,8 +1,10 @@
 extends RefCounted
-class_name ItemDB
+class_name MTItemDB
 
-func get_all_items() -> Array[ItemData]:
+func get_all_items() -> Array[MTItemData]:
 	return [
+		preload("res://data/items/SecretKey.tres"),
+		preload("res://data/items/MonsterEgg.tres"),
 		preload("res://data/items/LesserHealingPotion.tres"),
 		preload("res://data/items/LesserUniversalBindingRune.tres"),
 		preload("res://data/items/LesserNormalBindingRune.tres"),
@@ -42,7 +44,7 @@ func get_all_items() -> Array[ItemData]:
 		preload("res://data/items/LegendaryGhostBindingRune.tres")
 	]
 
-func get_item(item_id: String) -> ItemData:
+func get_item(item_id: String) -> MTItemData:
 	for item in get_all_items():
 		if item.id == item_id:
 			return item

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="AttackLearnData" format=3 uid="uid://blrn1aqbl8v8a"]
+
+[ext_resource type="Resource" uid="uid://baq2blast7m3n" path="res://data/moves/AquaBlast.tres" id="1_aqbl"]
+[ext_resource type="Script" uid="uid://b23dqagtptegd" path="res://core/monsters/attack_learn_data.gd" id="2_alsc"]
+
+[resource]
+script = ExtResource("2_alsc")
+attack = ExtResource("1_aqbl")
+learn_level = 8
+metadata/_custom_type_script = "uid://b23dqagtptegd"

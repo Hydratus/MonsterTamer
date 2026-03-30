@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="MonsterData" format=3 uid="uid://0tyw1amx8xfm"]
+[gd_resource type="Resource" script_class="MTMonsterData" format=3 uid="uid://0tyw1amx8xfm"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_a6qrd"]
 [ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="2_55d8w"]
@@ -16,7 +16,7 @@ base_magic = 30
 base_defense = 40
 base_resistance = 30
 base_speed = 40
-base_exp = 300
+base_exp = 150
 growth_rate = 2
 elements = Array[int]([0, 1])
 learnable_attacks = Array[Resource]([ExtResource("2_ed4y7"), ExtResource("3_n1xog")])

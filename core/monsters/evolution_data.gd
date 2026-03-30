@@ -1,5 +1,5 @@
 extends Resource
-class_name EvolutionData
+class_name MTEvolutionData
 
 # Das Monster, zu dem sich entwickelt wird
 @export var evolved_monster: Resource

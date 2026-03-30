@@ -1,5 +1,5 @@
 extends Resource
-class_name AttackData
+class_name MTAttackData
 
 @export var name: String
 
@@ -13,11 +13,11 @@ class_name AttackData
 @export_range(0.0, 1.0)
 var crit_rate: float = 0.10
 
-@export var element: Element.Type = Element.Type.NORMAL
-@export var damage_type: DamageType.Type = DamageType.Type.PHYSICAL
+@export var element: MTElement.Type = MTElement.Type.NORMAL
+@export var damage_type: MTDamageType.Type = MTDamageType.Type.PHYSICAL
 
 # 🆕 ATTACK LIFESTEAL
 @export_range(0.0, 1.0, 0.01)
 var lifesteal: float = 0.0
 
-@export var stat_changes: Array[StatChangeData] = []
+@export var stat_changes: Array[MTStatChangeData] = []

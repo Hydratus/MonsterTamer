@@ -1,5 +1,5 @@
 extends CharacterBody2D
-class_name PlayerController
+class_name MTPlayerController
 
 @export var display_name: String = "Player"
 

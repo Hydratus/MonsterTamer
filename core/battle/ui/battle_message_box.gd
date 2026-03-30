@@ -1,5 +1,5 @@
 extends PanelContainer
-class_name BattleMessageBox
+class_name MTBattleMessageBox
 
 signal message_completed  # Wird ausgelöst wenn eine Message vollständig angezeigt wurde
 signal all_messages_completed  # Wird ausgelöst wenn alle Messages abgearbeitet wurden

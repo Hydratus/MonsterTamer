@@ -1,5 +1,5 @@
 extends Resource
-class_name TraitLearnData
+class_name MTTraitLearnData
 
 # Der Trait der gelernt wird
 @export var trait_data: Resource

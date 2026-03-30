@@ -1,7 +1,7 @@
 extends CharacterBody2D
-class_name NPCController
+class_name MTNPCController
 
-@export var npc_data: NPCData
+@export var npc_data: MTNPCData
 @export var tile_layer_path: NodePath = NodePath("../Grass")
 @export var anim_idle_prefix: String = "Idle"
 @export var anim_walk_prefix: String = "Walk"
@@ -248,15 +248,15 @@ func build_team() -> Array:
 	for entry in entries:
 		if entry == null:
 			continue
-		var monster_data: MonsterData = entry.get("monster_data") as MonsterData
+		var monster_data: MTMonsterData = entry.get("monster_data") as MTMonsterData
 		if monster_data == null:
 			continue
-		var data: MonsterData = monster_data.duplicate()
+		var data: MTMonsterData = monster_data.duplicate()
 		var entry_level = entry.get("level")
 		if entry_level != null and int(entry_level) > 0:
 			data.level = int(entry_level)
-		var instance: MonsterInstance = MonsterInstance.new(data)
-		instance.decision = AIDecision.new()
+		var instance: MTMonsterInstance = MTMonsterInstance.new(data)
+		instance.decision = MTAIDecision.new()
 		var attacks_override: Array = entry.get("attacks_override")
 		if attacks_override != null and attacks_override.size() > 0:
 			instance.attacks = attacks_override.duplicate()

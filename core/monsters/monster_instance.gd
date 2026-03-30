@@ -1,5 +1,5 @@
 extends RefCounted
-class_name MonsterInstance
+class_name MTMonsterInstance
 
 # ------------------------
 # ENUMS
@@ -19,9 +19,9 @@ enum StatType {
 # ------------------------
 # DATA
 # ------------------------
-var data: MonsterData
-var level: int  # Instanz-spezifisches Level (nicht von MonsterData)
-var decision: BattleDecision = null  # Wird vom Battle gesetzt (PlayerDecision oder AIDecision)
+var data: MTMonsterData
+var level: int  # Instanz-spezifisches Level (nicht von MTMonsterData)
+var decision: MTBattleDecision = null  # Wird vom Battle gesetzt (MTPlayerDecision oder MTAIDecision)
 
 # ------------------------
 # BASE STATS
@@ -63,13 +63,13 @@ var stat_stages := {
 # ------------------------
 # EFFECTS & TRAITS
 # ------------------------
-var active_effects: Array[BattleEffect] = []
-var passive_traits: Array[TraitData] = []
+var active_effects: Array[MTBattleEffect] = []
+var passive_traits: Array[MTTraitData] = []
 
 # ------------------------
 # ATTACKS
 # ------------------------
-var attacks: Array[AttackData] = []
+var attacks: Array[MTAttackData] = []
 
 # ------------------------
 # EXPERIENCE & LEVELING
@@ -78,16 +78,16 @@ var current_exp: int = 0
 var exp_to_next_level: int = 0
 
 # Tracking für Gegner, die dieses Monster bekämpft haben
-var opponents_fought: Array[MonsterInstance] = []
+var opponents_fought: Array[MTMonsterInstance] = []
 
 # ------------------------
 # INIT
 # ------------------------
-func _init(monster_data: MonsterData):
-	# Dupliziere MonsterData, damit jede Instanz ihre eigene Kopie hat
+func _init(monster_data: MTMonsterData):
+	# Dupliziere MTMonsterData, damit jede Instanz ihre eigene Kopie hat
 	# Dies verhindert, dass Änderungen in einer Instanz andere Instanzen beeinflussen
 	data = monster_data.duplicate()
-	level = data.level  # Kopiere das Start-Level von MonsterData
+	level = data.level  # Kopiere das Start-Level von MTMonsterData
 	attacks = data.attacks.duplicate()
 	_apply_learnable_attacks_up_to_level()
 
@@ -137,7 +137,7 @@ func reset_stat_stages():
 
 func modify_stat_stage(stat: int, amount: int) -> int:
 	var before: int = stat_stages[stat]
-	var after: int = StatStage.clamp_stage(before + amount)
+	var after: int = MTStatStage.clamp_stage(before + amount)
 	stat_stages[stat] = after
 	return after - before
 
@@ -160,31 +160,31 @@ func _apply_trait_stat(stat: int, value: int) -> int:
 	return result
 
 func get_max_hp() -> int:
-	var v := int(ceil(max_hp * StatStage.get_multiplier(stat_stages[StatType.MAX_HP])))
+	var v := int(ceil(max_hp * MTStatStage.get_multiplier(stat_stages[StatType.MAX_HP])))
 	return _apply_trait_stat(StatType.MAX_HP, v)
 	
 func get_max_energy() -> int:
-	var v := int(ceil(max_energy * StatStage.get_multiplier(stat_stages[StatType.MAX_ENERGY])))
+	var v := int(ceil(max_energy * MTStatStage.get_multiplier(stat_stages[StatType.MAX_ENERGY])))
 	return _apply_trait_stat(StatType.MAX_ENERGY, v)
 
 func get_strength() -> int:
-	var v := int(ceil(strength * StatStage.get_multiplier(stat_stages[StatType.STRENGTH])))
+	var v := int(ceil(strength * MTStatStage.get_multiplier(stat_stages[StatType.STRENGTH])))
 	return _apply_trait_stat(StatType.STRENGTH, v)
 
 func get_magic() -> int:
-	var v := int(ceil(magic * StatStage.get_multiplier(stat_stages[StatType.MAGIC])))
+	var v := int(ceil(magic * MTStatStage.get_multiplier(stat_stages[StatType.MAGIC])))
 	return _apply_trait_stat(StatType.MAGIC, v)
 
 func get_defense() -> int:
-	var v := int(ceil(defense * StatStage.get_multiplier(stat_stages[StatType.DEFENSE])))
+	var v := int(ceil(defense * MTStatStage.get_multiplier(stat_stages[StatType.DEFENSE])))
 	return _apply_trait_stat(StatType.DEFENSE, v)
 
 func get_resistance() -> int:
-	var v := int(ceil(resistance * StatStage.get_multiplier(stat_stages[StatType.RESISTANCE])))
+	var v := int(ceil(resistance * MTStatStage.get_multiplier(stat_stages[StatType.RESISTANCE])))
 	return _apply_trait_stat(StatType.RESISTANCE, v)
 
 func get_speed() -> int:
-	var v := int(ceil(speed * StatStage.get_multiplier(stat_stages[StatType.SPEED])))
+	var v := int(ceil(speed * MTStatStage.get_multiplier(stat_stages[StatType.SPEED])))
 	return _apply_trait_stat(StatType.SPEED, v)
 
 # ------------------------
@@ -202,7 +202,7 @@ func get_crit_rate_bonus() -> float:
 	return stat_stages[StatType.CRIT_RATE] * 0.05
 
 func get_crit_damage_multiplier() -> float:
-	return crit_damage_multiplier * StatStage.get_multiplier(
+	return crit_damage_multiplier * MTStatStage.get_multiplier(
 		stat_stages[StatType.CRIT_DAMAGE]
 	)
 
@@ -221,7 +221,7 @@ func get_lifesteal() -> float:
 # ------------------------
 # TRAITS
 # ------------------------
-func add_trait(trait_effect: TraitData):
+func add_trait(trait_effect: MTTraitData):
 	if passive_traits.has(trait_effect):
 		return
 	passive_traits.append(trait_effect)
@@ -229,7 +229,7 @@ func add_trait(trait_effect: TraitData):
 # ------------------------
 # EFFECT HANDLING
 # ------------------------
-func apply_effect(effect: BattleEffect):
+func apply_effect(effect: MTBattleEffect):
 	effect.target = self
 	active_effects.append(effect)
 	effect.on_apply()
@@ -247,7 +247,7 @@ func is_alive() -> bool:
 
 func take_damage(amount: int):
 	hp = max(hp - amount, 0)
-	# EXP-Verteilung wird NICHT mehr hier gemacht, sondern in AttackAction nach der Nachricht
+	# EXP-Verteilung wird NICHT mehr hier gemacht, sondern in MTAttackAction nach der Nachricht
 
 func spend_energy(amount: int) -> bool:
 	if energy < amount:
@@ -300,11 +300,11 @@ func on_round_end(logger: Callable = Callable()):
 # ------------------------
 func level_up(logger: Callable = Callable()) -> void:
 	if level >= 100:
-		var msg = "%s is already at max level!" % data.name
+		var max_level_msg: String = "%s is already at max level!" % data.name
 		if logger.is_valid():
-			logger.call(msg)
+			logger.call(max_level_msg)
 		else:
-			print(msg)
+			print(max_level_msg)
 		return
 	
 	level += 1
@@ -312,13 +312,13 @@ func level_up(logger: Callable = Callable()) -> void:
 	hp = get_max_hp()
 	energy = get_max_energy()
 	
-	var msg = "🎉 %s leveled up to level %d! (HP: %d | EN: %d)" % [
+	var level_up_msg: String = "🎉 %s leveled up to level %d! (HP: %d | EN: %d)" % [
 		data.name, level, hp, energy
 	]
 	if logger.is_valid():
-		logger.call(msg)
+		logger.call(level_up_msg)
 	else:
-		print(msg)
+		print(level_up_msg)
 	
 	# Check for evolution
 	evolve_if_ready(logger)
@@ -338,22 +338,22 @@ func can_evolve() -> bool:
 	if data.evolution == null:
 		return false
 	
-	var evolution_data := data.evolution as EvolutionData
+	var evolution_data := data.evolution as MTEvolutionData
 	if evolution_data == null:
 		return false
 	
 	if level < evolution_data.evolution_level:
 		return false
 	
-	var evolved_data := evolution_data.evolved_monster as MonsterData
+	var evolved_data := evolution_data.evolved_monster as MTMonsterData
 	return evolved_data != null
 
 func apply_evolution(logger: Callable = Callable()) -> bool:
 	if not can_evolve():
 		return false
 	
-	var evolution_data := data.evolution as EvolutionData
-	var evolved_data := evolution_data.evolved_monster as MonsterData
+	var evolution_data := data.evolution as MTEvolutionData
+	var evolved_data := evolution_data.evolved_monster as MTMonsterData
 	
 	var old_name := data.name
 	var prev_hp := hp
@@ -431,7 +431,7 @@ func _check_trait_learning(logger: Callable = Callable()) -> void:
 		return
 	
 	for learn_data in available_traits:
-		add_trait(learn_data.trait_data as TraitData)
+		add_trait(learn_data.trait_data as MTTraitData)
 		var msg = "✨ %s learned trait %s!" % [data.name, learn_data.trait_data.name]
 		if logger.is_valid():
 			logger.call(msg)
@@ -443,9 +443,9 @@ func _check_trait_learning(logger: Callable = Callable()) -> void:
 
 # Gain EXP von einem besiegten Monster
 # Verteilt EXP auf mehrere Monster basierend auf wer es bekämpft hat
-func gain_exp(defeated_monster: MonsterInstance, contributing_monsters: Array[MonsterInstance]) -> void:
+func gain_exp(defeated_monster: MTMonsterInstance, contributing_monsters: Array[MTMonsterInstance]) -> void:
 	# Filtere nur lebende Monster
-	var alive_contributors: Array[MonsterInstance] = []
+	var alive_contributors: Array[MTMonsterInstance] = []
 	for monster in contributing_monsters:
 		if monster != null and monster.is_alive():
 			alive_contributors.append(monster)
@@ -468,13 +468,13 @@ func gain_exp(defeated_monster: MonsterInstance, contributing_monsters: Array[Mo
 			monster._check_level_up()
 
 # Tracking: Markiere ein Monster als Gegner in diesem Kampf
-func register_opponent(opponent: MonsterInstance) -> void:
+func register_opponent(opponent: MTMonsterInstance) -> void:
 	if opponent != null and opponent not in opponents_fought:
 		opponents_fought.append(opponent)
 
 # Calculate EXP earned from defeating a monster
 # Formula: (baseExp × (level + 5)) / 7
-func _calculate_earned_exp(defeated_monster: MonsterInstance) -> int:
+func _calculate_earned_exp(defeated_monster: MTMonsterInstance) -> int:
 	var base_exp = defeated_monster.data.base_exp
 	var defeated_level = defeated_monster.level
 	
@@ -489,23 +489,23 @@ func _check_level_up(logger: Callable = Callable()) -> void:
 		exp_to_next_level = _get_required_exp_for_level(level + 1)
 
 # Helper function to calculate required EXP for a level
-func _get_required_exp_for_level(level: int) -> int:
+func _get_required_exp_for_level(target_level: int) -> int:
 	# Growth rates: FAST (×12), NORMAL (×18), SLOW (×24), VERY_SLOW (×30)
 	# 2-3 Kämpfe pro Level-up durchschnittlich
 	var multiplier = 18
 	match data.growth_rate:
-		MonsterData.GrowthType.FAST: multiplier = 12
-		MonsterData.GrowthType.NORMAL: multiplier = 18
-		MonsterData.GrowthType.SLOW: multiplier = 24
-		MonsterData.GrowthType.VERY_SLOW: multiplier = 30
+		MTMonsterData.GrowthType.FAST: multiplier = 12
+		MTMonsterData.GrowthType.NORMAL: multiplier = 18
+		MTMonsterData.GrowthType.SLOW: multiplier = 24
+		MTMonsterData.GrowthType.VERY_SLOW: multiplier = 30
 	
-	return level * multiplier
+	return target_level * multiplier
 
 # Verteile EXP wenn dieses Monster stirbt (Legacy - wird nicht mehr verwendet)
-# Die EXP-Verteilung wird jetzt direkt in AttackAction gehandhabt
-func _distribute_exp_on_death(logger: Callable = Callable()) -> void:
+# Die EXP-Verteilung wird jetzt direkt in MTAttackAction gehandhabt
+func _distribute_exp_on_death(_logger: Callable = Callable()) -> void:
 	pass  # Wird nicht mehr benutzt, aber bleibt für Kompatibilität
 
 # Helper um battle.scene.message_box.flush zu rufen wenn verfügbar
-func _flush_if_battle_available(logger: Callable):
+func _flush_if_battle_available(_logger: Callable):
 	pass  # Nicht mehr benötigt

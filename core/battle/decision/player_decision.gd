@@ -1,2 +1,2 @@
-extends BattleDecision
-class_name PlayerDecision
+extends MTBattleDecision
+class_name MTPlayerDecision

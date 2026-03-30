@@ -1,5 +1,5 @@
 extends Resource
-class_name MonsterData
+class_name MTMonsterData
 
 # Growth rate enum - wie schnell das Monster levelt
 enum GrowthType {
@@ -38,13 +38,13 @@ var base_exp: int = 100
 var base_catch_rate: int = 50
 
 # ELEMENTS
-@export var elements: Array[Element.Type] = []
+@export var elements: Array[MTElement.Type] = []
 
 # ATTACKS
-@export var attacks: Array[AttackData] = []
+@export var attacks: Array[MTAttackData] = []
 
 # TRAITS
-@export var passive_traits: Array[TraitData] = []
+@export var passive_traits: Array[MTTraitData] = []
 
 # EVOLUTION
 @export var evolution: Resource

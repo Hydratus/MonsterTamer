@@ -1,9 +1,9 @@
 extends RefCounted
-class_name DamageCalculator
+class_name MTDamageCalculator
 
-static func calculate_damage(action: BattleAction) -> Dictionary:
-	var attacker: MonsterInstance = action.actor
-	var defender: MonsterInstance = action.target
+static func calculate_damage(action: MTBattleAction) -> Dictionary:
+	var attacker: MTMonsterInstance = action.actor
+	var defender: MTMonsterInstance = action.target
 	print("Traits:", attacker.passive_traits)
 
 	# ----------------------------
@@ -12,7 +12,7 @@ static func calculate_damage(action: BattleAction) -> Dictionary:
 	var attack_stat: int
 	var defense_stat: int
 
-	if action.damage_type == DamageType.Type.PHYSICAL:
+	if action.damage_type == MTDamageType.Type.PHYSICAL:
 		attack_stat = attacker.get_strength()
 		defense_stat = defender.get_defense()
 	else:
@@ -38,7 +38,7 @@ static func calculate_damage(action: BattleAction) -> Dictionary:
 	# ----------------------------
 	# EFFECTIVENESS
 	# ----------------------------
-	var effectiveness: float = TypeChart.get_multiplier(
+	var effectiveness: float = MTTypeChart.get_multiplier(
 		action.attack_element,
 		defender.data.elements
 	)

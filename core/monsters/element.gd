@@ -1,5 +1,5 @@
 extends Resource
-class_name Element
+class_name MTElement
 
 enum Type {
 	NORMAL,

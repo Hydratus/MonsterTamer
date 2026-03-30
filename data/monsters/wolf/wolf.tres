@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="MonsterData" format=3 uid="uid://bn0botltdcede"]
+[gd_resource type="Resource" script_class="MTMonsterData" format=3 uid="uid://bn0botltdcede"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_h80kq"]
 [ext_resource type="Resource" uid="uid://c8ovgmpw0mkpy" path="res://data/moves/FireBite.tres" id="2_mqy4a"]
@@ -28,6 +28,7 @@ base_defense = 20
 base_resistance = 20
 base_speed = 13
 level = 9
+base_exp = 70
 base_catch_rate = 100
 elements = Array[int]([0, 1])
 attacks = Array[ExtResource("1_h80kq")]([ExtResource("2_mqy4a"), ExtResource("3_3hg6l"), ExtResource("4_tbtce"), ExtResource("5_bonu0"), ExtResource("6_mio7g")])

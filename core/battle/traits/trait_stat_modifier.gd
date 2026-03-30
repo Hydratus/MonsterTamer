@@ -1,7 +1,7 @@
 extends Resource
-class_name TraitStatModifier
+class_name MTTraitStatModifier
 
-@export var stat: MonsterInstance.StatType
+@export var stat: MTMonsterInstance.StatType
 
 # Flat Bonus (z. B. +10 Strength)
 @export var flat_bonus: int = 0

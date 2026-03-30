@@ -1,9 +1,11 @@
-extends BattleState
-class_name ResolveActionsState
+extends MTBattleState
+class_name MTResolveActionsState
 
 var current_action_index: int = 0
 
 func enter(battle):
+	battle.escape_resolved = false
+	battle.forced_battle_result = -2
 	# Sortiere die Actions nach Priorität
 	battle.action_queue.sort_custom(func(a, b):
 		# Priority vergleichen (höher = früher)
@@ -47,7 +49,7 @@ func _execute_next_action(battle):
 	
 	# Führe die Action aus
 	if action.has_method("execute"):
-		# Setze battle nur wenn die Property existiert (z.B. BattleAction)
+		# Setze battle nur wenn die Property existiert (z.B. MTBattleAction)
 		if "battle" in action:
 			action.battle = battle
 		action.execute(battle)
@@ -61,6 +63,10 @@ func _execute_next_action(battle):
 func on_messages_completed(battle):
 	# Wird aufgerufen wenn die Messages dieser Action fertig sind
 	# Führe die nächste Action aus
+	if battle.escape_resolved:
+		battle.action_queue.clear()
+		battle.change_state(MTBattleEndState.new())
+		return
 	_execute_next_action(battle)
 
 func _check_battle_end(battle):
@@ -68,6 +74,6 @@ func _check_battle_end(battle):
 	var team_1_alive = battle.teams[1].has_alive_monsters()
 	
 	if not team_0_alive or not team_1_alive:
-		battle.change_state(BattleEndState.new())
+		battle.change_state(MTBattleEndState.new())
 	else:
-		battle.change_state(EndRoundState.new())
+		battle.change_state(MTEndRoundState.new())
