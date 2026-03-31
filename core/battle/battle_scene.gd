@@ -261,6 +261,14 @@ func on_battle_finished(winner_team_index: int) -> void:
 	_restore_reserve_monster_energy()
 	battle_finished.emit(winner_team_index)
 
+func mark_player_participant(monster: MTMonsterInstance) -> void:
+	if monster == null:
+		return
+	_player_participants[monster] = true
+
+func apply_reserve_energy_regen() -> void:
+	_restore_reserve_monster_energy()
+
 func _restore_reserve_monster_energy() -> void:
 	if battle == null:
 		return
@@ -271,6 +279,8 @@ func _restore_reserve_monster_energy() -> void:
 		return
 	for monster in player_team_data.monsters:
 		if monster == null:
+			continue
+		if not monster.is_alive():
 			continue
 		if _player_participants.has(monster):
 			continue

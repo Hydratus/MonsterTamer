@@ -1,4 +1,4 @@
-﻿extends "res://core/world/overworld.gd"
+extends "res://core/world/overworld.gd"
 
 const EncounterEntryClass = preload("res://core/world/encounter_entry.gd")
 const NPCDataClass = preload("res://core/world/npc_data.gd")
@@ -147,18 +147,21 @@ var _last_essence_display: int = -1
 
 #  Life-cycle 
 
+func _log_dungeon(message: String) -> void:
+	_log_debug(message)
+
 func _ready() -> void:
-	print("[Dungeon] _ready() floor=%d  seed=%d" % [current_floor, generation_seed])
+	_log_dungeon("[Dungeon] _ready() floor=%d  seed=%d" % [current_floor, generation_seed])
 	super._ready()
 	_create_merchant_shop_ui()
 	_create_currency_hud()
 	_update_currency_hud(true)
-	print("[Dungeon] grass=%s  dirt=%s  player=%s  npcs=%d" % [
+	_log_dungeon("[Dungeon] grass=%s  dirt=%s  player=%s  npcs=%d" % [
 		str(_grass_layer), str(_dirt_layer), str(_player), _npcs.size()])
 	_cache_special_npcs()
-	print("[Dungeon] stairs=%s  boss=%s" % [str(_stairs_npc), str(_boss_npc)])
+	_log_dungeon("[Dungeon] stairs=%s  boss=%s" % [str(_stairs_npc), str(_boss_npc)])
 	call_deferred("_ensure_initial_floor_generation")
-	print("[Dungeon] _ready() done")
+	_log_dungeon("[Dungeon] _ready() done")
 
 func _process(delta: float) -> void:
 	if _merchant_shop_open:
@@ -336,7 +339,7 @@ func _on_battle_finished(winner_team_index: int) -> void:
 			_set_npc_active(_quest_npc, false, Vector2i.ZERO)
 		_enqueue_message("Quest Complete: You defeated the thief!")
 		_award_quest_rewards()
-		print("[Dungeon] quest completed type=thief")
+		_log_dungeon("[Dungeon] quest completed type=thief")
 	
 	# Track monster kills for hunt quests
 	if winner_team_index == 0 and finished_interaction == "" and _active_quest.get("quest_type", -1) == QUEST_TYPE.MONSTER_HUNT:
@@ -347,7 +350,7 @@ func _on_battle_finished(winner_team_index: int) -> void:
 			if killed >= needed:
 				_active_quest["ready_to_turn_in"] = true
 				_enqueue_message("Hunt complete. Return to the hunter for your reward.")
-				print("[Dungeon] quest hunt ready_to_turn_in kills=%d" % killed)
+				_log_dungeon("[Dungeon] quest hunt ready_to_turn_in kills=%d" % killed)
 	
 	if winner_team_index == 1:
 		_boss_battle_active = false
@@ -382,7 +385,7 @@ func _apply_floor_rules(reset_player: bool) -> void:
 	else:
 		encounter_chance = clamp(
 			base_encounter_chance + float(current_floor - 1) * 0.015, 0.0, 0.35)
-	print("[Dungeon] encounter base=%s effective=%s floor=%d" % [
+	_log_dungeon("[Dungeon] encounter base=%s effective=%s floor=%d" % [
 		str(base_encounter_chance), str(encounter_chance), current_floor])
 	_check_monster_egg_hatch()
 	_generate_floor_layout()
@@ -401,7 +404,7 @@ func _start_random_battle() -> void:
 	# battles are allowed to start in dungeon floors.
 	if base_encounter_chance <= 0.0 or encounter_chance <= 0.0:
 		return
-	print("[Dungeon] encounter source=wild floor=%d chance=%s" % [current_floor, str(encounter_chance)])
+	_log_dungeon("[Dungeon] encounter source=wild floor=%d chance=%s" % [current_floor, str(encounter_chance)])
 	super._start_random_battle()
 
 func _start_npc_battle(npc) -> void:
@@ -410,11 +413,11 @@ func _start_npc_battle(npc) -> void:
 		return
 	var interaction := str(npc.npc_data.interaction_id)
 	if interaction == "elite_pack":
-		print("[Dungeon] encounter source=elite room=%d" % _elite_room_index)
+		_log_dungeon("[Dungeon] encounter source=elite room=%d" % _elite_room_index)
 	elif interaction == "mimic_pack":
-		print("[Dungeon] encounter source=mimic")
+		_log_dungeon("[Dungeon] encounter source=mimic")
 	else:
-		print("[Dungeon] encounter source=npc id=%s" % interaction)
+		_log_dungeon("[Dungeon] encounter source=npc id=%s" % interaction)
 	super._start_npc_battle(npc)
 
 #  Encounter table 
@@ -491,7 +494,7 @@ func _disable_static_npc(npc) -> void:
 
 func _update_special_npcs() -> void:
 	if _room_rects.is_empty():
-		print("[Dungeon] _update_special_npcs: no rooms  skipping")
+		_log_dungeon("[Dungeon] _update_special_npcs: no rooms  skipping")
 		return
 
 	var start_cell := _room_center(_room_rects[0])
@@ -500,7 +503,7 @@ func _update_special_npcs() -> void:
 	var far_cell := _room_center(far_room)
 	_player_spawn_cell = start_cell
 
-	print("[Dungeon] spawn=%s  stairs/boss=%s  world=%s" % [
+	_log_dungeon("[Dungeon] spawn=%s  stairs/boss=%s  world=%s" % [
 		str(start_cell), str(far_cell), str(_cell_to_world(far_cell))])
 
 	if current_floor < floor_count:
@@ -560,7 +563,7 @@ func _prepare_boss_npc() -> void:
 	if upgraded_entries.size() > target_team_size:
 		upgraded_entries = upgraded_entries.slice(0, target_team_size)
 	boss_data.team_entries = upgraded_entries
-	print("[Dungeon] boss team prepared size=%d" % boss_data.team_entries.size())
+	_log_dungeon("[Dungeon] boss team prepared size=%d" % boss_data.team_entries.size())
 	_boss_npc.npc_data = boss_data
 
 #  Dynamic NPC spawning 
@@ -574,7 +577,7 @@ func _spawn_floor_npcs() -> void:
 	for cell in _floor_cells:
 		if _is_safe_npc_spawn_cell(cell) and not _is_chokepoint_cell(cell):
 			valid_spawn_cells += 1
-	print("[Dungeon] npc_spawn candidates=%d floor_cells=%d rooms=%d corridors=%d" % [
+	_log_dungeon("[Dungeon] npc_spawn candidates=%d floor_cells=%d rooms=%d corridors=%d" % [
 		valid_spawn_cells, _floor_cells.size(), _room_cells_lookup.size(), _corridor_cells_lookup.size()])
 
 	var reserved: Dictionary = {}
@@ -615,7 +618,7 @@ func _spawn_event_object(reserved: Dictionary) -> void:
 		5: event_data = _create_monster_egg_npc_data()
 		_: event_data = _create_cursed_altar_npc_data()
 	_spawn_dynamic_npc(cell, event_data)
-	print("[Dungeon] event object spawned type=%d cell=%s" % [event_type, str(cell)])
+	_log_dungeon("[Dungeon] event object spawned type=%d cell=%s" % [event_type, str(cell)])
 
 func _spawn_loose_items(reserved: Dictionary) -> void:
 	var count: int = _rng.randi_range(0, loose_item_max_count)
@@ -630,7 +633,7 @@ func _spawn_loose_items(reserved: Dictionary) -> void:
 		var item_id := _pick_or_create_random_item()
 		_spawn_dynamic_npc(cell, _create_loose_item_npc_data(item_id))
 	if count > 0:
-		print("[Dungeon] loose items spawned count=%d" % count)
+		_log_dungeon("[Dungeon] loose items spawned count=%d" % count)
 
 func _spawn_secret_vault(reserved: Dictionary) -> void:
 	if current_floor >= floor_count:
@@ -645,7 +648,7 @@ func _spawn_secret_vault(reserved: Dictionary) -> void:
 		return
 	reserved[cell] = true
 	_spawn_dynamic_npc(cell, _create_secret_vault_npc_data())
-	print("[Dungeon] secret vault spawned cell=%s" % str(cell))
+	_log_dungeon("[Dungeon] secret vault spawned cell=%s" % str(cell))
 
 func _spawn_elite_room_npc(reserved: Dictionary) -> void:
 	if _current_floor_goal != FLOOR_GOAL_TYPE.ELITE:
@@ -653,7 +656,7 @@ func _spawn_elite_room_npc(reserved: Dictionary) -> void:
 		return
 	if current_floor >= floor_count:
 		_elite_cleared_this_floor = true
-		print("[Dungeon] elite disabled on boss floor")
+		_log_dungeon("[Dungeon] elite disabled on boss floor")
 		return
 	if _elite_room_index < 0 or _elite_room_index >= _room_rects.size():
 		_elite_cleared_this_floor = true
@@ -661,7 +664,7 @@ func _spawn_elite_room_npc(reserved: Dictionary) -> void:
 	var cell := _pick_cell_in_room(_elite_room_index, reserved)
 	if cell == Vector2i(-1, -1):
 		_elite_cleared_this_floor = true
-		print("[Dungeon] elite room has no valid spawn cell; unlocking stairs")
+		_log_dungeon("[Dungeon] elite room has no valid spawn cell; unlocking stairs")
 		return
 	reserved[cell] = true
 	_spawn_dynamic_npc(cell, _create_elite_npc_data())
@@ -680,7 +683,7 @@ func _spawn_mimic_npc(reserved: Dictionary) -> void:
 		return
 	reserved[cell] = true
 	_spawn_dynamic_npc(cell, _create_mimic_npc_data())
-	print("[Dungeon] mimic spawned room=%d cell=%s" % [room_index, str(cell)])
+	_log_dungeon("[Dungeon] mimic spawned room=%d cell=%s" % [room_index, str(cell)])
 
 func _spawn_puzzle_switches(reserved: Dictionary) -> void:
 	if _current_floor_goal != FLOOR_GOAL_TYPE.PUZZLE:
@@ -692,16 +695,16 @@ func _spawn_puzzle_switches(reserved: Dictionary) -> void:
 	for i in range(_switches_total):
 		var room_index: int = _pick_normal_room_index()
 		if room_index < 0:
-			print("[Dungeon] puzzle: no valid room for switch %d" % (i + 1))
+			_log_dungeon("[Dungeon] puzzle: no valid room for switch %d" % (i + 1))
 			continue
 		var cell := _pick_cell_in_room(room_index, reserved)
 		if cell == Vector2i(-1, -1):
-			print("[Dungeon] puzzle: no valid cell in room %d for switch %d" % [room_index, i + 1])
+			_log_dungeon("[Dungeon] puzzle: no valid cell in room %d for switch %d" % [room_index, i + 1])
 			continue
 		reserved[cell] = true
 		var switch_data := _create_puzzle_switch_npc_data(i + 1)
 		_spawn_dynamic_npc(cell, switch_data)
-		print("[Dungeon] puzzle switch %d spawned at cell=%s" % [i + 1, str(cell)])
+		_log_dungeon("[Dungeon] puzzle switch %d spawned at cell=%s" % [i + 1, str(cell)])
 
 func _spawn_key_npc(reserved: Dictionary) -> void:
 	if _current_floor_goal != FLOOR_GOAL_TYPE.KEY:
@@ -710,17 +713,17 @@ func _spawn_key_npc(reserved: Dictionary) -> void:
 	# Pick a random normal room for the key
 	var room_index: int = _pick_normal_room_index()
 	if room_index < 0:
-		print("[Dungeon] key: no valid room found")
+		_log_dungeon("[Dungeon] key: no valid room found")
 		return
 	
 	var cell := _pick_cell_in_room(room_index, reserved)
 	if cell == Vector2i(-1, -1):
-		print("[Dungeon] key: no valid cell in room %d" % room_index)
+		_log_dungeon("[Dungeon] key: no valid cell in room %d" % room_index)
 		return
 	
 	reserved[cell] = true
 	_spawn_dynamic_npc(cell, _create_key_npc_data())
-	print("[Dungeon] key spawned at cell=%s in room=%d" % [str(cell), room_index])
+	_log_dungeon("[Dungeon] key spawned at cell=%s in room=%d" % [str(cell), room_index])
 
 func _pick_normal_room_index() -> int:
 	var candidates: Array[int] = []
@@ -1026,7 +1029,7 @@ func _generate_floor_layout() -> void:
 	_event_room_index = -1
 	_elite_cleared_this_floor = false
 	_reset_floor_quest_state()
-	print("[Dungeon] generating floor %d/%d  seed=%d" % [current_floor, floor_count, _rng.seed])
+	_log_dungeon("[Dungeon] generating floor %d/%d  seed=%d" % [current_floor, floor_count, _rng.seed])
 
 	var carved := {}
 	var target_rooms := _rng.randi_range(min_room_count, max_room_count)
@@ -1059,7 +1062,7 @@ func _generate_floor_layout() -> void:
 	_floor_cells.clear()
 	for cell_key in carved.keys():
 		_floor_cells.append(cell_key)
-	print("[Dungeon] %d rooms  %d floor cells" % [_room_rects.size(), _floor_cells.size()])
+	_log_dungeon("[Dungeon] %d rooms  %d floor cells" % [_room_rects.size(), _floor_cells.size()])
 
 #  Tile-map painting 
 #
@@ -1074,9 +1077,9 @@ func _generate_floor_layout() -> void:
 # explicitly painted cells are passable.
 #
 func _apply_layout_to_tilemaps() -> void:
-	print("[Dungeon] _apply_layout_to_tilemaps  cells=%d" % _floor_cells.size())
+	_log_dungeon("[Dungeon] _apply_layout_to_tilemaps  cells=%d" % _floor_cells.size())
 	if _grass_layer == null or _dirt_layer == null:
-		print("[Dungeon] ERROR: tile layer is null  aborting")
+		_log_dungeon("[Dungeon] ERROR: tile layer is null  aborting")
 		return
 
 	# Resolve a visible floor tile first. If the exported atlas is blank,
@@ -1096,7 +1099,7 @@ func _apply_layout_to_tilemaps() -> void:
 	for cell in _floor_cells:
 		_dirt_layer.set_cell(cell, paint_source_id, paint_atlas)
 
-	print("[Dungeon] painted %d floor tiles (src=%d  atlas=%s)" % [
+	_log_dungeon("[Dungeon] painted %d floor tiles (src=%d  atlas=%s)" % [
 		_floor_cells.size(), paint_source_id, str(paint_atlas)])
 
 func _sample_existing_floor_tile() -> Dictionary:
@@ -1180,7 +1183,7 @@ func _assign_room_roles() -> void:
 			continue
 		candidates.append(i)
 	if candidates.is_empty():
-		print("[Dungeon] room roles: only start/exit available")
+		_log_dungeon("[Dungeon] room roles: only start/exit available")
 		return
 
 	candidates.sort_custom(func(a: int, b: int):
@@ -1191,7 +1194,7 @@ func _assign_room_roles() -> void:
 		_elite_room_index = candidates[0]
 		_room_type_by_index[_elite_room_index] = ROOM_TYPE_ELITE
 
-	print("[Dungeon] room roles start=%d exit=%d elite=%d" % [
+	_log_dungeon("[Dungeon] room roles start=%d exit=%d elite=%d" % [
 		start_index, exit_index, _elite_room_index])
 
 func _assign_floor_goals() -> void:
@@ -1205,7 +1208,7 @@ func _assign_floor_goals() -> void:
 	# Boss floor has no stair objective events (key/switch/elite).
 	if current_floor >= floor_count:
 		_current_floor_goal = FLOOR_GOAL_TYPE.OPEN
-		print("[Dungeon] floor goal=OPEN (boss floor)")
+		_log_dungeon("[Dungeon] floor goal=OPEN (boss floor)")
 		return
 	
 	# Assign goal based on probabilities (50% open, 30% elite, 10% key, 10% puzzle)
@@ -1215,14 +1218,14 @@ func _assign_floor_goals() -> void:
 	# Open (50%)
 	if roll < cumulative + goal_prob_open:
 		_current_floor_goal = FLOOR_GOAL_TYPE.OPEN
-		print("[Dungeon] floor goal=OPEN")
+		_log_dungeon("[Dungeon] floor goal=OPEN")
 		return
 	cumulative += goal_prob_open
 	
 	# Elite (30%)
 	if roll < cumulative + goal_prob_elite:
 		_current_floor_goal = FLOOR_GOAL_TYPE.ELITE
-		print("[Dungeon] floor goal=ELITE")
+		_log_dungeon("[Dungeon] floor goal=ELITE")
 		return
 	cumulative += goal_prob_elite
 	
@@ -1230,7 +1233,7 @@ func _assign_floor_goals() -> void:
 	if roll < cumulative + goal_prob_key:
 		_current_floor_goal = FLOOR_GOAL_TYPE.KEY
 		_floor_goal_state["key_found"] = false
-		print("[Dungeon] floor goal=KEY")
+		_log_dungeon("[Dungeon] floor goal=KEY")
 		return
 	cumulative += goal_prob_key
 	
@@ -1240,7 +1243,7 @@ func _assign_floor_goals() -> void:
 	_switches_activated = 0
 	_floor_goal_state["switches_activated"] = 0
 	_floor_goal_state["switches_total"] = 3
-	print("[Dungeon] floor goal=PUZZLE switches_total=3")
+	_log_dungeon("[Dungeon] floor goal=PUZZLE switches_total=3")
 
 func _get_farthest_room_index(origin_index: int) -> int:
 	if _room_rects.is_empty():
@@ -1305,7 +1308,7 @@ func _handle_healing_spring(npc) -> bool:
 	var energized := _restore_party_energy_percent(0.40)
 	_set_npc_active(npc, false, Vector2i.ZERO)
 	_enqueue_message("Healing Spring: Your team is refreshed. (%d healed, %d recharged)" % [healed, energized])
-	print("[Dungeon] healing spring used healed=%d energized=%d" % [healed, energized])
+	_log_dungeon("[Dungeon] healing spring used healed=%d energized=%d" % [healed, energized])
 	return true
 
 func _handle_gold_stash(npc) -> bool:
@@ -1314,7 +1317,7 @@ func _handle_gold_stash(npc) -> bool:
 	if Game != null:
 		Game.add_run_gold(amount)
 	_enqueue_message("You found a gold stash! Gold +%d" % amount)
-	print("[Dungeon] gold stash amount=%d" % amount)
+	_log_dungeon("[Dungeon] gold stash amount=%d" % amount)
 	return true
 
 func _handle_essence_cache(npc) -> bool:
@@ -1323,7 +1326,7 @@ func _handle_essence_cache(npc) -> bool:
 	if Game != null:
 		Game.add_soul_essence(amount)
 	_enqueue_message("Soul Essence Cache: You absorb the power. Soul Essence +%d" % amount)
-	print("[Dungeon] essence cache amount=%d" % amount)
+	_log_dungeon("[Dungeon] essence cache amount=%d" % amount)
 	return true
 
 func _handle_status_trap(npc) -> bool:
@@ -1341,7 +1344,7 @@ func _handle_status_trap(npc) -> bool:
 		m.hp = max(1, m.hp - damage)
 		var mname := m.data.name if m.data != null else "Monster"
 		_enqueue_message("It's a trap! %s lost %d HP!" % [mname, damage])
-		print("[Dungeon] status trap triggered hp_lost=%d" % damage)
+		_log_dungeon("[Dungeon] status trap triggered hp_lost=%d" % damage)
 		break
 	return true
 
@@ -1350,7 +1353,7 @@ func _handle_monster_egg(npc) -> bool:
 	if Game != null:
 		Game.add_item("monster_egg", 1)
 	_enqueue_message("You found a Monster Egg! It will hatch on the next floor.")
-	print("[Dungeon] monster egg picked up")
+	_log_dungeon("[Dungeon] monster egg picked up")
 	return true
 
 func _handle_cursed_altar(npc) -> bool:
@@ -1372,7 +1375,7 @@ func _handle_cursed_altar(npc) -> bool:
 	Game.add_soul_essence(1)
 	Game.add_run_gold(gold_gain)
 	_enqueue_message("Cursed Altar: Your team suffers %d total damage... Soul Essence +1, Gold +%d." % [total_lost, gold_gain])
-	print("[Dungeon] cursed altar used hp_lost=%d gold=%d" % [total_lost, gold_gain])
+	_log_dungeon("[Dungeon] cursed altar used hp_lost=%d gold=%d" % [total_lost, gold_gain])
 	return true
 
 func _handle_secret_vault(npc) -> bool:
@@ -1390,7 +1393,7 @@ func _handle_secret_vault(npc) -> bool:
 		Game.add_run_gold(gold)
 		Game.add_soul_essence(2)
 	_enqueue_message("Secret Vault opened! Found items, Gold +%d, and Soul Essence +2!" % gold)
-	print("[Dungeon] secret vault opened gold=%d" % gold)
+	_log_dungeon("[Dungeon] secret vault opened gold=%d" % gold)
 	return true
 
 func _check_monster_egg_hatch() -> void:
@@ -1409,7 +1412,7 @@ func _check_monster_egg_hatch() -> void:
 	new_monster.hp = new_monster.get_max_hp()
 	Game.party.append(new_monster)
 	_enqueue_message("Your Monster Egg hatched! %s joined your team!" % monster_data.name)
-	print("[Dungeon] monster egg hatched monster=%s level=%d" % [monster_data.name, new_monster.level])
+	_log_dungeon("[Dungeon] monster egg hatched monster=%s level=%d" % [monster_data.name, new_monster.level])
 
 #  Floor Goal System 
 
@@ -1450,12 +1453,12 @@ func _handle_puzzle_switch_interaction(npc, interaction: String) -> bool:
 	
 	var progress_msg := "Switch %d activated! (%d/%d)" % [switch_num, _switches_activated, _switches_total]
 	_enqueue_message(progress_msg)
-	print("[Dungeon] puzzle switch %d activated progress=%d/%d" % [switch_num, _switches_activated, _switches_total])
+	_log_dungeon("[Dungeon] puzzle switch %d activated progress=%d/%d" % [switch_num, _switches_activated, _switches_total])
 	
 	# Check if all switches are activated
 	if _switches_activated >= _switches_total:
 		_enqueue_message("All switches activated! The stairs are now open.")
-		print("[Dungeon] puzzle completed all switches activated")
+		_log_dungeon("[Dungeon] puzzle completed all switches activated")
 	
 	return true
 
@@ -1506,7 +1509,7 @@ func _maybe_spawn_quest_npc() -> void:
 		_spawn_delivery_quest_item(cell)
 	
 	var quest_names := ["Item Delivery", "Monster Hunt", "Thief Ambush"]
-	print("[Dungeon] quest spawned type=%s cell=%s" % [quest_names[quest_type], str(cell)])
+	_log_dungeon("[Dungeon] quest spawned type=%s cell=%s" % [quest_names[quest_type], str(cell)])
 
 func _create_quest_npc_data(quest_type: int) -> MTNPCData:
 	var data := NPCDataClass.new()
@@ -1577,7 +1580,7 @@ func _spawn_delivery_quest_item(quest_cell: Vector2i) -> void:
 	_active_quest["delivery_item_id"] = delivery_item_id
 	_spawn_dynamic_npc(cell, _create_delivery_quest_item_npc_data())
 	_quest_item_npc = _dynamic_npcs[-1] if _dynamic_npcs.size() > 0 else null
-	print("[Dungeon] delivery item spawned id=%s cell=%s" % [delivery_item_id, str(cell)])
+	_log_dungeon("[Dungeon] delivery item spawned id=%s cell=%s" % [delivery_item_id, str(cell)])
 
 func _create_delivery_quest_item_npc_data() -> MTNPCData:
 	var data := NPCDataClass.new()
@@ -1610,7 +1613,7 @@ func _handle_quest_delivery(npc) -> bool:
 	_enqueue_message("Quest Complete: You returned the lost satchel.")
 	_award_quest_rewards()
 	_enqueue_message("Merchant unlocked: Trade with run gold is now available.")
-	print("[Dungeon] quest completed type=delivery")
+	_log_dungeon("[Dungeon] quest completed type=delivery")
 	return true
 
 func _handle_quest_hunt(_npc) -> bool:
@@ -1618,7 +1621,7 @@ func _handle_quest_hunt(_npc) -> bool:
 		_active_quest["accepted"] = true
 		var target_count: int = _active_quest.get("monsters_needed", 2)
 		_enqueue_message("Hunter Quest accepted: Defeat %d wild encounters on this floor." % target_count)
-		print("[Dungeon] quest hunt accepted target=%d" % target_count)
+		_log_dungeon("[Dungeon] quest hunt accepted target=%d" % target_count)
 		return true
 	if _active_quest.get("ready_to_turn_in", false):
 		_active_quest["completed"] = true
@@ -1627,13 +1630,13 @@ func _handle_quest_hunt(_npc) -> bool:
 			_set_npc_active(_quest_npc, false, Vector2i.ZERO)
 		_enqueue_message("Quest Complete: The hunter rewards your work.")
 		_award_quest_rewards()
-		print("[Dungeon] quest completed type=hunt")
+		_log_dungeon("[Dungeon] quest completed type=hunt")
 		return true
 	# Hunt quest status
 	var needed: int = _active_quest.get("monsters_needed", 2)
 	var killed: int = _active_quest.get("monsters_killed", 0)
 	_enqueue_message("Hunt Quest: %d/%d encounters defeated. Return when the hunt is done." % [killed, needed])
-	print("[Dungeon] quest hunt status=%d/%d" % [killed, needed])
+	_log_dungeon("[Dungeon] quest hunt status=%d/%d" % [killed, needed])
 	return true
 
 func _handle_quest_delivery_item(npc) -> bool:
@@ -1645,7 +1648,7 @@ func _handle_quest_delivery_item(npc) -> bool:
 		_set_npc_active(npc, false, Vector2i.ZERO)
 	_active_quest["ready_to_turn_in"] = true
 	_enqueue_message("You found the lost satchel. Return it to the merchant.")
-	print("[Dungeon] quest delivery item picked id=%s" % delivery_item_id)
+	_log_dungeon("[Dungeon] quest delivery item picked id=%s" % delivery_item_id)
 	return true
 
 func _handle_quest_thief(_npc) -> bool:
@@ -1659,10 +1662,10 @@ func _award_quest_rewards() -> void:
 		Game.add_run_gold(quest_reward_gold)
 		Game.add_soul_essence(quest_reward_soul_essence)
 		_enqueue_message("Received %d gold and %d Soul Essence!" % [quest_reward_gold, quest_reward_soul_essence])
-		print("[Dungeon] quest reward gold=%d essence=%d" % [quest_reward_gold, quest_reward_soul_essence])
+		_log_dungeon("[Dungeon] quest reward gold=%d essence=%d" % [quest_reward_gold, quest_reward_soul_essence])
 	else:
 		_enqueue_message("Quest rewarded! (Game singleton not found)")
-		print("[Dungeon] quest reward failed - Game not initialized")
+		_log_dungeon("[Dungeon] quest reward failed - Game not initialized")
 
 func _reset_floor_quest_state() -> void:
 	var old_delivery_item_id: String = str(_active_quest.get("delivery_item_id", ""))
@@ -1806,7 +1809,7 @@ func _on_merchant_buy_pressed(index: int) -> void:
 	if item_data != null:
 		item_name = item_data.name
 	_merchant_shop_status.text = "Bought %s for %d gold." % [item_name, price]
-	print("[Dungeon] merchant sale item=%s price=%d run_gold=%d" % [item_id, price, Game.run_gold])
+	_log_dungeon("[Dungeon] merchant sale item=%s price=%d run_gold=%d" % [item_id, price, Game.run_gold])
 	_rebuild_merchant_shop_buttons()
 	if _merchant_shop_buttons.size() > 0:
 		_merchant_shop_buttons[0].grab_focus()
@@ -1901,7 +1904,7 @@ func _handle_key_interaction(npc) -> bool:
 	_set_npc_active(npc, false, Vector2i.ZERO)
 	
 	_enqueue_message("You found the key! The stairs are now accessible.")
-	print("[Dungeon] key found and picked up")
+	_log_dungeon("[Dungeon] key found and picked up")
 	
 	return true
 
@@ -1933,6 +1936,8 @@ func _restore_party_energy_percent(ratio: float) -> int:
 		if not (monster is MTMonsterInstance):
 			continue
 		var m := monster as MTMonsterInstance
+		if not m.is_alive():
+			continue
 		var max_energy := m.get_max_energy()
 		if max_energy <= 0:
 			continue

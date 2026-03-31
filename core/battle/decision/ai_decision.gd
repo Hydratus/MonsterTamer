@@ -1,13 +1,15 @@
 extends MTBattleDecision
 class_name MTAIDecision
 
-func decide(monster: MTMonsterInstance, battle: MTBattleController):
+const RestActionClass = preload("res://core/battle/actions/rest_action.gd")
+
+func decide(monster: MTMonsterInstance, battle: MTBattleController) -> MTBattleAction:
 	if monster.attacks.is_empty():
-		return _basic_attack(monster, battle)
+		return _create_rest_action(monster, battle)
 
 	var attack: MTAttackData = _choose_attack(monster)
 	if attack == null:
-		return _basic_attack(monster, battle)
+		return _create_rest_action(monster, battle)
 
 	return _create_attack_action(monster, attack, battle)
 
@@ -21,7 +23,7 @@ func _basic_attack(
 ) -> MTBattleAction:
 
 	# Bestimme das gegnerische Team dynamisch
-	var team_index = -1
+	var team_index: int = -1
 	for i in range(battle.teams.size()):
 		if battle.teams[i].get_active_monster() == monster:
 			team_index = i
@@ -30,7 +32,7 @@ func _basic_attack(
 	if team_index == -1:
 		return null
 	
-	var opponent_team = battle.get_opponent_team(team_index)
+	var opponent_team: MTMonsterTeam = battle.get_opponent_team(team_index)
 	if opponent_team == null:
 		return null
 
@@ -59,7 +61,22 @@ func _basic_attack(
 # Angriffsauswahl
 # --------------------------------------------------
 func _choose_attack(monster: MTMonsterInstance) -> MTAttackData:
-	return monster.attacks.pick_random()
+	var usable_attacks: Array[MTAttackData] = []
+	for attack in monster.attacks:
+		if attack == null:
+			continue
+		if monster.energy >= attack.energy_cost:
+			usable_attacks.append(attack)
+	if usable_attacks.is_empty():
+		return null
+	return usable_attacks.pick_random()
+
+func _create_rest_action(monster: MTMonsterInstance, _battle: MTBattleController) -> MTBattleAction:
+	var action: MTBattleAction = RestActionClass.new()
+	action.actor = monster
+	action.priority = 0
+	action.initiative = monster.get_speed()
+	return action
 
 
 # --------------------------------------------------
@@ -72,7 +89,7 @@ func _create_attack_action(
 ) -> MTBattleAction:
 
 	# Bestimme das gegnerische Team dynamisch
-	var team_index = -1
+	var team_index: int = -1
 	for i in range(battle.teams.size()):
 		if battle.teams[i].get_active_monster() == monster:
 			team_index = i
@@ -81,7 +98,7 @@ func _create_attack_action(
 	if team_index == -1:
 		return null
 	
-	var opponent_team = battle.get_opponent_team(team_index)
+	var opponent_team: MTMonsterTeam = battle.get_opponent_team(team_index)
 	if opponent_team == null:
 		return null
 

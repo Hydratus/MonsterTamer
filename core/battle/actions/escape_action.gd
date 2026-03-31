@@ -12,7 +12,7 @@ func execute(controller = null) -> Variant:
 	if opponent == null:
 		return null
 
-	var chance: float = _calculate_escape_chance(actor, opponent)
+	var chance: float = calculate_escape_chance(actor, opponent)
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	var roll: float = rng.randf_range(0.0, 100.0)
@@ -29,7 +29,7 @@ func execute(controller = null) -> Variant:
 
 	return null
 
-func _calculate_escape_chance(player_monster: MTMonsterInstance, wild_monster: MTMonsterInstance) -> float:
+static func calculate_escape_chance(player_monster: MTMonsterInstance, wild_monster: MTMonsterInstance) -> float:
 	var player_initiative: float = float(player_monster.get_speed())
 	var enemy_initiative: float = float(wild_monster.get_speed())
 	var player_level: float = float(player_monster.level)

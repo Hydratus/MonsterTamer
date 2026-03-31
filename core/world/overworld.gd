@@ -25,6 +25,7 @@ const META_UNLOCK_OPTIONS: Array[Dictionary] = [
 @export var anim_left: String = "Left"
 @export var anim_right: String = "Right"
 @export var encounter_chance: float = 0.10
+@export var debug_logs: bool = false
 @export var encounter_table: Array[MTEncounterEntry] = []
 @export var starter_team: Array[MTMonsterData] = []
 @export var dungeon_options: Array[Dictionary] = [
@@ -98,6 +99,10 @@ var _dungeon_menu_title: Label
 var _dungeon_menu_container: VBoxContainer
 var _dungeon_menu_open := false
 var _dungeon_menu_buttons: Array[Button] = []
+
+func _log_debug(message: String) -> void:
+	if debug_logs:
+		print("[World] %s" % message)
 
 func _ready() -> void:
 	_rng.randomize()
@@ -442,7 +447,7 @@ func _on_dungeon_button_pressed(index: int) -> void:
 	var payload: Dictionary = {}
 	if option.has("payload") and option["payload"] is Dictionary:
 		payload = option["payload"]
-	print("[DungeonMenu] selected=%s scene=%s payload=%s" % [
+	_log_debug("[DungeonMenu] selected=%s scene=%s payload=%s" % [
 		str(option.get("name", "Dungeon")), scene_path, str(payload)])
 	if Game != null:
 		Game.flags["dungeon_run_active"] = false

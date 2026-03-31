@@ -88,9 +88,23 @@ const DEFAULT_CONTROLLER: Dictionary = {
 	"pause_menu": GAMEPAD_BTN_START
 }
 
+const MOVEMENT_WASD_KEYS: Dictionary = {
+	"ui_up": KEY_W,
+	"ui_down": KEY_S,
+	"ui_left": KEY_A,
+	"ui_right": KEY_D
+}
+
+const MOVEMENT_ARROW_KEYS: Dictionary = {
+	"ui_up": KEY_UP,
+	"ui_down": KEY_DOWN,
+	"ui_left": KEY_LEFT,
+	"ui_right": KEY_RIGHT
+}
+
 @onready var _team_panel: Control = $Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/TeamPanel as Control
 @onready var _settings_panel: Control = $Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/SettingsPanel as Control
-@onready var _items_panel: Control = $Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/ItemsPanel as Control
+@onready var _inventory_panel: Control = $Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/InventoryPanel as Control
 @onready var _settings_tabs: TabContainer = $Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/SettingsPanel/SettingsTabs as TabContainer
 @onready var _team_list: VBoxContainer = $Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/TeamPanel/TeamScroll/TeamList as VBoxContainer
 @onready var _team_scroll: ScrollContainer = $Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/TeamPanel/TeamScroll as ScrollContainer
@@ -101,10 +115,10 @@ const DEFAULT_CONTROLLER: Dictionary = {
 @onready var _controls_scroll: ScrollContainer = $Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/SettingsPanel/SettingsTabs/Controls/ControlsScroll as ScrollContainer
 @onready var _team_button: Button = $Root/Window/WindowVBox/ContentRow/Sidebar/ButtonTeam as Button
 @onready var _settings_button: Button = $Root/Window/WindowVBox/ContentRow/Sidebar/ButtonSettings as Button
-@onready var _items_button: Button = $Root/Window/WindowVBox/ContentRow/Sidebar/ButtonItems as Button
+@onready var _inventory_button: Button = $Root/Window/WindowVBox/ContentRow/Sidebar/ButtonInventory as Button
 @onready var _close_button: Button = $Root/Window/WindowVBox/ContentRow/Sidebar/ButtonClose as Button
 @onready var _end_game_button: Button = $Root/Window/WindowVBox/ContentRow/Sidebar/ButtonEndGame as Button
-@onready var _item_menu: ItemMenuClass = $Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/ItemsPanel/ItemMenu as ItemMenuClass
+@onready var _item_menu: ItemMenuClass = $Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/InventoryPanel/ItemMenu as ItemMenuClass
 
 var _mode_option: OptionButton
 var _resolution_option: OptionButton
@@ -135,6 +149,10 @@ var _controls_tab_index := -1
 var _last_team: Array = []
 var _overlay_message_active := false
 var _inputmap_defaults: Dictionary = {}
+var _last_item_tab: int = 0
+var _settings_control_active := false
+var _settings_nav_controls: Array[Control] = []
+var _settings_nav_focus_index := 0
 
 const ACTION_ALIASES: Dictionary = {
 	"ui_up": "up",
@@ -171,17 +189,17 @@ func _ready() -> void:
 	_settings_tabs.tab_changed.connect(_on_settings_tab_changed)
 	_team_button.pressed.connect(_on_team_pressed)
 	_settings_button.pressed.connect(_on_settings_pressed)
-	_items_button.pressed.connect(_on_items_pressed)
+	_inventory_button.pressed.connect(_on_inventory_pressed)
 	_close_button.pressed.connect(_on_close_pressed)
 	_end_game_button.pressed.connect(_on_end_game_pressed)
 	_team_button.focus_entered.connect(func(): _on_sidebar_focus("team"))
 	_settings_button.focus_entered.connect(func(): _on_sidebar_focus("settings"))
-	_items_button.focus_entered.connect(func(): _on_sidebar_focus("items"))
+	_inventory_button.focus_entered.connect(func(): _on_sidebar_focus("inventory"))
 	_close_button.focus_entered.connect(func(): _on_sidebar_focus("close"))
 	_end_game_button.focus_entered.connect(func(): _on_sidebar_focus("end_game"))
-	_sidebar_buttons = [_team_button, _items_button, _settings_button, _close_button, _end_game_button]
+	_sidebar_buttons = [_team_button, _inventory_button, _settings_button, _close_button, _end_game_button]
 	_item_menu.item_used.connect(_on_item_used)
-	_item_menu.closed.connect(_on_items_closed)
+	_item_menu.tab_changed.connect(func(index: int): _last_item_tab = index)
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 	_ensure_reset_dialog()
 	_build_video_tab()
@@ -190,32 +208,27 @@ func _ready() -> void:
 	_capture_inputmap_defaults()
 	_load_settings()
 	_ensure_actions_from_defaults()
+	_enforce_preferred_global_bindings()
 	_apply_all_settings()
 	_show_section("team")
 
-func _enter_items() -> void:
-	_items_to_tabs()
-
-func _items_to_tabs() -> void:
-	_show_section("items")
-	_active_section = "items"
+func _enter_inventory() -> void:
+	_show_section("inventory")
+	_active_section = "inventory"
 	_in_content = false
 	_menu_level = "tabs"
 	_set_sidebar_focus_enabled(false)
-	_set_items_focus_enabled(false)
-	_item_menu.select_tab(ItemDataClass.Category.ACTIVE)
+	_set_inventory_focus_enabled(false)
+	_item_menu.select_tab(_last_item_tab)
 	_item_menu.open_inventory(_last_team, false, false)
 	_item_menu.set_allow_enter_from_tabs(false)
-	_item_menu.set_tabs_focus_enabled(true)
-	_item_menu.set_auto_focus_content(false)
-	call_deferred("_focus_item_tabs")
-
-func _focus_item_tabs() -> void:
-	_item_menu.grab_tabs_focus()
-
-func _items_to_content() -> void:
 	_item_menu.set_tabs_focus_enabled(false)
-	_set_items_focus_enabled(true)
+	_item_menu.set_auto_focus_content(false)
+	_inventory_to_content()
+
+func _inventory_to_content() -> void:
+	_item_menu.set_tabs_focus_enabled(false)
+	_set_inventory_focus_enabled(true)
 	_item_menu.set_auto_focus_content(true)
 	_item_menu.set_allow_enter_from_tabs(true)
 	_item_menu.refresh()
@@ -223,21 +236,17 @@ func _items_to_content() -> void:
 	_menu_level = "content"
 	_in_content = true
 
-func _items_to_sidebar() -> void:
+func _inventory_to_sidebar() -> void:
 	_in_content = false
 	_menu_level = "sidebar"
 	_item_menu.set_tabs_focus_enabled(false)
-	_set_items_focus_enabled(false)
+	_set_inventory_focus_enabled(false)
 	_item_menu.set_allow_enter_from_tabs(false)
 	_set_sidebar_focus_enabled(true)
-	_items_button.grab_focus()
+	_inventory_button.grab_focus()
 
-func _set_items_focus_enabled(enabled: bool) -> void:
+func _set_inventory_focus_enabled(enabled: bool) -> void:
 	_item_menu.set_focus_enabled(enabled)
-
-func _on_items_closed() -> void:
-	if _active_section == "items":
-		_items_to_sidebar()
 
 func _on_item_used(item: ItemDataClass, target: MTMonsterInstance) -> void:
 	if item == null or target == null:
@@ -263,38 +272,52 @@ func _apply_item_overworld(item: ItemDataClass, target: MTMonsterInstance) -> vo
 
 func open(team: Array) -> void:
 	visible = true
-	_in_content = false
-	_menu_level = "sidebar"
-	_active_section = "team"
+	_reset_menu_state_for_open_close()
 	_last_team = team
-	_set_sidebar_focus_enabled(true)
-	_set_tabs_focus_enabled(false)
 	_update_team_list(team)
-	_set_team_buttons_focus_enabled(false)
-	_set_items_focus_enabled(false)
-	_set_all_tab_content_focus_enabled(false)
 	_show_section("team")
 	_team_button.grab_focus()
 
 func close() -> void:
+	_reset_menu_state_for_open_close()
+	var focus_owner := get_viewport().gui_get_focus_owner()
+	if focus_owner != null:
+		focus_owner.release_focus()
 	visible = false
+	emit_signal("closed")
+
+func _reset_menu_state_for_open_close() -> void:
 	_in_content = false
 	_menu_level = "sidebar"
+	_active_section = "team"
+	_last_sidebar_focus = "team"
+	_settings_control_active = false
+	_settings_nav_controls.clear()
+	_settings_nav_focus_index = 0
 	_set_sidebar_focus_enabled(true)
 	_set_tabs_focus_enabled(false)
-	emit_signal("closed")
+	_set_all_tab_content_focus_enabled(false)
+	_set_team_buttons_focus_enabled(false)
+	_set_inventory_focus_enabled(false)
+	_item_menu.set_tabs_focus_enabled(false)
+	_item_menu.set_allow_enter_from_tabs(false)
+	_item_menu.set_auto_focus_content(false)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
 		return
 	if _overlay_message_active:
 		return
+	if event.is_action_pressed("pause_menu"):
+		close()
+		get_viewport().set_input_as_handled()
+		return
 	var focus_owner := get_viewport().gui_get_focus_owner()
-	if _menu_level == "sidebar" and focus_owner != _team_button and focus_owner != _items_button and focus_owner != _settings_button and focus_owner != _close_button and focus_owner != _end_game_button:
+	if _menu_level == "sidebar" and focus_owner != _team_button and focus_owner != _inventory_button and focus_owner != _settings_button and focus_owner != _close_button and focus_owner != _end_game_button:
 		_focus_sidebar_selection()
 		get_viewport().set_input_as_handled()
 		return
-	if focus_owner == _team_button or focus_owner == _items_button or focus_owner == _settings_button or focus_owner == _close_button or focus_owner == _end_game_button:
+	if focus_owner == _team_button or focus_owner == _inventory_button or focus_owner == _settings_button or focus_owner == _close_button or focus_owner == _end_game_button:
 		if event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right"):
 			get_viewport().set_input_as_handled()
 			return
@@ -308,22 +331,31 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		return
-	if event.is_action_pressed("ui_cancel"):
-		if _menu_level == "content" and _active_section == "settings":
-			_settings_to_tabs()
-		elif _menu_level == "tabs" and _active_section == "settings":
-			_settings_to_sidebar()
-		elif _menu_level == "content" and _active_section == "items":
-			_items_to_tabs()
-		elif _menu_level == "tabs" and _active_section == "items":
-			_items_to_sidebar()
-		elif _in_content:
-			_leave_content()
-		else:
-			close()
+	var settings_direct_result := _handle_settings_direct_controls_input(event)
+	if settings_direct_result == "handled":
 		get_viewport().set_input_as_handled()
 		return
+	if settings_direct_result == "stop":
+		return
+	# --- Settings content: Controls tab (existing behaviour) ---
 	if _menu_level == "content" and _active_section == "settings" and _is_controls_tab_active():
+		if event.is_action_pressed("ui_cancel"):
+			if _settings_control_active:
+				_deactivate_settings_control()
+			else:
+				_settings_to_sidebar()
+			get_viewport().set_input_as_handled()
+			return
+		if event.is_action_pressed("ui_left"):
+			_settings_tabs.current_tab = max(_settings_tabs.current_tab - 1, 0)
+			_settings_to_content()
+			get_viewport().set_input_as_handled()
+			return
+		if event.is_action_pressed("ui_right"):
+			_settings_tabs.current_tab = min(_settings_tabs.current_tab + 1, _settings_tabs.get_tab_count() - 1)
+			_settings_to_content()
+			get_viewport().set_input_as_handled()
+			return
 		if _is_action_press(event, "ui_up"):
 			if _move_controls_focus(-1):
 				get_viewport().set_input_as_handled()
@@ -332,16 +364,41 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _move_controls_focus(1):
 				get_viewport().set_input_as_handled()
 				return
-	if _menu_level == "content" and _active_section == "items":
-		if event.is_action_pressed("ui_up") and _item_menu.is_first_item_focused():
-			_items_to_tabs()
-			get_viewport().set_input_as_handled()
-			return
-	if _menu_level == "content" and _active_section == "settings":
 		if event.is_action_pressed("ui_up") and _is_first_settings_focus():
-			_settings_to_tabs()
 			get_viewport().set_input_as_handled()
 			return
+	# --- Inventory content: Left/Right switches tabs ---
+	if _menu_level == "content" and _active_section == "inventory":
+		if event.is_action_pressed("ui_cancel"):
+			_inventory_to_sidebar()
+			get_viewport().set_input_as_handled()
+			return
+		if event.is_action_pressed("ui_left"):
+			_item_menu.select_prev_tab()
+			get_viewport().set_input_as_handled()
+			return
+		if event.is_action_pressed("ui_right"):
+			_item_menu.select_next_tab()
+			get_viewport().set_input_as_handled()
+			return
+		if event.is_action_pressed("ui_up") and _item_menu.is_first_item_focused():
+			get_viewport().set_input_as_handled()
+			return
+	if event.is_action_pressed("ui_cancel"):
+		if _menu_level == "content" and _active_section == "settings":
+			_settings_to_sidebar()
+		elif _menu_level == "tabs" and _active_section == "settings":
+			_settings_to_sidebar()
+		elif _menu_level == "content" and _active_section == "inventory":
+			_inventory_to_sidebar()
+		elif _menu_level == "tabs" and _active_section == "inventory":
+			_inventory_to_sidebar()
+		elif _in_content:
+			_leave_content()
+		else:
+			close()
+		get_viewport().set_input_as_handled()
+		return
 	if _menu_level == "sidebar":
 		if focus_owner == _settings_tabs:
 			_settings_button.grab_focus()
@@ -352,8 +409,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_enter_team()
 				get_viewport().set_input_as_handled()
 				return
-			if focus_owner == _items_button:
-				_enter_items()
+			if focus_owner == _inventory_button:
+				_enter_inventory()
 				get_viewport().set_input_as_handled()
 				return
 			if focus_owner == _settings_button:
@@ -385,51 +442,71 @@ func _unhandled_input(event: InputEvent) -> void:
 			_settings_to_content()
 			get_viewport().set_input_as_handled()
 			return
-	if _menu_level == "tabs" and _active_section == "items":
-		if event.is_action_pressed("ui_left"):
-			_item_menu.select_prev_tab()
-			get_viewport().set_input_as_handled()
-			return
-		if event.is_action_pressed("ui_right"):
-			_item_menu.select_next_tab()
-			get_viewport().set_input_as_handled()
-			return
-		if event.is_action_pressed("ui_up"):
-			get_viewport().set_input_as_handled()
-			return
-		if event.is_action_pressed("ui_down"):
-			if _item_menu.has_items_in_current_tab():
-				_items_to_content()
-			get_viewport().set_input_as_handled()
-			return
+	if _menu_level == "tabs" and _active_section == "inventory":
+		# Inventory should not remain in tabs mode; recover to content focus.
+		_inventory_to_content()
+		get_viewport().set_input_as_handled()
+		return
 
 func _input(event: InputEvent) -> void:
 	if not visible:
 		return
 	if _overlay_message_active:
 		return
-	var focus_owner := get_viewport().gui_get_focus_owner()
-	if _menu_level == "content" and _active_section == "settings" and _is_controls_tab_active():
-		if event.is_action_pressed("ui_up"):
-			if _move_controls_focus(-1):
-				get_viewport().set_input_as_handled()
-				return
-		if event.is_action_pressed("ui_down"):
-			if _move_controls_focus(1):
-				get_viewport().set_input_as_handled()
-				return
-	if _menu_level == "tabs" and _active_section == "settings":
-		if event.is_action_pressed("ui_up"):
+	if _binding_action != "":
+		if event is InputEventKey and event.pressed and not event.echo and _binding_device == "keyboard":
+			_apply_binding(event)
 			get_viewport().set_input_as_handled()
 			return
-	if _menu_level == "tabs" and _active_section == "items":
-		if event.is_action_pressed("ui_up"):
+		if event is InputEventJoypadButton and event.pressed and _binding_device == "controller":
+			_apply_binding(event)
 			get_viewport().set_input_as_handled()
 			return
-	if focus_owner == _team_button or focus_owner == _items_button or focus_owner == _settings_button or focus_owner == _close_button or focus_owner == _end_game_button:
-		if event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right"):
+		# While rebinding, swallow all other inputs to prevent menu navigation.
+		if (event is InputEventKey and event.pressed) or (event is InputEventJoypadButton and event.pressed):
 			get_viewport().set_input_as_handled()
-			return
+		return
+
+	var settings_direct_result := _handle_settings_direct_controls_input(event)
+	if settings_direct_result == "handled":
+		get_viewport().set_input_as_handled()
+		return
+	if settings_direct_result == "stop":
+		return
+
+func _handle_settings_direct_controls_input(event: InputEvent) -> String:
+	if not (_menu_level == "content" and _active_section == "settings" and not _is_controls_tab_active()):
+		return "continue"
+	if _settings_control_active:
+		if event.is_action_pressed("ui_cancel"):
+			_deactivate_settings_control()
+			return "handled"
+		if event.is_action_pressed("ui_up") or event.is_action_pressed("ui_down"):
+			return "handled"
+		# In active mode, let the focused control consume left/right.
+		return "stop"
+	if event.is_action_pressed("ui_cancel"):
+		_settings_to_sidebar()
+		return "handled"
+	if event.is_action_pressed("ui_accept"):
+		_activate_settings_control()
+		return "handled"
+	if event.is_action_pressed("ui_up"):
+		if _settings_nav_focus_index > 0:
+			_move_settings_nav_focus(-1)
+		return "handled"
+	if event.is_action_pressed("ui_down"):
+		_move_settings_nav_focus(1)
+		return "handled"
+	if event.is_action_pressed("ui_left"):
+		_settings_tabs.current_tab = max(_settings_tabs.current_tab - 1, 0)
+		_settings_to_content()
+		return "handled"
+	if event.is_action_pressed("ui_right"):
+		_settings_tabs.current_tab = min(_settings_tabs.current_tab + 1, _settings_tabs.get_tab_count() - 1)
+		_settings_to_content()
+		return "handled"
+	return "stop"
 
 func _on_team_pressed() -> void:
 	_enter_team()
@@ -437,8 +514,8 @@ func _on_team_pressed() -> void:
 func _on_settings_pressed() -> void:
 	_enter_settings()
 
-func _on_items_pressed() -> void:
-	_enter_items()
+func _on_inventory_pressed() -> void:
+	_enter_inventory()
 
 func _on_close_pressed() -> void:
 	close()
@@ -456,14 +533,14 @@ func _on_sidebar_focus(section: String) -> void:
 	_set_tabs_focus_enabled(false)
 	_set_all_tab_content_focus_enabled(false)
 	_set_team_buttons_focus_enabled(false)
-	_set_items_focus_enabled(false)
+	_set_inventory_focus_enabled(false)
 	if section == "team":
 		_show_section("team")
 		_active_section = "team"
-	elif section == "items":
-		_show_section("items")
-		_active_section = "items"
-		_item_menu.select_tab(ItemDataClass.Category.ACTIVE)
+	elif section == "inventory":
+		_show_section("inventory")
+		_active_section = "inventory"
+		_item_menu.select_tab(_last_item_tab)
 		_item_menu.open_inventory(_last_team, false, false)
 		_item_menu.set_allow_enter_from_tabs(false)
 	elif section == "settings":
@@ -475,7 +552,7 @@ func _on_sidebar_focus(section: String) -> void:
 func _show_section(section: String) -> void:
 	_team_panel.visible = section == "team"
 	_settings_panel.visible = section == "settings"
-	_items_panel.visible = section == "items"
+	_inventory_panel.visible = section == "inventory"
 
 func _update_team_list(team: Array) -> void:
 	_team_buttons.clear()
@@ -514,6 +591,7 @@ func _update_team_list(team: Array) -> void:
 func _build_video_tab() -> void:
 	_video_tab.add_theme_constant_override("separation", 8)
 	_mode_option = OptionButton.new()
+	_mode_option.focus_mode = Control.FOCUS_NONE
 	for item in MODE_OPTIONS:
 		_mode_option.add_item(item.label)
 	_mode_option.item_selected.connect(func(index: int):
@@ -525,6 +603,7 @@ func _build_video_tab() -> void:
 	_video_tab.add_child(_create_labeled_row("Window Mode", _mode_option))
 
 	_resolution_option = OptionButton.new()
+	_resolution_option.focus_mode = Control.FOCUS_NONE
 	for res in RESOLUTIONS:
 		_resolution_option.add_item("%dx%d" % [res.x, res.y])
 	_resolution_option.item_selected.connect(func(index: int):
@@ -535,24 +614,20 @@ func _build_video_tab() -> void:
 	_video_tab.add_child(_create_labeled_row("Resolution", _resolution_option))
 
 	_vsync_check = CheckBox.new()
+	_vsync_check.focus_mode = Control.FOCUS_NONE
 	_vsync_check.text = "VSync"
 	_vsync_check.toggled.connect(func(pressed: bool):
 		_settings.video.vsync = pressed
 		_apply_video_settings()
 		_save_settings()
 	)
-	_video_tab.add_child(_vsync_check)
+	_video_tab.add_child(_create_labeled_row("VSync", _vsync_check))
 
-	var fps_row := HBoxContainer.new()
-	fps_row.add_theme_constant_override("separation", 8)
-	var fps_label := Label.new()
-	fps_label.text = "Max FPS"
-	fps_label.custom_minimum_size = Vector2(160, 0)
-	fps_row.add_child(fps_label)
 	_fps_slider = HSlider.new()
+	_fps_slider.focus_mode = Control.FOCUS_NONE
 	_fps_slider.min_value = 0
 	_fps_slider.max_value = 240
-	_fps_slider.step = 5
+	_fps_slider.step = 1
 	_fps_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_fps_slider.value_changed.connect(func(value: float):
 		_settings.video.max_fps = int(value)
@@ -560,12 +635,14 @@ func _build_video_tab() -> void:
 		_apply_max_fps()
 		_save_settings()
 	)
-	fps_row.add_child(_fps_slider)
 	_fps_value_label = Label.new()
 	_fps_value_label.text = "0"
 	_fps_value_label.custom_minimum_size = Vector2(50, 0)
-	fps_row.add_child(_fps_value_label)
-	_video_tab.add_child(fps_row)
+	var fps_extra_row := HBoxContainer.new()
+	fps_extra_row.add_theme_constant_override("separation", 4)
+	fps_extra_row.add_child(_fps_slider)
+	fps_extra_row.add_child(_fps_value_label)
+	_video_tab.add_child(_create_labeled_row("Max FPS", fps_extra_row))
 
 func _build_sound_tab() -> void:
 	_sound_tab.add_theme_constant_override("separation", 8)
@@ -695,14 +772,36 @@ func _create_labeled_row(text: String, control: Control) -> HBoxContainer:
 	row.add_child(control)
 	return row
 
+func _activate_settings_control() -> void:
+	var focus_owner := get_viewport().gui_get_focus_owner()
+	# Only sliders need a locked control mode for left/right adjustment.
+	_settings_control_active = focus_owner is Range
+
+func _deactivate_settings_control() -> void:
+	if not _settings_control_active:
+		return
+	_settings_control_active = false
+	var focus_owner := get_viewport().gui_get_focus_owner()
+	if focus_owner != null:
+		var idx := _settings_nav_controls.find(focus_owner)
+		if idx >= 0:
+			_settings_nav_focus_index = idx
+
+func _move_settings_nav_focus(direction: int) -> bool:
+	if _settings_nav_controls.is_empty():
+		return false
+	var new_index := _settings_nav_focus_index + direction
+	if new_index < 0 or new_index >= _settings_nav_controls.size():
+		return false
+	_settings_nav_focus_index = new_index
+	var target := _settings_nav_controls[_settings_nav_focus_index]
+	target.grab_focus()
+	_ensure_scroll_visible(_controls_scroll, target)
+	return true
+
 func _create_volume_slider(text: String, key: String) -> HSlider:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	var label := Label.new()
-	label.text = text
-	label.custom_minimum_size = Vector2(160, 0)
-	row.add_child(label)
 	var slider := HSlider.new()
+	slider.focus_mode = Control.FOCUS_NONE
 	slider.min_value = 0
 	slider.max_value = 1
 	slider.step = 0.01
@@ -713,12 +812,15 @@ func _create_volume_slider(text: String, key: String) -> HSlider:
 		_apply_audio_settings()
 		_save_settings()
 	)
-	row.add_child(slider)
 	var value_label := Label.new()
 	value_label.custom_minimum_size = Vector2(50, 0)
-	row.add_child(value_label)
 	_volume_value_labels[key] = value_label
-	_sound_tab.add_child(row)
+
+	var extra_row := HBoxContainer.new()
+	extra_row.add_theme_constant_override("separation", 4)
+	extra_row.add_child(slider)
+	extra_row.add_child(value_label)
+	_sound_tab.add_child(_create_labeled_row(text, extra_row))
 	return slider
 
 func _update_fps_label() -> void:
@@ -826,6 +928,11 @@ func _ensure_actions_from_defaults() -> void:
 			InputMap.action_add_event(action_name, event)
 		_apply_alias_fallback_events(action_name)
 
+func _enforce_preferred_global_bindings() -> void:
+	# Ensure these are always single-key keyboard bindings at runtime/startup.
+	_apply_preferred_default_overrides("ui_accept")
+	_apply_preferred_default_overrides("ui_cancel")
+
 func _reset_controls_to_defaults() -> void:
 	for action_name in _inputmap_defaults.keys():
 		if not InputMap.has_action(action_name):
@@ -873,29 +980,37 @@ func _apply_preferred_default_overrides(action_name: String) -> void:
 		key_event.keycode = KEY_SPACE
 		InputMap.action_add_event(action_name, key_event)
 		return
-	if action_name == "ui_up":
-		_set_single_keyboard_binding(action_name, KEY_W)
+	if action_name == "ui_cancel":
+		var to_remove_cancel: Array = []
+		for event in InputMap.action_get_events(action_name):
+			if event is InputEventKey:
+				to_remove_cancel.append(event)
+		for event in to_remove_cancel:
+			InputMap.action_erase_event(action_name, event)
+		var cancel_key_event := InputEventKey.new()
+		cancel_key_event.keycode = KEY_SHIFT
+		InputMap.action_add_event(action_name, cancel_key_event)
 		return
-	if action_name == "ui_down":
-		_set_single_keyboard_binding(action_name, KEY_S)
-		return
-	if action_name == "ui_left":
-		_set_single_keyboard_binding(action_name, KEY_A)
-		return
-	if action_name == "ui_right":
-		_set_single_keyboard_binding(action_name, KEY_D)
+	if _is_movement_action(action_name):
+		_set_movement_default_bindings(action_name)
 		return
 
-func _set_single_keyboard_binding(action_name: String, keycode: int) -> void:
+func _set_movement_default_bindings(action_name: String) -> void:
+	var wasd_key := int(MOVEMENT_WASD_KEYS.get(action_name, -1))
+	var arrow_key := int(MOVEMENT_ARROW_KEYS.get(action_name, -1))
+	if wasd_key <= 0 and arrow_key <= 0:
+		return
+	# Reset keyboard events for movement action, then restore both defaults.
 	var to_remove: Array = []
 	for event in InputMap.action_get_events(action_name):
 		if event is InputEventKey:
 			to_remove.append(event)
 	for event in to_remove:
 		InputMap.action_erase_event(action_name, event)
-	var key_event := InputEventKey.new()
-	key_event.keycode = keycode as Key
-	InputMap.action_add_event(action_name, key_event)
+	if wasd_key > 0:
+		_add_keyboard_binding_if_missing(action_name, wasd_key)
+	if arrow_key > 0:
+		_add_keyboard_binding_if_missing(action_name, arrow_key)
 
 func _get_control_actions() -> Array:
 	var actions: Array = []
@@ -938,6 +1053,11 @@ func _start_binding(action_name: String, device: String, button: Button) -> void
 func _apply_binding(event: InputEvent) -> void:
 	var new_event: InputEvent
 	if event is InputEventKey:
+		if _binding_device == "keyboard" and _is_movement_action(_binding_action):
+			var pressed_key := _get_keycode_for_event(event)
+			if _is_arrow_keycode(pressed_key):
+				# Arrow keys stay fixed as secondary movement input and cannot be rebound as primary.
+				return
 		var key_event := InputEventKey.new()
 		key_event.keycode = event.keycode
 		new_event = key_event
@@ -956,6 +1076,9 @@ func _apply_binding(event: InputEvent) -> void:
 	_refresh_control_buttons()
 	_save_settings()
 
+func _is_arrow_keycode(keycode: int) -> bool:
+	return keycode == KEY_UP or keycode == KEY_DOWN or keycode == KEY_LEFT or keycode == KEY_RIGHT
+
 func _replace_binding(action_name: String, device: String, event: InputEvent) -> void:
 	_ensure_action(action_name)
 	if device == "controller" and event is InputEventJoypadButton:
@@ -969,6 +1092,31 @@ func _replace_binding(action_name: String, device: String, event: InputEvent) ->
 	for existing in to_remove:
 		InputMap.action_erase_event(action_name, existing)
 	InputMap.action_add_event(action_name, event)
+	if device == "keyboard" and event is InputEventKey and _is_movement_action(action_name):
+		var selected_key := _get_keycode_for_event(event)
+		var companion_key := _get_movement_companion_key(action_name, selected_key)
+		if companion_key > 0 and companion_key != selected_key:
+			_add_keyboard_binding_if_missing(action_name, companion_key)
+
+func _get_movement_companion_key(action_name: String, selected_key: int) -> int:
+	if not _is_movement_action(action_name):
+		return -1
+	var wasd_key := int(MOVEMENT_WASD_KEYS.get(action_name, -1))
+	var arrow_key := int(MOVEMENT_ARROW_KEYS.get(action_name, -1))
+	if selected_key == wasd_key:
+		return arrow_key
+	if selected_key == arrow_key:
+		return wasd_key
+	# Keep arrow fallback for custom movement keys.
+	return arrow_key
+
+func _add_keyboard_binding_if_missing(action_name: String, keycode: int) -> void:
+	for existing in InputMap.action_get_events(action_name):
+		if existing is InputEventKey and _get_keycode_for_event(existing) == keycode:
+			return
+	var key_event := InputEventKey.new()
+	key_event.keycode = keycode as Key
+	InputMap.action_add_event(action_name, key_event)
 
 func _refresh_control_buttons() -> void:
 	for action_name in _control_buttons.keys():
@@ -981,13 +1129,49 @@ func _refresh_control_buttons() -> void:
 			controller_button.text = _get_binding_label(action_name, "controller")
 
 func _get_binding_label(action_name: String, device: String) -> String:
+	if device == "keyboard":
+		var labels := _get_keyboard_labels_in_display_order(action_name)
+		if not labels.is_empty():
+			return " / ".join(labels)
+		return "Unassigned"
 	for event in InputMap.action_get_events(action_name):
-		if device == "keyboard" and event is InputEventKey:
-			var code := _get_keycode_for_event(event)
-			return OS.get_keycode_string(code)
-		if device == "controller" and event is InputEventJoypadButton:
+		if event is InputEventJoypadButton:
 			return _joy_button_label(event.button_index)
 	return "Unassigned"
+
+func _get_keyboard_labels_in_display_order(action_name: String) -> Array[String]:
+	var labels: Array[String] = []
+	if _is_movement_action(action_name):
+		var arrow_key := int(MOVEMENT_ARROW_KEYS.get(action_name, -1))
+		# Primary/custom movement key first, fixed arrow key always secondary.
+		for event in InputMap.action_get_events(action_name):
+			if event is InputEventKey:
+				var code := _get_keycode_for_event(event)
+				if code == arrow_key:
+					continue
+				var label := OS.get_keycode_string(code)
+				if not labels.has(label):
+					labels.append(label)
+		if _action_has_keyboard_key(action_name, arrow_key):
+			var arrow_label := OS.get_keycode_string(arrow_key)
+			if not labels.has(arrow_label):
+				labels.append(arrow_label)
+		return labels
+	for event in InputMap.action_get_events(action_name):
+		if event is InputEventKey:
+			var code := _get_keycode_for_event(event)
+			var label := OS.get_keycode_string(code)
+			if not labels.has(label):
+				labels.append(label)
+	return labels
+
+func _action_has_keyboard_key(action_name: String, keycode: int) -> bool:
+	if keycode <= 0:
+		return false
+	for event in InputMap.action_get_events(action_name):
+		if event is InputEventKey and _get_keycode_for_event(event) == keycode:
+			return true
+	return false
 
 func _get_keycode_for_event(event: InputEventKey) -> int:
 	if event.keycode > 0:
@@ -1036,13 +1220,19 @@ func _is_controls_tab_active() -> bool:
 	return _controls_tab_index >= 0 and _settings_tabs.current_tab == _controls_tab_index
 
 func _is_first_settings_focus() -> bool:
+	var focus_owner := get_viewport().gui_get_focus_owner()
+	if focus_owner == null:
+		return false
+	# Proxy-nav mode (Video/Sound tabs)
+	if not _settings_nav_controls.is_empty():
+		return focus_owner == _settings_nav_controls[0] and _settings_nav_focus_index == 0
+	# Controls tab: check against first focusable child
 	var tab_control: Control = _settings_tabs.get_child(_settings_tabs.current_tab) as Control
 	if tab_control == null:
 		return false
 	var first_focus := _find_first_focusable(tab_control)
 	if first_focus == null:
 		return false
-	var focus_owner := get_viewport().gui_get_focus_owner()
 	return focus_owner == first_focus
 
 func _move_controls_focus(direction: int) -> bool:
@@ -1083,7 +1273,18 @@ func _enter_team() -> void:
 		_ensure_scroll_visible(_team_scroll, _team_buttons[0])
 
 func _enter_settings() -> void:
-	_settings_to_tabs()
+	_show_section("settings")
+	_active_section = "settings"
+	_in_content = false
+	_menu_level = "tabs"
+	_settings_control_active = false
+	_settings_nav_controls.clear()
+	_settings_nav_focus_index = 0
+	_set_sidebar_focus_enabled(false)
+	_set_tabs_focus_enabled(false)
+	_settings_tabs.current_tab = _last_settings_tab
+	_set_all_tab_content_focus_enabled(false)
+	_settings_to_content()
 
 func _leave_content() -> void:
 	_in_content = false
@@ -1092,13 +1293,13 @@ func _leave_content() -> void:
 	if _active_section == "settings":
 		_set_all_tab_content_focus_enabled(false)
 		_set_tabs_focus_enabled(false)
-	if _active_section == "items":
-		_set_items_focus_enabled(false)
+	if _active_section == "inventory":
+		_set_inventory_focus_enabled(false)
 	_set_team_buttons_focus_enabled(false)
 	if _last_sidebar_focus == "settings":
 		_settings_button.grab_focus()
-	elif _last_sidebar_focus == "items":
-		_items_button.grab_focus()
+	elif _last_sidebar_focus == "inventory":
+		_inventory_button.grab_focus()
 	else:
 		_team_button.grab_focus()
 
@@ -1122,14 +1323,33 @@ func _settings_to_content() -> void:
 	var tab_control: Control = _settings_tabs.get_child(_settings_tabs.current_tab) as Control
 	if tab_control == null:
 		return
-	_set_tab_content_focus_enabled(true)
+	_settings_control_active = false
+	_settings_nav_controls.clear()
+	_settings_nav_focus_index = 0
 	_set_tabs_focus_enabled(false)
-	var focus_target := _find_first_focusable(tab_control)
-	if focus_target != null:
-		focus_target.grab_focus()
-		_ensure_scroll_visible(_controls_scroll, focus_target)
+	_set_all_tab_content_focus_enabled(false)
+	# For Video/Sound tabs: collect direct controls and navigate them.
+	# For Controls tab: keep existing controls-nav system.
+	if _is_controls_tab_active():
+		_set_tab_content_focus_enabled(true)
+		var focus_target := _find_first_focusable(tab_control)
+		if focus_target != null:
+			focus_target.grab_focus()
+			_ensure_scroll_visible(_controls_scroll, focus_target)
+	else:
+		_set_tab_content_focus_enabled(true)
+		_collect_settings_controls(tab_control)
+		if not _settings_nav_controls.is_empty():
+			_settings_nav_controls[0].grab_focus()
 	_menu_level = "content"
 	_in_content = true
+
+func _collect_settings_controls(root: Node) -> void:
+	for child in root.get_children():
+		if child is OptionButton or child is CheckBox or child is Range:
+			_settings_nav_controls.append(child as Control)
+		else:
+			_collect_settings_controls(child)
 
 func _find_first_focusable(root: Node) -> Control:
 	if root is Control:
@@ -1150,6 +1370,9 @@ func _lock_left_navigation(root: Node) -> void:
 		_lock_left_navigation(child)
 
 func _settings_to_tabs() -> void:
+	_settings_control_active = false
+	_settings_nav_controls.clear()
+	_settings_nav_focus_index = 0
 	_show_section("settings")
 	_active_section = "settings"
 	_in_content = false
@@ -1169,6 +1392,9 @@ func _focus_tabs() -> void:
 	_in_content = false
 
 func _settings_to_sidebar() -> void:
+	_settings_control_active = false
+	_settings_nav_controls.clear()
+	_settings_nav_focus_index = 0
 	_in_content = false
 	_menu_level = "sidebar"
 	_set_tabs_focus_enabled(false)
@@ -1187,8 +1413,8 @@ func _settings_select_prev_tab() -> void:
 func _focus_sidebar_selection() -> void:
 	if _last_sidebar_focus == "settings":
 		_settings_button.grab_focus()
-	elif _last_sidebar_focus == "items":
-		_items_button.grab_focus()
+	elif _last_sidebar_focus == "inventory":
+		_inventory_button.grab_focus()
 	elif _last_sidebar_focus == "end_game":
 		_end_game_button.grab_focus()
 	elif _last_sidebar_focus == "close":
@@ -1222,11 +1448,9 @@ func _set_focus_for_controls(root: Node, enabled: bool) -> void:
 		if not enabled:
 			ctrl.focus_mode = Control.FOCUS_NONE
 		else:
-			if ctrl is OptionButton:
+			if ctrl is OptionButton or ctrl is CheckBox or ctrl is Range:
 				ctrl.focus_mode = Control.FOCUS_ALL
-			elif ctrl is Button or ctrl is CheckBox:
-				ctrl.focus_mode = Control.FOCUS_ALL
-			elif ctrl is Range:
+			elif ctrl is Button:
 				ctrl.focus_mode = Control.FOCUS_ALL
 			else:
 				ctrl.focus_mode = Control.FOCUS_NONE
@@ -1294,22 +1518,81 @@ func _load_settings() -> void:
 				var entry: Variant = config.get_value("controls", action_name, {})
 				if entry is Dictionary:
 					if entry.has("keyboard"):
-						var keycode = int(entry.keyboard)
-						if action_name == "ui_cancel" and (keycode == KEY_ESCAPE or keycode == KEY_BACKSPACE):
-							keycode = KEY_SHIFT
-						if action_name == "ui_accept" and keycode == KEY_ENTER:
-							keycode = KEY_SPACE
-						if keycode > 0:
-							var key_event := InputEventKey.new()
-							key_event.keycode = keycode as Key
-							_replace_binding(action_name, "keyboard", key_event)
+						_set_bindings_from_config(action_name, "keyboard", entry.keyboard)
 					if entry.has("controller"):
-						var button_index = int(entry.controller)
-						if button_index >= 0:
-							var pad_event := InputEventJoypadButton.new()
-							pad_event.button_index = button_index as JoyButton
-							pad_event.device = -1
-							_replace_binding(action_name, "controller", pad_event)
+						_set_bindings_from_config(action_name, "controller", entry.controller)
+
+func _set_bindings_from_config(action_name: String, device: String, value: Variant) -> void:
+	if value is Array:
+		_set_binding_codes(action_name, device, value as Array)
+		return
+	var code := int(value)
+	if device == "keyboard":
+		code = _normalize_legacy_keyboard_key(action_name, code)
+	if code < 0:
+		return
+	if device == "keyboard":
+		if code <= 0:
+			return
+		var key_event := InputEventKey.new()
+		key_event.keycode = code as Key
+		_replace_binding(action_name, "keyboard", key_event)
+		return
+	if device == "controller":
+		var pad_event := InputEventJoypadButton.new()
+		pad_event.button_index = code as JoyButton
+		pad_event.device = -1
+		_replace_binding(action_name, "controller", pad_event)
+
+func _set_binding_codes(action_name: String, device: String, codes: Array) -> void:
+	_ensure_action(action_name)
+	var to_remove: Array = []
+	for existing in InputMap.action_get_events(action_name):
+		if device == "keyboard" and existing is InputEventKey:
+			to_remove.append(existing)
+		elif device == "controller" and existing is InputEventJoypadButton:
+			to_remove.append(existing)
+	for existing in to_remove:
+		InputMap.action_erase_event(action_name, existing)
+
+	for raw_code in codes:
+		var code := int(raw_code)
+		if device == "keyboard":
+			code = _normalize_legacy_keyboard_key(action_name, code)
+			if code <= 0:
+				continue
+			_add_keyboard_binding_if_missing(action_name, code)
+		elif device == "controller":
+			if code < 0:
+				continue
+			var exists := false
+			for existing in InputMap.action_get_events(action_name):
+				if existing is InputEventJoypadButton and existing.button_index == code:
+					exists = true
+					break
+			if not exists:
+				var pad_event := InputEventJoypadButton.new()
+				pad_event.button_index = code as JoyButton
+				pad_event.device = -1
+				InputMap.action_add_event(action_name, pad_event)
+
+	if device == "keyboard" and _is_movement_action(action_name) and _get_event_count(action_name, "keyboard") == 1:
+		var selected_key := -1
+		for existing in InputMap.action_get_events(action_name):
+			if existing is InputEventKey:
+				selected_key = _get_keycode_for_event(existing)
+				break
+		if selected_key > 0:
+			var companion_key := _get_movement_companion_key(action_name, selected_key)
+			if companion_key > 0 and companion_key != selected_key:
+				_add_keyboard_binding_if_missing(action_name, companion_key)
+
+func _normalize_legacy_keyboard_key(action_name: String, keycode: int) -> int:
+	if action_name == "ui_cancel" and (keycode == KEY_ESCAPE or keycode == KEY_BACKSPACE):
+		return KEY_SHIFT
+	if action_name == "ui_accept" and keycode == KEY_ENTER:
+		return KEY_SPACE
+	return keycode
 
 func _save_settings() -> void:
 	var config := ConfigFile.new()
@@ -1325,17 +1608,22 @@ func _save_settings() -> void:
 		for action_info in category.actions:
 			var action_name: String = action_info.action
 			var entry: Dictionary = {
-				"keyboard": _get_binding_code(action_name, "keyboard"),
-				"controller": _get_binding_code(action_name, "controller")
+				"keyboard": _get_binding_codes(action_name, "keyboard"),
+				"controller": _get_binding_codes(action_name, "controller")
 			}
 			config.set_value("controls", action_name, entry)
 
 	config.save(CONFIG_PATH)
 
-func _get_binding_code(action_name: String, device: String) -> int:
+func _get_binding_codes(action_name: String, device: String) -> Array[int]:
+	var codes: Array[int] = []
 	for event in InputMap.action_get_events(action_name):
 		if device == "keyboard" and event is InputEventKey:
-			return _get_keycode_for_event(event)
+			var keycode := _get_keycode_for_event(event)
+			if not codes.has(keycode):
+				codes.append(keycode)
 		if device == "controller" and event is InputEventJoypadButton:
-			return event.button_index
-	return -1
+			var button_index := int(event.button_index)
+			if not codes.has(button_index):
+				codes.append(button_index)
+	return codes

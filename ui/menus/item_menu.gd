@@ -6,6 +6,7 @@ const ItemDataClass = preload("res://core/items/item_data.gd")
 
 signal closed
 signal item_used(item: MTItemData, target: MTMonsterInstance)
+signal tab_changed(tab_index: int)
 
 @onready var _tabs: TabContainer = $RootVBox/Tabs as TabContainer
 @onready var _active_list: VBoxContainer = $RootVBox/Tabs/Active/ActiveScroll/ActiveList as VBoxContainer
@@ -232,6 +233,7 @@ func _closed_cleanup() -> void:
 func _on_tab_changed(_index: int) -> void:
 	if _mode == "items":
 		_show_items_for_tab(_tabs.current_tab)
+	tab_changed.emit(_tabs.current_tab)
 
 func has_items_in_current_tab() -> bool:
 	return _tab_has_items(_tabs.current_tab)
@@ -261,13 +263,17 @@ func _show_items_for_tab(tab_index: int) -> void:
 				filtered.append(item)
 
 	if filtered.is_empty():
-		var empty_label := Label.new()
-		empty_label.text = "No items."
-		list.add_child(empty_label)
+		var empty_button := Button.new()
+		empty_button.text = "No items."
+		empty_button.focus_mode = Control.FOCUS_ALL
+		empty_button.pressed.connect(func():
+			# Keep a focus target in empty tabs so left/right tab navigation remains possible.
+			pass
+		)
+		list.add_child(empty_button)
+		_buttons.append(empty_button)
 		if _auto_focus_content:
-			var tab_bar: Control = _tabs.get_tab_bar()
-			if tab_bar != null:
-				tab_bar.grab_focus()
+			empty_button.grab_focus()
 		return
 
 	for item in filtered:

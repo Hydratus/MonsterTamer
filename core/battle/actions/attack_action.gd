@@ -90,13 +90,14 @@ func execute(_controller = null) -> Variant:
 			if effectiveness_text != "":
 				battle_log(effectiveness_text)
 		else:
+			var hp_before: int = target.hp
 			target.take_damage(damage)
 			target.clamp_resources()
-			dealt_damage = damage
+			dealt_damage = max(0, hp_before - target.hp)
 
 			var line := "%s takes %d damage." % [
 				target.data.name,
-				damage
+				dealt_damage
 			]
 
 			if effectiveness_text != "":

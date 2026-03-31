@@ -14,6 +14,7 @@ const MENU_OFFSET_TOP_DEFAULT := -80.0
 const MENU_OFFSET_TOP_ATTACKS := -140.0
 const GAMEPAD_BTN_A := 0
 const ITEM_MENU_SCENE := preload("res://ui/menus/item_menu.tscn")
+const DEBUG_MENU_LOGS := false
 
 var current_monster: MTMonsterInstance
 var current_team: MTMonsterTeam
@@ -37,6 +38,7 @@ var _last_attack_index_by_monster: Dictionary = {}
 var _item_menu: MTItemMenu
 var _rest_button: Button
 var _back_button: Button
+var _last_inventory_tab: int = 0
 var _menu_offsets_default: Dictionary = {}
 var _menu_offsets_item: Dictionary = {
 	"left": 20.0,
@@ -80,8 +82,7 @@ func show_main_menu(monster: MTMonsterInstance, team: MTMonsterTeam = null, cont
 	_apply_menu_offsets(_menu_offsets_default)
 	vbox.offset_top = MENU_OFFSET_TOP_DEFAULT
 	
-	print("DEBUG show_main_menu: monster=%s, team ist %s, controller ist %s" % [monster.data.name, "null" if team == null else "gesetzt", "null" if controller == null else "gesetzt"])
-	print("DEBUG show_main_menu: vbox ist %s, vbox.get_child_count() = %d" % ["null" if vbox == null else "gesetzt", vbox.get_child_count() if vbox != null else -1])
+	_log_debug("show_main_menu monster=%s team=%s controller=%s" % [monster.data.name, "null" if team == null else "set", "null" if controller == null else "set"])
 	
 	# Stelle sicher, dass die VBox wirklich leer ist
 	_clear_menu()
@@ -96,9 +97,9 @@ func show_main_menu(monster: MTMonsterInstance, team: MTMonsterTeam = null, cont
 		{"label": "💨 Escape", "action": "escape"}
 	])
 	
-	print("DEBUG show_main_menu: Nach _show_menu_options, vbox.get_child_count() = %d" % vbox.get_child_count())
+	_log_debug("show_main_menu options built, children=%d" % vbox.get_child_count())
 	visible = true
-	print("DEBUG show_main_menu: visible = true")
+	_log_debug("show_main_menu visible=true")
 	
 	_focus_first_button()
 	_is_showing_menu = false
@@ -207,7 +208,224 @@ func show_attacks(monster: MTMonsterInstance):
 		_register_menu_button(button)
 		attack_buttons.append(button)
 	
-	# Back-Button zentriert unter den Attacks
+	_add_attacks_footer_row(attacks_box, attack_button_width)
+	
+	visible = true
+	_focus_last_attack_button(attack_buttons)
+
+func show_team(team: MTMonsterTeam):
+	current_team = team
+	current_menu = "team"
+	menu_changed.emit("team")
+	vbox.offset_top = MENU_OFFSET_TOP_DEFAULT
+	_clear_menu()
+	_menu_columns = 1
+	
+	# Debug: Prüfe ob Team null ist
+	if team == null:
+		_log_error("Team is null, cannot open team menu")
+		var label := Label.new()
+		label.text = "ERROR: Team ist null"
+		vbox.add_child(label)
+		_add_back_button()
+		visible = true
+		return
+	
+	_log_debug("show_team size=%d" % team.monsters.size())
+	
+	for i in range(team.monsters.size()):
+		var monster = team.monsters[i]
+		if monster == null:
+			continue
+		
+		var button := Button.new()
+		var status = "[KO]" if not monster.is_alive() else "[OK]"
+		button.text = "%s %s | Lvl %d | %d/%d HP | %d/%d EN" % [
+			monster.data.name,
+			status,
+			monster.data.level,
+			monster.hp,
+			monster.get_max_hp(),
+			monster.energy,
+			monster.get_max_energy()
+		]
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		
+		# Button für Monster-Details und Switch
+		button.pressed.connect(func():
+			_show_monster_options(team, i, monster)
+		)
+		
+		vbox.add_child(button)
+		_register_menu_button(button)
+	
+	# Back-Button
+	_add_back_button()
+	visible = true
+	_focus_first_button()
+
+func show_inventory():
+	current_menu = "inventory"
+	menu_changed.emit("inventory")
+	vbox.offset_top = MENU_OFFSET_TOP_DEFAULT
+	_clear_menu()
+	_menu_columns = 1
+	_show_item_menu()
+
+func show_escape_menu():
+	current_menu = "escape"
+	menu_changed.emit("escape")
+	vbox.offset_top = MENU_OFFSET_TOP_DEFAULT
+	_clear_menu()
+	_menu_columns = 1
+	
+	var label := Label.new()
+	label.text = "Willst du wirklich fliehen?"
+	vbox.add_child(label)
+	
+	var yes_button := Button.new()
+	yes_button.text = "Ja, fliehen!"
+	yes_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	yes_button.pressed.connect(func():
+		escape_battle.emit()
+	)
+	vbox.add_child(yes_button)
+	_register_menu_button(yes_button)
+	
+	var no_button := Button.new()
+	no_button.text = "Nein, zurück"
+	no_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	no_button.pressed.connect(func():
+		show_main_menu(current_monster, current_team)
+	)
+	vbox.add_child(no_button)
+	_register_menu_button(no_button)
+	visible = true
+	_focus_first_button()
+
+# Private Hilfsfunktionen
+
+func _show_menu_options(options: Array) -> void:
+	_clear_menu()
+	
+	_log_debug("show_menu_options count=%d" % options.size())
+	
+	# Erstelle GridContainer für 2x2 Layout
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 5)
+	grid.add_theme_constant_override("v_separation", 5)
+	vbox.add_child(grid)
+	_menu_columns = 2
+	
+	for option in options:
+		var button := Button.new()
+		button.text = option["label"]
+		button.custom_minimum_size = Vector2(140, 0)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		
+		var action = option["action"]
+		button.pressed.connect(func():
+			_handle_menu_action(action)
+		)
+		
+		grid.add_child(button)
+		_register_menu_button(button)
+		_log_debug("menu button added: %s" % option["label"])
+
+func _handle_menu_action(action: String) -> void:
+	_log_debug("menu action=%s team=%s" % [action, "null" if current_team == null else "set"])
+	
+	match action:
+		"attacks":
+			show_attacks(current_monster)
+		"team":
+			if current_team != null:
+				show_team(current_team)
+			else:
+				_log_error("Team is null, cannot open team menu")
+		"inventory":
+			show_inventory()
+		"escape":
+			show_escape_menu()
+
+func _show_monster_options(team: MTMonsterTeam, index: int, monster: MTMonsterInstance) -> void:
+	_clear_menu()
+	_menu_columns = 1
+	
+	_log_debug("monster options %s index=%d active=%s" % [
+		monster.data.name,
+		index,
+		"ja" if monster == team.get_active_monster() else "nein"
+	])
+	
+	var label := Label.new()
+	label.text = "%s - Level %d\n\nHP: %d/%d\nEN: %d/%d\nSTR: %d | MAG: %d\nDEF: %d | RES: %d\nSPD: %d" % [
+		monster.data.name,
+		monster.data.level,
+		monster.hp,
+		monster.get_max_hp(),
+		monster.energy,
+		monster.get_max_energy(),
+		monster.strength,
+		monster.magic,
+		monster.defense,
+		monster.resistance,
+		monster.speed
+	]
+	vbox.add_child(label)
+	
+	# Switch-Button (nur wenn Monster lebt und nicht bereits aktiv)
+	if monster.is_alive() and monster != team.get_active_monster():
+		_log_debug("show switch button for %s" % monster.data.name)
+		var switch_button := Button.new()
+		switch_button.text = "Einwechseln"
+		switch_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		switch_button.pressed.connect(func():
+			_log_debug("switch clicked for %s index=%d" % [monster.data.name, index])
+			if battle_controller == null:
+				_log_error("battle_controller is null")
+				return
+			
+			# Bestimme Team-Index (0 = Player, 1 = Enemy)
+			var team_index = 0
+			if battle_controller.teams.size() > 1:
+				if battle_controller.teams[1] == team:
+					team_index = 1
+			
+			# Erstelle MTSwitchAction
+			var switch_action = MTSwitchAction.new(team_index, index, current_monster)
+			_log_debug("submit switch action team=%d index=%d" % [team_index, index])
+			
+			# Registriere als Spieler-Aktion (nicht direkt zur Queue)
+			battle_controller.pending_player_actions[current_monster] = switch_action
+			battle_controller.check_all_player_actions()
+			hide_menu()
+		)
+		vbox.add_child(switch_button)
+		_register_menu_button(switch_button)
+	else:
+		_log_debug("switch hidden alive=%s active=%s" % [
+			"ja" if monster.is_alive() else "nein",
+			"ja" if monster == team.get_active_monster() else "nein"
+		])
+	
+	# Back-Button
+	_add_back_button()
+	_focus_first_button()
+
+func _clear_menu() -> void:
+	for child in vbox.get_children():
+		vbox.remove_child(child)
+		child.queue_free()
+	_rest_button = null
+	_back_button = null
+	_clear_attack_info()
+	_menu_buttons.clear()
+	_menu_columns = 1
+	_item_menu = null
+
+func _add_attacks_footer_row(attacks_box: VBoxContainer, attack_button_width: int) -> void:
 	var back_row := HBoxContainer.new()
 	back_row.add_theme_constant_override("separation", 8)
 	back_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -244,219 +462,13 @@ func show_attacks(monster: MTMonsterInstance):
 	_back_button = back_button
 	_rest_button.focus_neighbor_right = _back_button.get_path()
 	_back_button.focus_neighbor_left = _rest_button.get_path()
-	
-	visible = true
-	_focus_last_attack_button(attack_buttons)
 
-func show_team(team: MTMonsterTeam):
-	current_team = team
-	current_menu = "team"
-	menu_changed.emit("team")
-	vbox.offset_top = MENU_OFFSET_TOP_DEFAULT
-	_clear_menu()
-	_menu_columns = 1
-	
-	# Debug: Prüfe ob Team null ist
-	if team == null:
-		print("ERROR: Team ist null! Kann Team-Menü nicht anzeigen")
-		var label := Label.new()
-		label.text = "ERROR: Team ist null"
-		vbox.add_child(label)
-		_add_back_button()
-		visible = true
-		return
-	
-	print("DEBUG: Zeige Team mit %d Monstern" % team.monsters.size())
-	
-	for i in range(team.monsters.size()):
-		var monster = team.monsters[i]
-		if monster == null:
-			continue
-		
-		var button := Button.new()
-		var status = "[KO]" if not monster.is_alive() else "[OK]"
-		button.text = "%s %s | Lvl %d | %d/%d HP | %d/%d EN" % [
-			monster.data.name,
-			status,
-			monster.data.level,
-			monster.hp,
-			monster.get_max_hp(),
-			monster.energy,
-			monster.get_max_energy()
-		]
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		
-		# Button für Monster-Details und Switch
-		button.pressed.connect(func():
-			_show_monster_options(team, i, monster)
-		)
-		
-		vbox.add_child(button)
-		_register_menu_button(button)
-	
-	# Back-Button
-	_add_back_button()
-	visible = true
-	_focus_first_button()
+func _log_debug(message: String) -> void:
+	if DEBUG_MENU_LOGS:
+		print("[BattleMenu] %s" % message)
 
-func show_inventory():
-	current_menu = "inventory"
-	vbox.offset_top = MENU_OFFSET_TOP_DEFAULT
-	_clear_menu()
-	_menu_columns = 1
-	_show_item_menu()
-
-func show_escape_menu():
-	current_menu = "escape"
-	vbox.offset_top = MENU_OFFSET_TOP_DEFAULT
-	_clear_menu()
-	_menu_columns = 1
-	
-	var label := Label.new()
-	label.text = "Willst du wirklich fliehen?"
-	vbox.add_child(label)
-	
-	var yes_button := Button.new()
-	yes_button.text = "Ja, fliehen!"
-	yes_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	yes_button.pressed.connect(func():
-		escape_battle.emit()
-	)
-	vbox.add_child(yes_button)
-	_register_menu_button(yes_button)
-	
-	var no_button := Button.new()
-	no_button.text = "Nein, zurück"
-	no_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	no_button.pressed.connect(func():
-		show_main_menu(current_monster, current_team)
-	)
-	vbox.add_child(no_button)
-	_register_menu_button(no_button)
-	visible = true
-	_focus_first_button()
-
-# Private Hilfsfunktionen
-
-func _show_menu_options(options: Array) -> void:
-	_clear_menu()
-	
-	print("DEBUG _show_menu_options: %d Optionen werden hinzugefügt" % options.size())
-	
-	# Erstelle GridContainer für 2x2 Layout
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 5)
-	grid.add_theme_constant_override("v_separation", 5)
-	vbox.add_child(grid)
-	_menu_columns = 2
-	
-	for option in options:
-		var button := Button.new()
-		button.text = option["label"]
-		button.custom_minimum_size = Vector2(140, 0)
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		
-		var action = option["action"]
-		button.pressed.connect(func():
-			_handle_menu_action(action)
-		)
-		
-		grid.add_child(button)
-		_register_menu_button(button)
-		print("DEBUG _show_menu_options: Button hinzugefügt: %s" % option["label"])
-
-func _handle_menu_action(action: String) -> void:
-	print("DEBUG: Menu-Aktion: %s | current_team ist %s" % [action, "null" if current_team == null else "gesetzt"])
-	
-	match action:
-		"attacks":
-			show_attacks(current_monster)
-		"team":
-			if current_team != null:
-				show_team(current_team)
-			else:
-				print("ERROR: Team ist null, kann Team-Menü nicht anzeigen")
-		"inventory":
-			show_inventory()
-		"escape":
-			show_escape_menu()
-
-func _show_monster_options(team: MTMonsterTeam, index: int, monster: MTMonsterInstance) -> void:
-	_clear_menu()
-	_menu_columns = 1
-	
-	print("DEBUG: Zeige Monster-Options für %s (Index: %d, aktiv: %s)" % [
-		monster.data.name,
-		index,
-		"ja" if monster == team.get_active_monster() else "nein"
-	])
-	
-	var label := Label.new()
-	label.text = "%s - Level %d\n\nHP: %d/%d\nEN: %d/%d\nSTR: %d | MAG: %d\nDEF: %d | RES: %d\nSPD: %d" % [
-		monster.data.name,
-		monster.data.level,
-		monster.hp,
-		monster.get_max_hp(),
-		monster.energy,
-		monster.get_max_energy(),
-		monster.strength,
-		monster.magic,
-		monster.defense,
-		monster.resistance,
-		monster.speed
-	]
-	vbox.add_child(label)
-	
-	# Switch-Button (nur wenn Monster lebt und nicht bereits aktiv)
-	if monster.is_alive() and monster != team.get_active_monster():
-		print("DEBUG: Zeige Einwechsel-Button für %s" % monster.data.name)
-		var switch_button := Button.new()
-		switch_button.text = "Einwechseln"
-		switch_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		switch_button.pressed.connect(func():
-			print("DEBUG: Einwechsel-Button geklickt für %s (Index: %d)" % [monster.data.name, index])
-			if battle_controller == null:
-				print("ERROR: battle_controller ist null!")
-				return
-			
-			# Bestimme Team-Index (0 = Player, 1 = Enemy)
-			var team_index = 0
-			if battle_controller.teams.size() > 1:
-				if battle_controller.teams[1] == team:
-					team_index = 1
-			
-			# Erstelle MTSwitchAction
-			var switch_action = MTSwitchAction.new(team_index, index, current_monster)
-			print("DEBUG: Reiche MTSwitchAction ein für Team %d, Monster Index %d" % [team_index, index])
-			
-			# Registriere als Spieler-Aktion (nicht direkt zur Queue)
-			battle_controller.pending_player_actions[current_monster] = switch_action
-			battle_controller.check_all_player_actions()
-			hide_menu()
-		)
-		vbox.add_child(switch_button)
-		_register_menu_button(switch_button)
-	else:
-		print("DEBUG: Einwechsel-Button wird NICHT angezeigt (lebendig: %s, aktiv: %s)" % [
-			"ja" if monster.is_alive() else "nein",
-			"ja" if monster == team.get_active_monster() else "nein"
-		])
-	
-	# Back-Button
-	_add_back_button()
-	_focus_first_button()
-
-func _clear_menu() -> void:
-	for child in vbox.get_children():
-		vbox.remove_child(child)
-		child.queue_free()
-		_rest_button = null
-		_back_button = null
-	_clear_attack_info()
-	_menu_buttons.clear()
-	_menu_columns = 1
-	_item_menu = null
+func _log_error(message: String) -> void:
+	push_warning("[BattleMenu] %s" % message)
 
 func _show_item_menu() -> void:
 	_apply_menu_offsets(_menu_offsets_item)
@@ -468,6 +480,9 @@ func _show_item_menu() -> void:
 	var team_list: Array[MTMonsterInstance] = []
 	if current_team != null:
 		team_list = current_team.monsters
+	item_menu.tab_changed.connect(func(index: int):
+		_last_inventory_tab = index
+	)
 	item_menu.item_used.connect(func(item: MTItemData, target: MTMonsterInstance):
 		item_used.emit(item, target)
 	)
@@ -475,8 +490,11 @@ func _show_item_menu() -> void:
 		show_main_menu(current_monster, current_team, battle_controller)
 	)
 	item_menu.set_require_focus_owner(false)
-	item_menu.set_allow_enter_from_tabs(true)
-	item_menu.open_inventory(team_list, true)
+	item_menu.set_allow_enter_from_tabs(false)
+	item_menu.set_tabs_focus_enabled(false)
+	item_menu.set_auto_focus_content(true)
+	item_menu.select_tab(_last_inventory_tab)
+	item_menu.open_inventory(team_list, false, true)
 	visible = true
 	item_menu.grab_first_focus()
 

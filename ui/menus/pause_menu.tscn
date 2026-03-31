@@ -47,8 +47,8 @@ size_flags_vertical = 3
 [node name="ButtonTeam" type="Button" parent="Root/Window/WindowVBox/ContentRow/Sidebar"]
 text = "Team"
 
-[node name="ButtonItems" type="Button" parent="Root/Window/WindowVBox/ContentRow/Sidebar"]
-text = "Items"
+[node name="ButtonInventory" type="Button" parent="Root/Window/WindowVBox/ContentRow/Sidebar"]
+text = "Inventory"
 
 [node name="ButtonSettings" type="Button" parent="Root/Window/WindowVBox/ContentRow/Sidebar"]
 text = "Settings"
@@ -75,14 +75,14 @@ anchor_bottom = 1.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="ItemsPanel" type="VBoxContainer" parent="Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack"]
+[node name="InventoryPanel" type="VBoxContainer" parent="Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack"]
 visible = false
 anchor_right = 1.0
 anchor_bottom = 1.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="ItemMenu" parent="Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/ItemsPanel" instance=ExtResource("2")]
+[node name="ItemMenu" parent="Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/InventoryPanel" instance=ExtResource("2")]
 
 [node name="TeamScroll" type="ScrollContainer" parent="Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/TeamPanel"]
 anchor_right = 1.0
