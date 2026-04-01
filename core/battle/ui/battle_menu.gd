@@ -12,7 +12,6 @@ signal item_used(item: MTItemData, target: MTMonsterInstance)
 
 const MENU_OFFSET_TOP_DEFAULT := -80.0
 const MENU_OFFSET_TOP_ATTACKS := -140.0
-const GAMEPAD_BTN_A := 0
 const ITEM_MENU_SCENE := preload("res://ui/menus/item_menu.tscn")
 const DEBUG_MENU_LOGS := false
 

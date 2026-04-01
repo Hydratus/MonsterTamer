@@ -1,9 +1,14 @@
-extends "res://core/world/overworld.gd"
+﻿extends "res://core/world/overworld.gd"
 
 const EncounterEntryClass = preload("res://core/world/encounter_entry.gd")
 const NPCDataClass = preload("res://core/world/npc_data.gd")
 const NPCMonsterEntryClass = preload("res://core/world/npc_monster_entry.gd")
 const ITEM_DB_CLASS = preload("res://core/items/item_db.gd")
+const DungeonLayoutHelperClass = preload("res://core/world/dungeon_layout_helper.gd")
+const DungeonShopUIHelperClass = preload("res://core/world/dungeon_shop_ui_helper.gd")
+const DungeonRunHelperClass = preload("res://core/world/dungeon_run_helper.gd")
+const DungeonNPCSpawnHelperClass = preload("res://core/world/dungeon_npc_spawn_helper.gd")
+const DungeonQuestHelperClass = preload("res://core/world/dungeon_quest_helper.gd")
 const STAIRS_NPC_DATA = preload("res://data/npc/NPCDungeonStairs.tres")
 const BOSS_NPC_DATA = preload("res://data/npc/NPCDungeonBoss.tres")
 
@@ -150,8 +155,34 @@ var _last_essence_display: int = -1
 func _log_dungeon(message: String) -> void:
 	_log_debug(message)
 
+func _touch_split_state_keepalive() -> void:
+	# Keep strict diagnostics aware of fields that are now manipulated by helpers.
+	if false:
+		print(
+			_dynamic_npcs,
+			_room_cells_lookup,
+			_corridor_cells_lookup,
+			_has_quest_this_floor,
+			_quest_item_npc,
+			_merchant_shop_index,
+			_event_room_index,
+			_floor_goal_state,
+			_merchant_shop_layer,
+			_merchant_shop_panel,
+			_merchant_shop_title,
+			_merchant_shop_list,
+			_merchant_shop_status,
+			_merchant_shop_close_button,
+			_merchant_shop_buttons,
+			_currency_hud_layer,
+			_currency_hud_label,
+			_last_gold_display,
+			_last_essence_display
+		)
+
 func _ready() -> void:
 	_log_dungeon("[Dungeon] _ready() floor=%d  seed=%d" % [current_floor, generation_seed])
+	_touch_split_state_keepalive()
 	super._ready()
 	_create_merchant_shop_ui()
 	_create_currency_hud()
@@ -569,500 +600,104 @@ func _prepare_boss_npc() -> void:
 #  Dynamic NPC spawning 
 
 func _spawn_floor_npcs() -> void:
-	_clear_dynamic_npcs()
-	if _floor_cells.size() < 8:
-		return
-
-	var valid_spawn_cells := 0
-	for cell in _floor_cells:
-		if _is_safe_npc_spawn_cell(cell) and not _is_chokepoint_cell(cell):
-			valid_spawn_cells += 1
-	_log_dungeon("[Dungeon] npc_spawn candidates=%d floor_cells=%d rooms=%d corridors=%d" % [
-		valid_spawn_cells, _floor_cells.size(), _room_cells_lookup.size(), _corridor_cells_lookup.size()])
-
-	var reserved: Dictionary = {}
-	reserved[_player_spawn_cell] = true
-	if _stairs_npc != null and _stairs_npc.visible:
-		reserved[_world_to_cell(_stairs_npc.global_position)] = true
-	if _boss_npc != null and _boss_npc.visible:
-		reserved[_world_to_cell(_boss_npc.global_position)] = true
-	_spawn_elite_room_npc(reserved)
-	_spawn_mimic_npc(reserved)
-	_spawn_puzzle_switches(reserved)
-	_spawn_key_npc(reserved)
-	_spawn_event_object(reserved)
-	_spawn_loose_items(reserved)
-	_spawn_secret_vault(reserved)
+	DungeonNPCSpawnHelperClass.spawn_floor_npcs(self)
 
 func _spawn_event_object(reserved: Dictionary) -> void:
-	if current_floor >= floor_count:
-		return
-	if _rng.randf() > clamp(event_object_spawn_chance, 0.0, 1.0):
-		return
-	var room_index: int = _pick_normal_room_index()
-	if room_index < 0:
-		return
-	var cell := _pick_cell_in_room(room_index, reserved)
-	if cell == Vector2i(-1, -1):
-		return
-	reserved[cell] = true
-	# Pick one of 7 event types with equal weight
-	var event_type := _rng.randi_range(0, 6)
-	var event_data: MTNPCData
-	match event_type:
-		0: event_data = _create_healing_spring_npc_data()
-		1: event_data = _create_gold_stash_npc_data()
-		2: event_data = _create_essence_cache_npc_data()
-		3: event_data = _create_status_trap_npc_data()
-		4: event_data = _create_merchant_cache_npc_data()
-		5: event_data = _create_monster_egg_npc_data()
-		_: event_data = _create_cursed_altar_npc_data()
-	_spawn_dynamic_npc(cell, event_data)
-	_log_dungeon("[Dungeon] event object spawned type=%d cell=%s" % [event_type, str(cell)])
+	DungeonNPCSpawnHelperClass.spawn_event_object(self, reserved)
 
 func _spawn_loose_items(reserved: Dictionary) -> void:
-	var count: int = _rng.randi_range(0, loose_item_max_count)
-	for _i in range(count):
-		var room_index: int = _pick_normal_room_index()
-		if room_index < 0:
-			break
-		var cell := _pick_cell_in_room(room_index, reserved)
-		if cell == Vector2i(-1, -1):
-			continue
-		reserved[cell] = true
-		var item_id := _pick_or_create_random_item()
-		_spawn_dynamic_npc(cell, _create_loose_item_npc_data(item_id))
-	if count > 0:
-		_log_dungeon("[Dungeon] loose items spawned count=%d" % count)
+	DungeonNPCSpawnHelperClass.spawn_loose_items(self, reserved)
 
 func _spawn_secret_vault(reserved: Dictionary) -> void:
-	if current_floor >= floor_count:
-		return
-	if _rng.randf() > clamp(secret_vault_spawn_chance, 0.0, 1.0):
-		return
-	var room_index: int = _pick_normal_room_index()
-	if room_index < 0:
-		return
-	var cell := _pick_cell_in_room(room_index, reserved)
-	if cell == Vector2i(-1, -1):
-		return
-	reserved[cell] = true
-	_spawn_dynamic_npc(cell, _create_secret_vault_npc_data())
-	_log_dungeon("[Dungeon] secret vault spawned cell=%s" % str(cell))
+	DungeonNPCSpawnHelperClass.spawn_secret_vault(self, reserved)
 
 func _spawn_elite_room_npc(reserved: Dictionary) -> void:
-	if _current_floor_goal != FLOOR_GOAL_TYPE.ELITE:
-		_elite_cleared_this_floor = true
-		return
-	if current_floor >= floor_count:
-		_elite_cleared_this_floor = true
-		_log_dungeon("[Dungeon] elite disabled on boss floor")
-		return
-	if _elite_room_index < 0 or _elite_room_index >= _room_rects.size():
-		_elite_cleared_this_floor = true
-		return
-	var cell := _pick_cell_in_room(_elite_room_index, reserved)
-	if cell == Vector2i(-1, -1):
-		_elite_cleared_this_floor = true
-		_log_dungeon("[Dungeon] elite room has no valid spawn cell; unlocking stairs")
-		return
-	reserved[cell] = true
-	_spawn_dynamic_npc(cell, _create_elite_npc_data())
-	_elite_cleared_this_floor = false
+	DungeonNPCSpawnHelperClass.spawn_elite_room_npc(self, reserved)
 
 func _spawn_mimic_npc(reserved: Dictionary) -> void:
-	if current_floor < mimic_min_floor:
-		return
-	if _rng.randf() > clamp(mimic_spawn_chance, 0.0, 1.0):
-		return
-	var room_index: int = _pick_normal_room_index()
-	if room_index < 0:
-		return
-	var cell := _pick_cell_in_room(room_index, reserved)
-	if cell == Vector2i(-1, -1):
-		return
-	reserved[cell] = true
-	_spawn_dynamic_npc(cell, _create_mimic_npc_data())
-	_log_dungeon("[Dungeon] mimic spawned room=%d cell=%s" % [room_index, str(cell)])
+	DungeonNPCSpawnHelperClass.spawn_mimic_npc(self, reserved)
 
 func _spawn_puzzle_switches(reserved: Dictionary) -> void:
-	if _current_floor_goal != FLOOR_GOAL_TYPE.PUZZLE:
-		return
-	if _switches_total <= 0:
-		return
-	
-	# Spawn _switches_total switches (typically 3) in different rooms
-	for i in range(_switches_total):
-		var room_index: int = _pick_normal_room_index()
-		if room_index < 0:
-			_log_dungeon("[Dungeon] puzzle: no valid room for switch %d" % (i + 1))
-			continue
-		var cell := _pick_cell_in_room(room_index, reserved)
-		if cell == Vector2i(-1, -1):
-			_log_dungeon("[Dungeon] puzzle: no valid cell in room %d for switch %d" % [room_index, i + 1])
-			continue
-		reserved[cell] = true
-		var switch_data := _create_puzzle_switch_npc_data(i + 1)
-		_spawn_dynamic_npc(cell, switch_data)
-		_log_dungeon("[Dungeon] puzzle switch %d spawned at cell=%s" % [i + 1, str(cell)])
+	DungeonNPCSpawnHelperClass.spawn_puzzle_switches(self, reserved)
 
 func _spawn_key_npc(reserved: Dictionary) -> void:
-	if _current_floor_goal != FLOOR_GOAL_TYPE.KEY:
-		return
-	
-	# Pick a random normal room for the key
-	var room_index: int = _pick_normal_room_index()
-	if room_index < 0:
-		_log_dungeon("[Dungeon] key: no valid room found")
-		return
-	
-	var cell := _pick_cell_in_room(room_index, reserved)
-	if cell == Vector2i(-1, -1):
-		_log_dungeon("[Dungeon] key: no valid cell in room %d" % room_index)
-		return
-	
-	reserved[cell] = true
-	_spawn_dynamic_npc(cell, _create_key_npc_data())
-	_log_dungeon("[Dungeon] key spawned at cell=%s in room=%d" % [str(cell), room_index])
+	DungeonNPCSpawnHelperClass.spawn_key_npc(self, reserved)
 
 func _pick_normal_room_index() -> int:
-	var candidates: Array[int] = []
-	for i in range(_room_rects.size()):
-		var room_type := str(_room_type_by_index.get(i, ROOM_TYPE_NORMAL))
-		if room_type != ROOM_TYPE_NORMAL:
-			continue
-		candidates.append(i)
-	if candidates.is_empty():
-		return -1
-	return int(candidates[_rng.randi_range(0, candidates.size() - 1)])
+	return DungeonNPCSpawnHelperClass.pick_normal_room_index(self)
 
 func _pick_cell_in_room(room_index: int, reserved: Dictionary) -> Vector2i:
-	if room_index < 0 or room_index >= _room_rects.size():
-		return Vector2i(-1, -1)
-	var room := _room_rects[room_index]
-	var candidates: Array[Vector2i] = []
-	for y in range(room.position.y, room.position.y + room.size.y):
-		for x in range(room.position.x, room.position.x + room.size.x):
-			var cell := Vector2i(x, y)
-			if reserved.has(cell):
-				continue
-			if not _is_safe_npc_spawn_cell(cell):
-				continue
-			if _is_chokepoint_cell(cell):
-				continue
-			candidates.append(cell)
-	if candidates.is_empty():
-		return Vector2i(-1, -1)
-	return candidates[_rng.randi_range(0, candidates.size() - 1)]
+	return DungeonNPCSpawnHelperClass.pick_cell_in_room(self, room_index, reserved)
 
 func _spawn_dynamic_npc(cell: Vector2i, npc_data: MTNPCData) -> void:
-	var template = _stairs_npc if _stairs_npc != null else _boss_npc
-	if template == null:
-		return
-	var npc = template.duplicate()
-	npc.name = "FloorNPC_%d" % (_dynamic_npcs.size() + 1)
-	npc.npc_data = npc_data
-	npc.visible = true
-	npc.set_process(true)
-	npc.set_physics_process(true)
-	add_child(npc)
-	npc.global_position = _cell_to_world(cell)
-	if npc.npc_data != null:
-		var interaction := str(npc.npc_data.interaction_id)
-		if interaction == "elite_pack":
-			npc.modulate = Color(1.0, 0.8, 0.5, 1.0)
-		elif interaction == "mimic_pack":
-			npc.modulate = Color(0.8, 1.0, 0.7, 1.0)
-	if npc.has_method("set_tile_layer"):
-		npc.set_tile_layer(_grass_layer)
-	_dynamic_npcs.append(npc)
-	_npcs.append(npc)
+	DungeonNPCSpawnHelperClass.spawn_dynamic_npc(self, cell, npc_data)
 
 func _clear_dynamic_npcs() -> void:
-	for npc in _dynamic_npcs:
-		if npc == null:
-			continue
-		_npcs.erase(npc)
-		npc.queue_free()
-	_dynamic_npcs.clear()
+	DungeonNPCSpawnHelperClass.clear_dynamic_npcs(self)
 
 func _create_battle_npc_data(index: int) -> MTNPCData:
-	var data := NPCDataClass.new()
-	data.display_name = "Wanderer %d" % index
-	data.dialogue_before = "The dungeon belongs to the strongest."
-	data.battle_once = true
-	data.walk_enabled = false
-	var team_size := 1 if current_floor < 3 else 2
-	for _i in range(team_size):
-		var entry := NPCMonsterEntryClass.new()
-		entry.monster_data = _pick_monster_for_habitat()
-		entry.level = max(2, current_floor * 2 + _rng.randi_range(0, 2))
-		data.team_entries.append(entry)
-	return data
+	return DungeonNPCSpawnHelperClass.create_battle_npc_data(self, index)
 
 func _create_item_npc_data(index: int) -> MTNPCData:
-	var data := NPCDataClass.new()
-	data.display_name = "Explorer %d" % index
-	data.dialogue_before = "Found this on this floor. Take it."
-	data.gives_items = true
-	data.give_item_amount = 1
-	data.battle_once = true
-	data.walk_enabled = false
-	if not item_reward_pool.is_empty():
-		var item_id := item_reward_pool[_rng.randi_range(0, item_reward_pool.size() - 1)]
-		data.give_item_ids = [item_id]
-	return data
+	return DungeonNPCSpawnHelperClass.create_item_npc_data(self, index)
 
 func _create_elite_npc_data() -> MTNPCData:
-	var data := NPCDataClass.new()
-	data.display_name = "Elite"
-	data.dialogue_before = "A concentrated pack of wild monsters surrounds you."
-	data.dialogue_after = "The elite pack has been defeated."
-	data.interaction_id = "elite_pack"
-	data.battle_once = true
-	data.walk_enabled = false
-	var team_size: int = min(5, 1 + int(current_floor / 5.0))
-	for _i in range(team_size):
-		var entry := NPCMonsterEntryClass.new()
-		entry.monster_data = _pick_monster_for_habitat()
-		entry.level = max(3, current_floor * 2 + 3 + _rng.randi_range(0, 2))
-		data.team_entries.append(entry)
-	return data
+	return DungeonNPCSpawnHelperClass.create_elite_npc_data(self)
 
 func _create_mimic_npc_data() -> MTNPCData:
-	var data := NPCDataClass.new()
-	data.display_name = "Mimic"
-	data.dialogue_before = "A lonely chest twitches... it was bait!"
-	data.dialogue_after = "The mimic vanishes into the shadows."
-	data.interaction_id = "mimic_pack"
-	data.battle_once = true
-	data.walk_enabled = false
-	var team_size := 1 if current_floor < 4 else 2
-	for _i in range(team_size):
-		var entry := NPCMonsterEntryClass.new()
-		entry.monster_data = _pick_monster_for_habitat()
-		entry.level = max(4, current_floor * 2 + 4 + _rng.randi_range(0, 3))
-		data.team_entries.append(entry)
-	return data
+	return DungeonNPCSpawnHelperClass.create_mimic_npc_data(self)
 
 func _create_puzzle_switch_npc_data(switch_number: int) -> MTNPCData:
-	var data := NPCDataClass.new()
-	data.display_name = "Switch %d" % switch_number
-	data.dialogue_before = "You activate the switch. A mechanism clicks into place."
-	data.dialogue_after = ""
-	data.interaction_id = "dungeon_switch_%d" % switch_number
-	data.battle_once = false
-	data.walk_enabled = false
-	# Switches have no team - they are just interactive objects
-	return data
+	return DungeonNPCSpawnHelperClass.create_puzzle_switch_npc_data(switch_number)
 
 func _create_key_npc_data() -> MTNPCData:
-	var data := NPCDataClass.new()
-	data.display_name = "Glowing Key"
-	data.dialogue_before = "You pick up the ancient key. It glows with power."
-	data.dialogue_after = ""
-	data.interaction_id = "dungeon_key"
-	data.battle_once = false
-	data.walk_enabled = false
-	# Key has no team - it is just an interactive item
-	return data
+	return DungeonNPCSpawnHelperClass.create_key_npc_data()
 
 func _create_healing_spring_npc_data() -> MTNPCData:
-	var data := NPCDataClass.new()
-	data.display_name = "Healing Spring"
-	data.dialogue_before = "A bubbling spring glows with restorative energy. (Restores HP and Energy once)"
-	data.dialogue_after = ""
-	data.interaction_id = "dungeon_healing_spring"
-	data.battle_once = false
-	data.walk_enabled = false
-	return data
+	return DungeonNPCSpawnHelperClass.create_healing_spring_npc_data()
 
 func _create_gold_stash_npc_data() -> MTNPCData:
-	var data := NPCDataClass.new()
-	data.display_name = "Gold Chest"
-	data.dialogue_before = "A dusty chest rests here, filled with coins!"
-	data.dialogue_after = ""
-	data.interaction_id = "dungeon_gold_stash"
-	data.battle_once = false
-	data.walk_enabled = false
-	return data
+	return DungeonNPCSpawnHelperClass.create_gold_stash_npc_data()
 
 func _create_essence_cache_npc_data() -> MTNPCData:
-	var data := NPCDataClass.new()
-	data.display_name = "Soul Essence Cache"
-	data.dialogue_before = "A crystalline orb pulses with condensed Soul Essence."
-	data.dialogue_after = ""
-	data.interaction_id = "dungeon_essence_cache"
-	data.battle_once = false
-	data.walk_enabled = false
-	return data
+	return DungeonNPCSpawnHelperClass.create_essence_cache_npc_data()
 
 func _create_status_trap_npc_data() -> MTNPCData:
-	var data := NPCDataClass.new()
-	data.display_name = "Suspicious Rune"
-	data.dialogue_before = "Strange runes glow on the floor here... (Possible trap!)"
-	data.dialogue_after = ""
-	data.interaction_id = "dungeon_status_trap"
-	data.battle_once = false
-	data.walk_enabled = false
-	return data
+	return DungeonNPCSpawnHelperClass.create_status_trap_npc_data()
 
 func _create_merchant_cache_npc_data() -> MTNPCData:
-	var data := NPCDataClass.new()
-	data.display_name = "Hidden Merchant Cache"
-	data.dialogue_before = "A small supply cache has been left behind by a passing merchant."
-	data.dialogue_after = ""
-	data.interaction_id = "dungeon_merchant_cache"
-	data.battle_once = false
-	data.walk_enabled = false
-	return data
+	return DungeonNPCSpawnHelperClass.create_merchant_cache_npc_data()
 
 func _create_monster_egg_npc_data() -> MTNPCData:
-	var data := NPCDataClass.new()
-	data.display_name = "Monster Egg"
-	data.dialogue_before = "A warm egg rests here. Something stirs inside..."
-	data.dialogue_after = ""
-	data.interaction_id = "dungeon_monster_egg"
-	data.battle_once = false
-	data.walk_enabled = false
-	return data
+	return DungeonNPCSpawnHelperClass.create_monster_egg_npc_data()
 
 func _create_cursed_altar_npc_data() -> MTNPCData:
-	var data := NPCDataClass.new()
-	data.display_name = "Cursed Altar"
-	data.dialogue_before = "A dark altar radiates power. Risk your team's health for rewards?"
-	data.dialogue_after = ""
-	data.interaction_id = "dungeon_cursed_altar"
-	data.battle_once = false
-	data.walk_enabled = false
-	return data
+	return DungeonNPCSpawnHelperClass.create_cursed_altar_npc_data()
 
 func _create_loose_item_npc_data(item_id: String) -> MTNPCData:
-	var data := NPCDataClass.new()
-	var item_data: MTItemData = ITEM_DB_CLASS.new().get_item(item_id)
-	data.display_name = item_data.name if item_data != null else item_id
-	data.dialogue_before = "You find %s lying on the ground." % (item_data.name if item_data != null else item_id)
-	data.dialogue_after = ""
-	data.interaction_id = "dungeon_loose_item:" + item_id
-	data.battle_once = false
-	data.walk_enabled = false
-	return data
+	return DungeonNPCSpawnHelperClass.create_loose_item_npc_data(item_id)
 
 func _create_secret_vault_npc_data() -> MTNPCData:
-	var data := NPCDataClass.new()
-	data.display_name = "Secret Vault"
-	data.dialogue_before = "A heavy iron vault. This requires a Secret Key to open."
-	data.dialogue_after = ""
-	data.interaction_id = "dungeon_secret_vault"
-	data.battle_once = false
-	data.walk_enabled = false
-	return data
+	return DungeonNPCSpawnHelperClass.create_secret_vault_npc_data()
 
 
 
 func _pick_monster_for_habitat() -> MTMonsterData:
-	var paths := _get_habitat_monster_paths()
-	if paths.is_empty():
-		return load("res://data/monsters/slime/slime.tres") as MTMonsterData
-	var path := paths[_rng.randi_range(0, paths.size() - 1)]
-	var result := load(path) as MTMonsterData
-	if result != null:
-		return result
-	return load("res://data/monsters/slime/slime.tres") as MTMonsterData
+	return DungeonNPCSpawnHelperClass.pick_monster_for_habitat(self)
 
 func _pick_free_floor_cell(reserved: Dictionary) -> Vector2i:
-	if _floor_cells.is_empty():
-		return Vector2i(-1, -1)
-	for _i in range(200):
-		var cell := _floor_cells[_rng.randi_range(0, _floor_cells.size() - 1)]
-		if reserved.has(cell):
-			continue
-		if not _is_safe_npc_spawn_cell(cell):
-			continue
-		if _is_chokepoint_cell(cell):
-			continue
-		return cell
-	return Vector2i(-1, -1)
+	return DungeonNPCSpawnHelperClass.pick_free_floor_cell(self, reserved)
 
 func _is_safe_npc_spawn_cell(cell: Vector2i) -> bool:
-	# NPCs may only spawn inside rooms, never in corridors.
-	if not _room_cells_lookup.has(cell):
-		return false
-
-	# Keep at least one tile distance from corridors so passages stay open.
-	for y in range(-1, 2):
-		for x in range(-1, 2):
-			if x == 0 and y == 0:
-				continue
-			var n := cell + Vector2i(x, y)
-			if _corridor_cells_lookup.has(n):
-				return false
-	return true
+	return DungeonNPCSpawnHelperClass.is_safe_npc_spawn_cell(self, cell)
 
 func _is_chokepoint_cell(cell: Vector2i) -> bool:
-	var n := 0
-	for dir in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-		if _has_tile(_dirt_layer, cell + dir):
-			n += 1
-	return n <= 1
+	return DungeonNPCSpawnHelperClass.is_chokepoint_cell(self, cell)
 
 #  Layout generation 
 
 func _generate_floor_layout() -> void:
-	if generation_seed > 0:
-		_rng.seed = int(generation_seed + current_floor * 104729)
-	elif _layout_seed > 0:
-		# Reuse the saved seed so that calling _apply_floor_rules a second time
-		# (from apply_world_payload) produces the exact same layout.
-		_rng.seed = _layout_seed
-	else:
-		_rng.randomize()
-		_layout_seed = _rng.seed  # remember for stable re-generation
-
-	_room_rects.clear()
-	_room_cells_lookup.clear()
-	_corridor_cells_lookup.clear()
-	_room_type_by_index.clear()
-	_room_index_by_cell.clear()
-	_visited_room_indices.clear()
-	_elite_room_index = -1
-	_event_room_index = -1
-	_elite_cleared_this_floor = false
-	_reset_floor_quest_state()
-	_log_dungeon("[Dungeon] generating floor %d/%d  seed=%d" % [current_floor, floor_count, _rng.seed])
-
-	var carved := {}
-	var target_rooms := _rng.randi_range(min_room_count, max_room_count)
-	var attempts := target_rooms * 24
-
-	for _i in range(attempts):
-		if _room_rects.size() >= target_rooms:
-			break
-		var room_w := _rng.randi_range(min_room_size, max_room_size)
-		var room_h := _rng.randi_range(min_room_size, max_room_size)
-		var room_x := _rng.randi_range(2, max(2, map_width - room_w - 3))
-		var room_y := _rng.randi_range(2, max(2, map_height - room_h - 3))
-		var room := Rect2i(room_x, room_y, room_w, room_h)
-		if _room_intersects_existing(room):
-			continue
-		_room_rects.append(room)
-		_carve_room(room, carved)
-
-	if _room_rects.is_empty():
-		var fx: int = max(2, int(map_width / 2.0) - 3)
-		var fy: int = max(2, int(map_height / 2.0) - 3)
-		var fallback := Rect2i(fx, fy, 6, 6)
-		_room_rects.append(fallback)
-		_carve_room(fallback, carved)
-
-	for i in range(1, _room_rects.size()):
-		_carve_corridor(_room_center(_room_rects[i - 1]), _room_center(_room_rects[i]), carved)
-	_build_room_index_lookup()
-
-	_floor_cells.clear()
-	for cell_key in carved.keys():
-		_floor_cells.append(cell_key)
-	_log_dungeon("[Dungeon] %d rooms  %d floor cells" % [_room_rects.size(), _floor_cells.size()])
+	DungeonLayoutHelperClass.generate_floor_layout(self)
 
 #  Tile-map painting 
 #
@@ -1121,153 +756,31 @@ func _sample_existing_floor_tile() -> Dictionary:
 #  Geometry helpers 
 
 func _room_intersects_existing(candidate: Rect2i) -> bool:
-	for room in _room_rects:
-		var expanded := Rect2i(room.position - Vector2i.ONE, room.size + Vector2i(2, 2))
-		if expanded.intersects(candidate):
-			return true
-	return false
+	return DungeonLayoutHelperClass.room_intersects_existing(self, candidate)
 
 func _carve_room(room: Rect2i, carved: Dictionary) -> void:
-	for y in range(room.position.y, room.position.y + room.size.y):
-		for x in range(room.position.x, room.position.x + room.size.x):
-			var cell := Vector2i(x, y)
-			carved[cell] = true
-			_room_cells_lookup[cell] = true
-			if _corridor_cells_lookup.has(cell):
-				_corridor_cells_lookup.erase(cell)
+	DungeonLayoutHelperClass.carve_room(self, room, carved)
 
 func _carve_corridor(start: Vector2i, target: Vector2i, carved: Dictionary) -> void:
-	var current := start
-	while current.x != target.x:
-		carved[current] = true
-		if not _room_cells_lookup.has(current):
-			_corridor_cells_lookup[current] = true
-		current.x += 1 if target.x > current.x else -1
-	while current.y != target.y:
-		carved[current] = true
-		if not _room_cells_lookup.has(current):
-			_corridor_cells_lookup[current] = true
-		current.y += 1 if target.y > current.y else -1
-	carved[target] = true
-	if not _room_cells_lookup.has(target):
-		_corridor_cells_lookup[target] = true
+	DungeonLayoutHelperClass.carve_corridor(self, start, target, carved)
 
 func _room_center(room: Rect2i) -> Vector2i:
-	return Vector2i(
-		room.position.x + int(room.size.x / 2.0),
-		room.position.y + int(room.size.y / 2.0))
+	return DungeonLayoutHelperClass.room_center(room)
 
 func _build_room_index_lookup() -> void:
-	_room_index_by_cell.clear()
-	for i in range(_room_rects.size()):
-		var room := _room_rects[i]
-		for y in range(room.position.y, room.position.y + room.size.y):
-			for x in range(room.position.x, room.position.x + room.size.x):
-				_room_index_by_cell[Vector2i(x, y)] = i
+	DungeonLayoutHelperClass.build_room_index_lookup(self)
 
 func _assign_room_roles() -> void:
-	_room_type_by_index.clear()
-	if _room_rects.is_empty():
-		return
-	for i in range(_room_rects.size()):
-		_room_type_by_index[i] = ROOM_TYPE_NORMAL
-
-	var start_index := 0
-	var exit_index := _get_farthest_room_index(start_index)
-	_room_type_by_index[start_index] = ROOM_TYPE_START
-	_room_type_by_index[exit_index] = ROOM_TYPE_EXIT
-
-	var candidates: Array[int] = []
-	for i in range(_room_rects.size()):
-		if i == start_index or i == exit_index:
-			continue
-		candidates.append(i)
-	if candidates.is_empty():
-		_log_dungeon("[Dungeon] room roles: only start/exit available")
-		return
-
-	candidates.sort_custom(func(a: int, b: int):
-		return _room_distance(start_index, a) > _room_distance(start_index, b))
-
-	_elite_room_index = -1
-	if current_floor < floor_count and _current_floor_goal == FLOOR_GOAL_TYPE.ELITE:
-		_elite_room_index = candidates[0]
-		_room_type_by_index[_elite_room_index] = ROOM_TYPE_ELITE
-
-	_log_dungeon("[Dungeon] room roles start=%d exit=%d elite=%d" % [
-		start_index, exit_index, _elite_room_index])
+	DungeonLayoutHelperClass.assign_room_roles(self)
 
 func _assign_floor_goals() -> void:
-	# Reset goal state
-	_floor_goal_state.clear()
-	_switches_total = 0
-	_switches_activated = 0
-	_key_found_this_floor = false
-	_elite_cleared_this_floor = true
-
-	# Boss floor has no stair objective events (key/switch/elite).
-	if current_floor >= floor_count:
-		_current_floor_goal = FLOOR_GOAL_TYPE.OPEN
-		_log_dungeon("[Dungeon] floor goal=OPEN (boss floor)")
-		return
-	
-	# Assign goal based on probabilities (50% open, 30% elite, 10% key, 10% puzzle)
-	var roll: int = _rng.randi_range(0, 99)
-	var cumulative: int = 0
-	
-	# Open (50%)
-	if roll < cumulative + goal_prob_open:
-		_current_floor_goal = FLOOR_GOAL_TYPE.OPEN
-		_log_dungeon("[Dungeon] floor goal=OPEN")
-		return
-	cumulative += goal_prob_open
-	
-	# Elite (30%)
-	if roll < cumulative + goal_prob_elite:
-		_current_floor_goal = FLOOR_GOAL_TYPE.ELITE
-		_log_dungeon("[Dungeon] floor goal=ELITE")
-		return
-	cumulative += goal_prob_elite
-	
-	# Key (10%)
-	if roll < cumulative + goal_prob_key:
-		_current_floor_goal = FLOOR_GOAL_TYPE.KEY
-		_floor_goal_state["key_found"] = false
-		_log_dungeon("[Dungeon] floor goal=KEY")
-		return
-	cumulative += goal_prob_key
-	
-	# Puzzle (10%) - default fallthrough
-	_current_floor_goal = FLOOR_GOAL_TYPE.PUZZLE
-	_switches_total = 3
-	_switches_activated = 0
-	_floor_goal_state["switches_activated"] = 0
-	_floor_goal_state["switches_total"] = 3
-	_log_dungeon("[Dungeon] floor goal=PUZZLE switches_total=3")
+	DungeonLayoutHelperClass.assign_floor_goals(self)
 
 func _get_farthest_room_index(origin_index: int) -> int:
-	if _room_rects.is_empty():
-		return 0
-	var oi: int = clampi(origin_index, 0, _room_rects.size() - 1)
-	var origin: Vector2i = _room_center(_room_rects[oi])
-	var best_index: int = oi
-	var best_dist: int = -1
-	for i in range(_room_rects.size()):
-		var center := _room_center(_room_rects[i])
-		var dist: int = abs(center.x - origin.x) + abs(center.y - origin.y)
-		if dist > best_dist:
-			best_dist = dist
-			best_index = i
-	return best_index
+	return DungeonLayoutHelperClass.get_farthest_room_index(self, origin_index)
 
 func _room_distance(a_index: int, b_index: int) -> int:
-	if a_index < 0 or a_index >= _room_rects.size():
-		return 0
-	if b_index < 0 or b_index >= _room_rects.size():
-		return 0
-	var a := _room_center(_room_rects[a_index])
-	var b := _room_center(_room_rects[b_index])
-	return abs(a.x - b.x) + abs(a.y - b.y)
+	return DungeonLayoutHelperClass.room_distance(self, a_index, b_index)
 
 func _handle_room_entry_trigger() -> bool:
 	if _player == null:
@@ -1465,217 +978,37 @@ func _handle_puzzle_switch_interaction(npc, interaction: String) -> bool:
 #  Quest System 
 
 func _maybe_spawn_quest_npc() -> void:
-	if _has_quest_this_floor:
-		return
-	if current_floor >= floor_count:
-		return
-	var effective_spawn_chance: float = _get_effective_quest_spawn_chance()
-	if _rng.randf() > effective_spawn_chance:
-		return
-	
-	# Pick a random normal room for the quest NPC
-	var room_index: int = _pick_normal_room_index()
-	if room_index < 0:
-		return
-	
-	var reserved: Dictionary = {}
-	reserved[_player_spawn_cell] = true
-	if _stairs_npc != null and _stairs_npc.visible:
-		reserved[_world_to_cell(_stairs_npc.global_position)] = true
-	
-	var cell := _pick_cell_in_room(room_index, reserved)
-	if cell == Vector2i(-1, -1):
-		return
-	
-	# Randomly pick a quest type
-	var quest_type: int = _rng.randi_range(0, 2)  # 0=DELIVERY, 1=HUNT, 2=AMBUSH
-	
-	_active_quest = {
-		"quest_type": quest_type,
-		"accepted": quest_type == QUEST_TYPE.THIEF_AMBUSH,
-		"completed": false,
-		"ready_to_turn_in": false,
-		"shop_unlocked": false,
-		"delivery_item_id": "",
-		"monsters_killed": 0,
-		"monsters_needed": _rng.randi_range(2, 4)
-	}
-	_has_quest_this_floor = true
-	
-	var quest_npc_data := _create_quest_npc_data(quest_type)
-	_spawn_dynamic_npc(cell, quest_npc_data)
-	_quest_npc = _dynamic_npcs[-1] if _dynamic_npcs.size() > 0 else null
-	if quest_type == QUEST_TYPE.ITEM_DELIVERY:
-		_spawn_delivery_quest_item(cell)
-	
-	var quest_names := ["Item Delivery", "Monster Hunt", "Thief Ambush"]
-	_log_dungeon("[Dungeon] quest spawned type=%s cell=%s" % [quest_names[quest_type], str(cell)])
+	DungeonQuestHelperClass.maybe_spawn_quest_npc(self)
 
 func _create_quest_npc_data(quest_type: int) -> MTNPCData:
-	var data := NPCDataClass.new()
-	var dialogue_before := ""
-	var dialogue_after := ""
-	var interaction_id := "dungeon_quest"
-	
-	match quest_type:
-		QUEST_TYPE.ITEM_DELIVERY:
-			data.display_name = "Merchant"
-			dialogue_before = "Please, find me a healing potion on this level!"
-			dialogue_after = "Thank you! You're a lifesaver."
-			interaction_id = "dungeon_quest_delivery"
-		QUEST_TYPE.MONSTER_HUNT:
-			data.display_name = "Hunter"
-			dialogue_before = "Help me defeat the monsters on this floor!"
-			dialogue_after = "Excellent work! You're a true warrior."
-			interaction_id = "dungeon_quest_hunt"
-		QUEST_TYPE.THIEF_AMBUSH:
-			data.display_name = "Thief"
-			dialogue_before = "You've encountered a notorious thief!"
-			dialogue_after = "Ha! You win this time..."
-			interaction_id = "dungeon_quest_thief"
-	
-	data.dialogue_before = dialogue_before
-	data.dialogue_after = dialogue_after
-	data.interaction_id = interaction_id
-	data.battle_once = false
-	data.walk_enabled = false
-	
-	# Thief ambush has an elite-strength team
-	if quest_type == QUEST_TYPE.THIEF_AMBUSH:
-		var team_size: int = min(5, 1 + int(current_floor / 5.0))
-		for _i in range(team_size):
-			var entry := NPCMonsterEntryClass.new()
-			entry.monster_data = _pick_monster_for_habitat()
-			entry.level = max(3, current_floor * 2 + 3 + _rng.randi_range(0, 2))
-			data.team_entries.append(entry)
-	
-	return data
+	return DungeonQuestHelperClass.create_quest_npc_data(self, quest_type)
 
 func _pick_or_create_random_item() -> String:
-	if item_reward_pool.is_empty():
-		return "lesser_healing_potion"
-	return item_reward_pool[_rng.randi_range(0, item_reward_pool.size() - 1)]
+	return DungeonQuestHelperClass.pick_or_create_random_item(self)
 
 func _spawn_delivery_quest_item(quest_cell: Vector2i) -> void:
-	var reserved: Dictionary = {}
-	reserved[_player_spawn_cell] = true
-	reserved[quest_cell] = true
-	if _stairs_npc != null and _stairs_npc.visible:
-		reserved[_world_to_cell(_stairs_npc.global_position)] = true
-	if _boss_npc != null and _boss_npc.visible:
-		reserved[_world_to_cell(_boss_npc.global_position)] = true
-	for npc in _dynamic_npcs:
-		if npc == null or not npc.visible:
-			continue
-		reserved[_world_to_cell(npc.global_position)] = true
-
-	var room_index: int = _pick_normal_room_index()
-	if room_index < 0:
-		return
-	var cell := _pick_cell_in_room(room_index, reserved)
-	if cell == Vector2i(-1, -1):
-		return
-
-	var delivery_item_id := "quest_delivery_satchel_floor_%d" % current_floor
-	_active_quest["delivery_item_id"] = delivery_item_id
-	_spawn_dynamic_npc(cell, _create_delivery_quest_item_npc_data())
-	_quest_item_npc = _dynamic_npcs[-1] if _dynamic_npcs.size() > 0 else null
-	_log_dungeon("[Dungeon] delivery item spawned id=%s cell=%s" % [delivery_item_id, str(cell)])
+	DungeonQuestHelperClass.spawn_delivery_quest_item(self, quest_cell)
 
 func _create_delivery_quest_item_npc_data() -> MTNPCData:
-	var data := NPCDataClass.new()
-	data.display_name = "Lost Satchel"
-	data.dialogue_before = "You found the merchant's lost satchel."
-	data.dialogue_after = ""
-	data.interaction_id = "dungeon_quest_delivery_item"
-	data.battle_once = false
-	data.walk_enabled = false
-	return data
+	return DungeonQuestHelperClass.create_delivery_quest_item_npc_data()
 
 func _handle_quest_delivery(npc) -> bool:
-	if _active_quest.get("completed", false) and _active_quest.get("shop_unlocked", false):
-		return _handle_merchant_shop(npc)
-	var delivery_item_id: String = str(_active_quest.get("delivery_item_id", ""))
-	if delivery_item_id == "":
-		_enqueue_message("The merchant seems to have lost track of the package.")
-		return true
-	if not _active_quest.get("accepted", false):
-		_active_quest["accepted"] = true
-		_enqueue_message("Merchant Quest: Find the lost satchel somewhere on this floor.")
-		return true
-	if Game.get_item_count(delivery_item_id) <= 0:
-		_enqueue_message("Merchant Quest: Please find my lost satchel and bring it back.")
-		return true
-	Game.remove_item(delivery_item_id, 1)
-	_active_quest["completed"] = true
-	_active_quest["ready_to_turn_in"] = false
-	_active_quest["shop_unlocked"] = true
-	_enqueue_message("Quest Complete: You returned the lost satchel.")
-	_award_quest_rewards()
-	_enqueue_message("Merchant unlocked: Trade with run gold is now available.")
-	_log_dungeon("[Dungeon] quest completed type=delivery")
-	return true
+	return DungeonQuestHelperClass.handle_quest_delivery(self, npc)
 
 func _handle_quest_hunt(_npc) -> bool:
-	if not _active_quest.get("accepted", false):
-		_active_quest["accepted"] = true
-		var target_count: int = _active_quest.get("monsters_needed", 2)
-		_enqueue_message("Hunter Quest accepted: Defeat %d wild encounters on this floor." % target_count)
-		_log_dungeon("[Dungeon] quest hunt accepted target=%d" % target_count)
-		return true
-	if _active_quest.get("ready_to_turn_in", false):
-		_active_quest["completed"] = true
-		_active_quest["ready_to_turn_in"] = false
-		if _quest_npc != null:
-			_set_npc_active(_quest_npc, false, Vector2i.ZERO)
-		_enqueue_message("Quest Complete: The hunter rewards your work.")
-		_award_quest_rewards()
-		_log_dungeon("[Dungeon] quest completed type=hunt")
-		return true
-	# Hunt quest status
-	var needed: int = _active_quest.get("monsters_needed", 2)
-	var killed: int = _active_quest.get("monsters_killed", 0)
-	_enqueue_message("Hunt Quest: %d/%d encounters defeated. Return when the hunt is done." % [killed, needed])
-	_log_dungeon("[Dungeon] quest hunt status=%d/%d" % [killed, needed])
-	return true
+	return DungeonQuestHelperClass.handle_quest_hunt(self, _npc)
 
 func _handle_quest_delivery_item(npc) -> bool:
-	var delivery_item_id: String = str(_active_quest.get("delivery_item_id", ""))
-	if delivery_item_id == "":
-		return true
-	Game.add_item(delivery_item_id, 1)
-	if npc != null:
-		_set_npc_active(npc, false, Vector2i.ZERO)
-	_active_quest["ready_to_turn_in"] = true
-	_enqueue_message("You found the lost satchel. Return it to the merchant.")
-	_log_dungeon("[Dungeon] quest delivery item picked id=%s" % delivery_item_id)
-	return true
+	return DungeonQuestHelperClass.handle_quest_delivery_item(self, npc)
 
 func _handle_quest_thief(_npc) -> bool:
-	# Thief ambush is a battle
-	_enqueue_message("The thief engages you in battle!")
-	return false  # Let normal battle flow happen
+	return DungeonQuestHelperClass.handle_quest_thief(self, _npc)
 
 func _award_quest_rewards() -> void:
-	# Quest rewards are run gold + persistent soul essence.
-	if Game != null:
-		Game.add_run_gold(quest_reward_gold)
-		Game.add_soul_essence(quest_reward_soul_essence)
-		_enqueue_message("Received %d gold and %d Soul Essence!" % [quest_reward_gold, quest_reward_soul_essence])
-		_log_dungeon("[Dungeon] quest reward gold=%d essence=%d" % [quest_reward_gold, quest_reward_soul_essence])
-	else:
-		_enqueue_message("Quest rewarded! (Game singleton not found)")
-		_log_dungeon("[Dungeon] quest reward failed - Game not initialized")
+	DungeonQuestHelperClass.award_quest_rewards(self)
 
 func _reset_floor_quest_state() -> void:
-	var old_delivery_item_id: String = str(_active_quest.get("delivery_item_id", ""))
-	if old_delivery_item_id != "" and Game != null:
-		Game.remove_item(old_delivery_item_id, Game.get_item_count(old_delivery_item_id))
-	_active_quest.clear()
-	_has_quest_this_floor = false
-	_quest_npc = null
-	_quest_item_npc = null
-	_merchant_shop_index = 0
+	DungeonQuestHelperClass.reset_floor_quest_state(self)
 
 func _handle_merchant_shop(_npc) -> bool:
 	if merchant_shop_items.is_empty():
@@ -1685,218 +1018,40 @@ func _handle_merchant_shop(_npc) -> bool:
 	return true
 
 func _create_merchant_shop_ui() -> void:
-	_merchant_shop_layer = CanvasLayer.new()
-	_merchant_shop_layer.layer = 14
-	add_child(_merchant_shop_layer)
-
-	_merchant_shop_panel = PanelContainer.new()
-	_merchant_shop_panel.anchor_left = 0.5
-	_merchant_shop_panel.anchor_top = 0.5
-	_merchant_shop_panel.anchor_right = 0.5
-	_merchant_shop_panel.anchor_bottom = 0.5
-	_merchant_shop_panel.offset_left = -200
-	_merchant_shop_panel.offset_top = -140
-	_merchant_shop_panel.offset_right = 200
-	_merchant_shop_panel.offset_bottom = 140
-	var panel_style: StyleBoxFlat = StyleBoxFlat.new()
-	panel_style.bg_color = Color(0, 0, 0, 0.9)
-	panel_style.set_border_width_all(2)
-	panel_style.border_color = Color(1, 0.9, 0.65, 1)
-	_merchant_shop_panel.add_theme_stylebox_override("panel", panel_style)
-	_merchant_shop_layer.add_child(_merchant_shop_panel)
-
-	var outer: VBoxContainer = VBoxContainer.new()
-	outer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	outer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	outer.add_theme_constant_override("separation", 6)
-	_merchant_shop_panel.add_child(outer)
-
-	_merchant_shop_title = Label.new()
-	_merchant_shop_title.text = "Dungeon Merchant"
-	_merchant_shop_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_merchant_shop_title.add_theme_color_override("font_color", Color(1, 0.95, 0.75, 1))
-	outer.add_child(_merchant_shop_title)
-
-	_merchant_shop_list = VBoxContainer.new()
-	_merchant_shop_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_merchant_shop_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_merchant_shop_list.add_theme_constant_override("separation", 4)
-	outer.add_child(_merchant_shop_list)
-
-	_merchant_shop_status = Label.new()
-	_merchant_shop_status.text = ""
-	_merchant_shop_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_merchant_shop_status.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0, 1))
-	outer.add_child(_merchant_shop_status)
-
-	_merchant_shop_close_button = Button.new()
-	_merchant_shop_close_button.text = "Close"
-	_merchant_shop_close_button.focus_mode = Control.FOCUS_ALL
-	_merchant_shop_close_button.pressed.connect(_close_merchant_shop)
-	outer.add_child(_merchant_shop_close_button)
-
-	_merchant_shop_panel.visible = false
+	DungeonShopUIHelperClass.create_merchant_shop_ui(self)
 
 func _rebuild_merchant_shop_buttons() -> void:
-	_merchant_shop_buttons.clear()
-	for child in _merchant_shop_list.get_children():
-		child.queue_free()
-	if Game == null:
-		var unavailable: Label = Label.new()
-		unavailable.text = "Merchant unavailable"
-		unavailable.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_merchant_shop_list.add_child(unavailable)
-		return
-	for i in range(merchant_shop_items.size()):
-		var item_id: String = str(merchant_shop_items[i])
-		var item_name: String = item_id
-		var item_data: MTItemData = ITEM_DB_CLASS.new().get_item(item_id)
-		if item_data != null:
-			item_name = item_data.name
-		var base_price: int = 20
-		if i < merchant_shop_prices.size():
-			base_price = int(merchant_shop_prices[i])
-		var price: int = _apply_merchant_discount(base_price)
-		var button: Button = Button.new()
-		button.focus_mode = Control.FOCUS_ALL
-		button.text = "%s  -  %d gold" % [item_name, price]
-		if Game.run_gold < price:
-			button.disabled = true
-		button.pressed.connect(_on_merchant_buy_pressed.bind(i))
-		_merchant_shop_list.add_child(button)
-		_merchant_shop_buttons.append(button)
+	DungeonShopUIHelperClass.rebuild_merchant_shop_buttons(self, ITEM_DB_CLASS)
 
 func _open_merchant_shop() -> void:
-	if _merchant_shop_panel == null or _merchant_shop_panel.get_parent() == null:
-		_create_merchant_shop_ui()
-	_rebuild_merchant_shop_buttons()
-	_merchant_shop_status.text = "Select an item to buy."
-	_merchant_shop_panel.visible = true
-	_merchant_shop_open = true
-	_pause_npc_walks()
-	if _merchant_shop_buttons.size() > 0:
-		_merchant_shop_buttons[0].grab_focus()
-	else:
-		_merchant_shop_close_button.grab_focus()
+	DungeonShopUIHelperClass.open_merchant_shop(self, ITEM_DB_CLASS)
 
 func _close_merchant_shop() -> void:
-	_merchant_shop_open = false
-	if _merchant_shop_panel != null:
-		_merchant_shop_panel.visible = false
-	_resume_npc_walks()
-	var viewport = get_viewport()
-	if viewport != null:
-		viewport.gui_release_focus()
+	DungeonShopUIHelperClass.close_merchant_shop(self)
 
 func _on_merchant_buy_pressed(index: int) -> void:
-	if Game == null:
-		_merchant_shop_status.text = "Merchant unavailable"
-		return
-	if index < 0 or index >= merchant_shop_items.size():
-		return
-	var item_id: String = str(merchant_shop_items[index])
-	var base_price: int = 20
-	if index < merchant_shop_prices.size():
-		base_price = int(merchant_shop_prices[index])
-	var price: int = _apply_merchant_discount(base_price)
-	if not Game.spend_run_gold(price):
-		_merchant_shop_status.text = "Not enough gold (%d needed, %d available)." % [price, Game.run_gold]
-		_rebuild_merchant_shop_buttons()
-		return
-	Game.add_item(item_id, 1)
-	var item_name: String = item_id
-	var item_data: MTItemData = ITEM_DB_CLASS.new().get_item(item_id)
-	if item_data != null:
-		item_name = item_data.name
-	_merchant_shop_status.text = "Bought %s for %d gold." % [item_name, price]
-	_log_dungeon("[Dungeon] merchant sale item=%s price=%d run_gold=%d" % [item_id, price, Game.run_gold])
-	_rebuild_merchant_shop_buttons()
-	if _merchant_shop_buttons.size() > 0:
-		_merchant_shop_buttons[0].grab_focus()
-	else:
-		_merchant_shop_close_button.grab_focus()
+	DungeonShopUIHelperClass.on_merchant_buy_pressed(self, index, ITEM_DB_CLASS)
 
 func _create_currency_hud() -> void:
-	_currency_hud_layer = CanvasLayer.new()
-	_currency_hud_layer.layer = 12
-	add_child(_currency_hud_layer)
-	_currency_hud_label = Label.new()
-	_currency_hud_label.anchor_left = 0.0
-	_currency_hud_label.anchor_top = 0.5
-	_currency_hud_label.anchor_right = 0.0
-	_currency_hud_label.anchor_bottom = 0.5
-	_currency_hud_label.offset_left = 10
-	_currency_hud_label.offset_top = -24
-	_currency_hud_label.offset_right = 260
-	_currency_hud_label.offset_bottom = 24
-	_currency_hud_label.add_theme_color_override("font_color", Color(1, 0.95, 0.75, 1))
-	_currency_hud_layer.add_child(_currency_hud_label)
+	DungeonShopUIHelperClass.create_currency_hud(self)
 
 func _update_currency_hud(force: bool = false) -> void:
-	if _currency_hud_label == null:
-		return
-	if Game == null:
-		if force:
-			_currency_hud_label.text = "Gold: -\nSoul Essence: -"
-		return
-	var gold: int = Game.run_gold
-	var essence: int = Game.soul_essence
-	if not force and gold == _last_gold_display and essence == _last_essence_display:
-		return
-	_last_gold_display = gold
-	_last_essence_display = essence
-	_currency_hud_label.text = "Gold: %d\nSoul Essence: %d" % [gold, essence]
+	DungeonShopUIHelperClass.update_currency_hud(self, force)
 
 func _apply_merchant_discount(base_price: int) -> int:
-	if Game == null:
-		return max(1, base_price)
-	var discount_level: int = Game.get_meta_unlock_level("merchant_discount")
-	var factor: float = clampf(1.0 - float(discount_level) * 0.10, 0.5, 1.0)
-	return max(1, int(round(float(base_price) * factor)))
+	return DungeonShopUIHelperClass.apply_merchant_discount(self, base_price)
 
 func _get_effective_quest_spawn_chance() -> float:
-	if Game == null:
-		return quest_spawn_chance
-	var bonus_level: int = Game.get_meta_unlock_level("quest_boost")
-	return clamp(quest_spawn_chance + float(bonus_level) * 0.05, 0.0, 0.95)
+	return DungeonRunHelperClass.get_effective_quest_spawn_chance(self)
 
 func _start_dungeon_run_if_needed() -> void:
-	if Game == null:
-		return
-	if current_floor != 1:
-		return
-	if bool(Game.flags.get("dungeon_run_active", false)):
-		return
-	var start_gold := run_start_gold + Game.get_meta_unlock_level("starting_gold") * 25
-	Game.reset_run_state(start_gold)
-	Game.flags["dungeon_run_active"] = true
-	_enqueue_message("Run started. Gold: %d" % Game.run_gold)
+	DungeonRunHelperClass.start_dungeon_run_if_needed(self)
 
 func _finish_dungeon_run() -> void:
-	if Game == null:
-		return
-	_close_merchant_shop()
-	Game.flags["dungeon_run_active"] = false
-	Game.reset_run_state(0)
+	DungeonRunHelperClass.finish_dungeon_run(self)
 
 func _award_battle_rewards(winner_team_index: int, interaction: String) -> void:
-	if winner_team_index != 0:
-		return
-	if Game == null:
-		return
-	var gold_reward: int = 0
-	if interaction == "elite_pack":
-		gold_reward = elite_battle_gold
-	elif interaction == "mimic_pack":
-		gold_reward = mimic_battle_gold
-	elif interaction == "dungeon_boss":
-		gold_reward = boss_battle_gold
-	elif interaction == "":
-		gold_reward = wild_battle_gold
-	if gold_reward > 0:
-		Game.add_run_gold(gold_reward)
-		if interaction != "":
-			_enqueue_message("Gold +%d" % gold_reward)
+	DungeonRunHelperClass.award_battle_rewards(self, winner_team_index, interaction)
 
 func _handle_key_interaction(npc) -> bool:
 	# Mark key as found and remove from map

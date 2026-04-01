@@ -1,7 +1,5 @@
 extends Node2D
 
-const GAMEPAD_BTN_B := 1
-const GAMEPAD_BTN_START := 7
 const ITEM_DB = preload("res://core/items/item_db.gd")
 
 const META_UNLOCK_OPTIONS: Array[Dictionary] = [
@@ -122,11 +120,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _in_battle or _is_moving:
 		return
 	if _pause_menu_open:
-		if _message_visible and (event.is_action_pressed("pause_menu") or event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_accept")):
-			_try_interact()
-			var viewport := get_viewport()
-			if viewport != null:
-				viewport.set_input_as_handled()
+		if _handle_pause_menu_message_input(event):
 			return
 		if event.is_action_pressed("pause_menu") or event.is_action_pressed("ui_cancel"):
 			_close_pause_menu()
@@ -184,14 +178,19 @@ func _unhandled_input(event: InputEvent) -> void:
 			viewport.set_input_as_handled()
 
 func _input(event: InputEvent) -> void:
-	if not _message_visible:
+	if _handle_pause_menu_message_input(event):
 		return
-	if _pause_menu_open:
-		if event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause_menu"):
-			_try_interact()
-			var viewport := get_viewport()
-			if viewport != null:
-				viewport.set_input_as_handled()
+
+func _handle_pause_menu_message_input(event: InputEvent) -> bool:
+	if not (_pause_menu_open and _message_visible):
+		return false
+	if event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause_menu"):
+		_try_interact()
+		var viewport := get_viewport()
+		if viewport != null:
+			viewport.set_input_as_handled()
+		return true
+	return false
 
 
 func _process(_delta: float) -> void:

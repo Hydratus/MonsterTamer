@@ -8,22 +8,23 @@ const CONFIG_PATH := "user://settings.cfg"
 
 const ItemDataClass = preload("res://core/items/item_data.gd")
 const ItemMenuClass = preload("res://ui/menus/item_menu.gd")
+const InputButtonsClass = preload("res://core/systems/input_buttons.gd")
 
 
-const GAMEPAD_BTN_A := 0
-const GAMEPAD_BTN_B := 1
-const GAMEPAD_BTN_X := 2
-const GAMEPAD_BTN_Y := 3
-const GAMEPAD_BTN_LB := 4
-const GAMEPAD_BTN_RB := 5
-const GAMEPAD_BTN_BACK := 6
-const GAMEPAD_BTN_START := 7
-const GAMEPAD_BTN_L3 := 9
-const GAMEPAD_BTN_R3 := 10
-const GAMEPAD_BTN_DPAD_UP := 11
-const GAMEPAD_BTN_DPAD_DOWN := 12
-const GAMEPAD_BTN_DPAD_LEFT := 13
-const GAMEPAD_BTN_DPAD_RIGHT := 14
+const GAMEPAD_BTN_A := InputButtonsClass.GAMEPAD_BTN_A
+const GAMEPAD_BTN_B := InputButtonsClass.GAMEPAD_BTN_B
+const GAMEPAD_BTN_X := InputButtonsClass.GAMEPAD_BTN_X
+const GAMEPAD_BTN_Y := InputButtonsClass.GAMEPAD_BTN_Y
+const GAMEPAD_BTN_LB := InputButtonsClass.GAMEPAD_BTN_LB
+const GAMEPAD_BTN_RB := InputButtonsClass.GAMEPAD_BTN_RB
+const GAMEPAD_BTN_BACK := InputButtonsClass.GAMEPAD_BTN_BACK
+const GAMEPAD_BTN_START := InputButtonsClass.GAMEPAD_BTN_START
+const GAMEPAD_BTN_L3 := InputButtonsClass.GAMEPAD_BTN_L3
+const GAMEPAD_BTN_R3 := InputButtonsClass.GAMEPAD_BTN_R3
+const GAMEPAD_BTN_DPAD_UP := InputButtonsClass.GAMEPAD_BTN_DPAD_UP
+const GAMEPAD_BTN_DPAD_DOWN := InputButtonsClass.GAMEPAD_BTN_DPAD_DOWN
+const GAMEPAD_BTN_DPAD_LEFT := InputButtonsClass.GAMEPAD_BTN_DPAD_LEFT
+const GAMEPAD_BTN_DPAD_RIGHT := InputButtonsClass.GAMEPAD_BTN_DPAD_RIGHT
 
 const MODE_OPTIONS: Array = [
 	{"label": "Vollbild", "value": "fullscreen"},
@@ -216,7 +217,7 @@ func _enter_inventory() -> void:
 	_show_section("inventory")
 	_active_section = "inventory"
 	_in_content = false
-	_menu_level = "tabs"
+	_menu_level = "content"
 	_set_sidebar_focus_enabled(false)
 	_set_inventory_focus_enabled(false)
 	_item_menu.select_tab(_last_item_tab)
@@ -391,8 +392,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			_settings_to_sidebar()
 		elif _menu_level == "content" and _active_section == "inventory":
 			_inventory_to_sidebar()
-		elif _menu_level == "tabs" and _active_section == "inventory":
-			_inventory_to_sidebar()
 		elif _in_content:
 			_leave_content()
 		else:
@@ -442,12 +441,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			_settings_to_content()
 			get_viewport().set_input_as_handled()
 			return
-	if _menu_level == "tabs" and _active_section == "inventory":
-		# Inventory should not remain in tabs mode; recover to content focus.
-		_inventory_to_content()
-		get_viewport().set_input_as_handled()
-		return
-
 func _input(event: InputEvent) -> void:
 	if not visible:
 		return
@@ -1368,20 +1361,6 @@ func _lock_left_navigation(root: Node) -> void:
 		ctrl.focus_neighbor_left = NodePath("")
 	for child in root.get_children():
 		_lock_left_navigation(child)
-
-func _settings_to_tabs() -> void:
-	_settings_control_active = false
-	_settings_nav_controls.clear()
-	_settings_nav_focus_index = 0
-	_show_section("settings")
-	_active_section = "settings"
-	_in_content = false
-	_menu_level = "tabs"
-	_set_sidebar_focus_enabled(false)
-	_set_tabs_focus_enabled(true)
-	_settings_tabs.current_tab = _last_settings_tab
-	_set_all_tab_content_focus_enabled(false)
-	call_deferred("_focus_tabs")
 
 func _focus_tabs() -> void:
 	var focus_owner := get_viewport().gui_get_focus_owner()
