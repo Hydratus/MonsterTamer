@@ -148,7 +148,11 @@ func _apply_trait_stat(stat: int, value: int) -> int:
 	var result := value
 
 	for trait_effect in passive_traits:
+		if trait_effect == null:
+			continue
 		for mod in trait_effect.stat_modifiers:
+			if mod == null:
+				continue
 			if mod.stat != stat:
 				continue
 
@@ -213,6 +217,8 @@ func get_lifesteal() -> float:
 	var total: float = 0.0
 
 	for trait_effect in passive_traits:
+		if trait_effect == null:
+			continue
 		total += trait_effect.lifesteal_ratio
 
 	return clamp(total, 0.0, 1.0)
@@ -261,6 +267,8 @@ func spend_energy(amount: int) -> bool:
 # ------------------------
 func on_round_end(logger: Callable = Callable()):
 	for trait_effect in passive_traits:
+		if trait_effect == null:
+			continue
 		var healed_hp := 0
 		var restored_energy := 0
 

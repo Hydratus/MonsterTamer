@@ -16,6 +16,7 @@ var evolution_yes_button: Button
 var evolution_no_button: Button
 var _pending_learning: Array = []
 var _pending_exp_steps: Array = []
+var _pending_message_step_callbacks: Array[Callable] = []
 var _evolution_decision_callback: Callable
 var _evolution_input_blocked := false
 var _evolution_prompt_token: int = 0
@@ -69,6 +70,7 @@ func _ready():
 	
 	message_box = MTBattleMessageBox.new()
 	message_layer.add_child(message_box)
+	message_box.message_completed.connect(_on_message_completed)
 	message_box.all_messages_completed.connect(_on_messages_completed)
 
 	_create_evolution_prompt_ui()
@@ -110,6 +112,20 @@ func start_battle(team1: Array[MTMonsterInstance], team2: Array[MTMonsterInstanc
 	_player_participants.clear()
 	battle = MTBattleController.new()
 	battle.scene = self
+
+	# Defensive setup: ensure all battle participants have a valid controller decision.
+	for monster in team1:
+		if monster == null:
+			continue
+		monster.opponents_fought.clear()
+		if monster.decision == null or not (monster.decision is MTPlayerDecision):
+			monster.decision = MTPlayerDecision.new()
+	for monster in team2:
+		if monster == null:
+			continue
+		monster.opponents_fought.clear()
+		if monster.decision == null or not (monster.decision is MTAIDecision):
+			monster.decision = MTAIDecision.new()
 	
 	# Debug: Zeige wie viele Monster in jedem Team sind
 	print("Team 1: %d Monster" % team1.size())
@@ -257,6 +273,26 @@ func update_hud_with_active() -> void:
 	if player_active != null and enemy_active != null:
 		hud.update_monsters(player_active, enemy_active)
 
+func flush_action_messages() -> void:
+	if message_box == null:
+		return
+	message_box.flush_action_messages()
+	update_hud_with_active()
+
+func queue_message_step(cb: Callable) -> void:
+	if not cb.is_valid():
+		return
+	_pending_message_step_callbacks.append(cb)
+
+func _run_pending_message_steps_until_message() -> bool:
+	if message_box == null:
+		return false
+	while message_box.message_queue.is_empty() and not _pending_message_step_callbacks.is_empty():
+		var cb: Callable = _pending_message_step_callbacks.pop_front() as Callable
+		if cb.is_valid():
+			cb.call()
+	return message_box.message_queue.size() > 0
+
 func on_battle_finished(winner_team_index: int) -> void:
 	_restore_reserve_monster_energy()
 	battle_finished.emit(winner_team_index)
@@ -307,6 +343,13 @@ func show_battle_messages():
 			# Keine Messages, gehe sofort weiter
 			_on_messages_completed()
 
+func _on_message_completed() -> void:
+	if message_box == null:
+		return
+
+	if message_box.message_queue.is_empty():
+		_run_pending_message_steps_until_message()
+
 func _show_instant_battle_message(text: String) -> void:
 	if message_box == null:
 		return
@@ -327,8 +370,13 @@ func _clear_bottom_prompt() -> void:
 	message_box.clear_static_message()
 
 func _on_messages_completed():
+	if _run_pending_message_steps_until_message():
+		show_battle_messages()
+		return
+
 	# Alle Messages wurden angezeigt, gehe zurück zum Battle Controller
 	message_box.clear_messages()  # Bereite MessageBox für nächste Action vor
+	_pending_message_step_callbacks.clear()
 	if _resume_menu_after_message:
 		_resume_menu_after_message = false
 		if menu != null:
@@ -641,7 +689,7 @@ func _try_handle_pending_evolution() -> bool:
 	if not is_player:
 		monster.apply_evolution(Callable(battle, "log_message"))
 		if message_box != null:
-			message_box.flush_action_messages()
+			flush_action_messages()
 			show_battle_messages()
 		if learning_cb.is_valid():
 			_pending_learning.append({"cb": learning_cb, "monster": monster})
@@ -653,7 +701,7 @@ func _try_handle_pending_evolution() -> bool:
 			battle.log_message("%s did not evolve." % monster.data.name)
 
 		if message_box != null:
-			message_box.flush_action_messages()
+			flush_action_messages()
 			show_battle_messages()
 
 		if learning_cb.is_valid():

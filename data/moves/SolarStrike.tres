@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="AttackData" format=3 uid="uid://bsl6stk3n8r7u"]
+[gd_resource type="Resource" script_class="MTAttackData" format=3 uid="uid://bsl6stk3n8r7u"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
+[ext_resource type="Script" uid="uid://d3c72pjv8iek2" path="res://core/battle/stats/stat_change_data.gd" id="2_w0q7u"]
 
 [resource]
 script = ExtResource("1_atsc")
@@ -9,6 +10,6 @@ description = "Concentrates solar energy into a radiant beam of plant-infused li
 power = 65
 energy_cost = 4
 accuracy = 85
-damage_type = 1
 element = 2
+damage_type = 1
 metadata/_custom_type_script = "uid://byip331ngwvgq"

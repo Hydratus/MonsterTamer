@@ -1,12 +1,13 @@
-[gd_resource type="Resource" script_class="AttackData" format=3 uid="uid://ben5tng1m7q6t"]
+[gd_resource type="Resource" script_class="MTAttackData" format=3 uid="uid://ben5tng1m7q6t"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
+[ext_resource type="Script" uid="uid://d3c72pjv8iek2" path="res://core/battle/stats/stat_change_data.gd" id="2_seu1w"]
 
 [resource]
 script = ExtResource("1_atsc")
 name = "Entangle"
 description = "Wraps the enemy in thorny vines dealing physical damage."
 power = 30
-energy_cost = 1
 element = 2
+makes_contact = true
 metadata/_custom_type_script = "uid://byip331ngwvgq"

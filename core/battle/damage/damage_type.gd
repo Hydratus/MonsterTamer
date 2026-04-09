@@ -3,5 +3,6 @@ class_name MTDamageType
 
 enum Type {
 	PHYSICAL,
-	MAGICAL
+	MAGICAL,
+	STATUS
 }

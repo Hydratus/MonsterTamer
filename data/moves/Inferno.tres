@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="AttackData" format=3 uid="uid://bif8rno7q3uav"]
+[gd_resource type="Resource" script_class="MTAttackData" format=3 uid="uid://bif8rno7q3uav"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
+[ext_resource type="Script" uid="uid://d3c72pjv8iek2" path="res://core/battle/stats/stat_change_data.gd" id="2_0tew0"]
 
 [resource]
 script = ExtResource("1_atsc")
@@ -9,6 +10,6 @@ description = "Unleashes a devastating inferno. Tremendous power but hard to aim
 power = 75
 energy_cost = 5
 accuracy = 80
-damage_type = 1
 element = 1
+damage_type = 1
 metadata/_custom_type_script = "uid://byip331ngwvgq"

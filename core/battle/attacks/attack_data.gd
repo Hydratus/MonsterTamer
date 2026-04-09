@@ -15,6 +15,8 @@ var crit_rate: float = 0.10
 
 @export var element: MTElement.Type = MTElement.Type.NORMAL
 @export var damage_type: MTDamageType.Type = MTDamageType.Type.PHYSICAL
+@export var makes_contact: bool = false
+@export var requires_contact_for_effect: bool = false
 
 # 🆕 ATTACK LIFESTEAL
 @export_range(0.0, 1.0, 0.01)

@@ -1,5 +1,6 @@
 [gd_resource type="Resource" script_class="MTTraitData" format=3 uid="uid://citlotilv0hbx"]
 
+[ext_resource type="Script" uid="uid://b1mi5p7euteim" path="res://core/battle/traits/trait_stat_stage_modifier.gd" id="1_jl21o"]
 [ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="1_uotx7"]
 [ext_resource type="Script" uid="uid://d12dflredef2o" path="res://core/battle/traits/trait_stat_modifier.gd" id="2_jl21o"]
 

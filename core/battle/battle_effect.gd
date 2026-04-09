@@ -13,11 +13,11 @@ func on_remove() -> void:
 func on_turn_start():
 	pass
 
-func on_before_damage(context: Dictionary):
+func on_before_damage(_context: Dictionary):
 	pass
 
-func on_after_damage(context: Dictionary):
+func on_after_damage(_context: Dictionary):
 	pass
 
-func on_stat_calculation(stat: int, value: int) -> int:
+func on_stat_calculation(_stat: int, value: int) -> int:
 	return value

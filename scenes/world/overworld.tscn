@@ -972,37 +972,6 @@ size = Vector2(14, 14)
 script = ExtResource("1_1c2b3")
 encounter_chance = 0.05
 encounter_table = Array[ExtResource("2_h0wcu")]([ExtResource("3_espw7"), ExtResource("4_o3ojk"), ExtResource("5_eccxn")])
-dungeon_options = Array[Dictionary]([{
-"name": "Test Dungeon (Cavern)",
-"payload": {
-"base_encounter_chance": 0.05,
-"floor": 1,
-"floor_count": 5,
-"habitat": "cavern",
-"seed": 0
-},
-"scene": "res://scenes/world/dungeon_test.tscn"
-}, {
-"name": "Ruins Trial",
-"payload": {
-"base_encounter_chance": 0.14,
-"floor": 1,
-"floor_count": 4,
-"habitat": "ruins",
-"seed": 1337
-},
-"scene": "res://scenes/world/dungeon_test.tscn"
-}, {
-"name": "Swamp Depths",
-"payload": {
-"base_encounter_chance": 0.18,
-"floor": 1,
-"floor_count": 6,
-"habitat": "swamp",
-"seed": 98765
-},
-"scene": "res://scenes/world/dungeon_test.tscn"
-}])
 
 [node name="Dirt" type="TileMapLayer" parent="." unique_id=537473179]
 z_index = 1

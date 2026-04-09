@@ -3,6 +3,7 @@ class_name MTBattleController
 
 const EscapeActionClass = preload("res://core/battle/actions/escape_action.gd")
 const RestActionClass = preload("res://core/battle/actions/rest_action.gd")
+const AttackActionClass = preload("res://core/battle/actions/attack_action.gd")
 
 
 var scene
@@ -64,7 +65,7 @@ func submit_player_attack(monster: MTMonsterInstance, attack: MTAttackData):
 	if opponent_team == null:
 		return
 
-	var action := MTAttackAction.new()
+	var action = AttackActionClass.new()
 	action.battle = self
 	action.actor = monster
 	action.opponent_team = opponent_team  # Speichere das gegnerische Team statt direktes Ziel
@@ -80,6 +81,8 @@ func submit_player_attack(monster: MTMonsterInstance, attack: MTAttackData):
 	action.accuracy = attack.accuracy
 	action.attack_element = attack.element
 	action.damage_type = attack.damage_type
+	action.makes_contact = attack.makes_contact
+	action.requires_contact_for_effect = attack.requires_contact_for_effect
 
 	# ✅ Crit korrekt
 	action.crit_rate = attack.crit_rate

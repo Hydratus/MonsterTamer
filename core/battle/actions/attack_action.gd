@@ -1,6 +1,12 @@
 extends MTBattleAction
 class_name MTAttackAction
 
+const TEAM_EXP_BONUS_PER_EXTRA_MEMBER := 0.375
+const TEAM_EXP_MAX_MULTIPLIER := 2.5
+const TEAM_EXP_CATCHUP_LEVEL_SPAN := 10.0
+const TEAM_EXP_CATCHUP_MAX_BONUS := 1.0
+const TEAM_EXP_ACTIVE_FIGHTER_BONUS := 0.10
+
 # --------------------------------------------------
 # ATTACK DATA
 # --------------------------------------------------
@@ -12,6 +18,9 @@ var accuracy: int = 100
 
 var attack_element: MTElement.Type = MTElement.Type.NORMAL
 var damage_type: MTDamageType.Type = MTDamageType.Type.PHYSICAL
+var makes_contact: bool = false
+var requires_contact_for_effect: bool = false
+var last_damage_dealt: int = 0
 
 # 🩸 Attack-eigener Lifesteal (z. B. Drain Bite)
 @export_range(0.0, 1.0, 0.01)
@@ -33,6 +42,9 @@ var stat_changes: Array[MTStatChangeData] = []
 # TARGET TEAM (statt target direkt, um dynamische Wechsel zu unterstützen)
 # --------------------------------------------------
 var opponent_team: MTMonsterTeam = null  # Das gegnerische Team
+var _phase_dealt_damage: int = 0
+var _phase_target_was_ko_before_action: bool = false
+var _phase_actor_was_ko_before_action: bool = false
 
 # --------------------------------------------------
 # EXECUTE
@@ -75,11 +87,33 @@ func execute(_controller = null) -> Variant:
 	battle_log("%s uses %s!" % [actor.data.name, action_name])
 
 	# --------------------------------------------------
-	# 💥 DAMAGE
+	# 💥 STEP 1: DAMAGE
 	# --------------------------------------------------
-	var dealt_damage: int = 0
+	_phase_dealt_damage = 0
+	last_damage_dealt = 0
+	_phase_target_was_ko_before_action = target != null and not target.is_alive()
+	_phase_actor_was_ko_before_action = actor != null and not actor.is_alive()
 
-	if power > 0:
+	_execute_damage_step()
+	_queue_next_step(Callable(self, "_execute_contact_step"))
+
+	return null
+
+func _queue_next_step(step: Callable) -> void:
+	if battle != null and battle.scene != null and battle.scene.has_method("queue_message_step"):
+		battle.scene.queue_message_step(step)
+		return
+	if step.is_valid():
+		step.call()
+
+func _flush_step_messages() -> void:
+	if battle == null or battle.scene == null:
+		return
+	if battle.scene.message_box != null and battle.scene.message_box.current_action_messages.size() > 0:
+		battle.scene.flush_action_messages()
+
+func _execute_damage_step() -> void:
+	if power > 0 and damage_type != MTDamageType.Type.STATUS:
 		var result := MTDamageCalculator.calculate_damage(self)
 
 		var damage: int = result.damage
@@ -93,11 +127,11 @@ func execute(_controller = null) -> Variant:
 			var hp_before: int = target.hp
 			target.take_damage(damage)
 			target.clamp_resources()
-			dealt_damage = max(0, hp_before - target.hp)
+			_phase_dealt_damage = max(0, hp_before - target.hp)
 
 			var line := "%s takes %d damage." % [
 				target.data.name,
-				dealt_damage
+				_phase_dealt_damage
 			]
 
 			if effectiveness_text != "":
@@ -117,35 +151,29 @@ func execute(_controller = null) -> Variant:
 			]
 
 			battle_log(line)
-			
-			# Flush nach dem Schaden - Block 1 (Angriff + Schaden)
-			if battle != null and battle.scene != null:
-				battle.scene.message_box.flush_action_messages()
-			
-			# EXP verteilen, wenn das Ziel gestorben ist
-			if target.hp <= 0:
-				# Block 2: Monster besiegt
-				battle_log("%s wurde besiegt!" % target.data.name)
-				if battle != null and battle.scene != null:
-					battle.scene.message_box.flush_action_messages()
-				
-				# Block 3+: EXP und Level-Ups (einzeln)
-				_distribute_exp_with_flush(target)
 
-	# --------------------------------------------------
-	# 🩸 LIFESTEAL (IMMER AUFRUNDEN)
-	# --------------------------------------------------
-	if dealt_damage > 0:
+	last_damage_dealt = _phase_dealt_damage
+	_flush_step_messages()
+
+func _execute_contact_step() -> void:
+	if makes_contact:
+		_trigger_contact_hooks()
+	_queue_next_step(Callable(self, "_execute_lifesteal_step"))
+
+func _execute_lifesteal_step() -> void:
+	if _phase_dealt_damage > 0 and actor != null and actor.is_alive():
+		var secondary_effects_enabled := true
+		if requires_contact_for_effect and not makes_contact:
+			secondary_effects_enabled = false
+
 		var total_lifesteal: float = lifesteal
 
 		# Trait-Lifesteal vom Monster
 		if actor.has_method("get_lifesteal"):
 			total_lifesteal += actor.get_lifesteal()
 
-		if total_lifesteal > 0.0:
-			var heal_amount: int = int(
-				ceil(dealt_damage * total_lifesteal)
-			)
+		if secondary_effects_enabled and total_lifesteal > 0.0:
+			var heal_amount: int = int(ceil(_phase_dealt_damage * total_lifesteal))
 
 			if heal_amount > 0:
 				var before: int = actor.hp
@@ -159,11 +187,18 @@ func execute(_controller = null) -> Variant:
 						% [actor.data.name, healed]
 					)
 
-	# --------------------------------------------------
-	# 🔁 BUFFS / DEBUFFS (STAT STAGES)
-	# --------------------------------------------------
+	_flush_step_messages()
+	_queue_next_step(Callable(self, "_execute_final_step"))
+
+func _execute_final_step() -> void:
 	for change in stat_changes:
+		if actor == null or not actor.is_alive():
+			break
+		if requires_contact_for_effect and not makes_contact:
+			continue
 		var receiver := actor if change.target_self else target
+		if receiver == null or not receiver.is_alive():
+			continue
 
 		var delta: int = receiver.modify_stat_stage(
 			change.stat,
@@ -195,45 +230,119 @@ func execute(_controller = null) -> Variant:
 				]
 			)
 
-	# --------------------------------------------------
-	# 🔒 SAFETY CLAMP
-	# --------------------------------------------------
 	actor.clamp_resources()
 	target.clamp_resources()
+	_handle_post_attack_knockouts(
+		_phase_target_was_ko_before_action,
+		_phase_actor_was_ko_before_action
+	)
+	_flush_step_messages()
 
-	return null
+func _trigger_contact_hooks() -> void:
+	if actor != null and actor.passive_traits != null:
+		for trait_effect in actor.passive_traits:
+			if trait_effect == null:
+				continue
+			if trait_effect.has_method("on_contact_made"):
+				trait_effect.on_contact_made(actor, target, self)
+
+	if target != null and target.passive_traits != null:
+		for trait_effect in target.passive_traits:
+			if trait_effect == null:
+				continue
+			if trait_effect.has_method("on_contact_taken"):
+				trait_effect.on_contact_taken(target, actor, self)
+
+func _handle_post_attack_knockouts(target_was_ko_before_action: bool, actor_was_ko_before_action: bool) -> void:
+	if target != null and not target_was_ko_before_action and not target.is_alive():
+		_distribute_exp_with_flush(target)
+
+	if actor != null and not actor_was_ko_before_action and not actor.is_alive():
+		# Die KO-Meldung und ein möglicher Wechsel werden zentral in MTCheckEndState behandelt.
+		return
 
 # --------------------------------------------------
 # EXP DISTRIBUTION WITH FLUSH
 # --------------------------------------------------
 func _distribute_exp_with_flush(defeated_monster: MTMonsterInstance):
-	if defeated_monster.opponents_fought.is_empty():
+	if defeated_monster == null:
+		return
+
+	var defeated_team_index := _find_team_index_for_monster(defeated_monster)
+	if defeated_team_index == -1:
+		return
+	var exp_receiver_team_index := 1 if defeated_team_index == 0 else 0
+	var exp_receiver_team: MTMonsterTeam = null
+	if battle != null and battle.teams.size() > exp_receiver_team_index:
+		exp_receiver_team = battle.teams[exp_receiver_team_index]
+	if exp_receiver_team == null:
 		return
 	
-	# Sammle lebende Gegner
-	var alive_opponents: Array[MTMonsterInstance] = []
-	for opponent in defeated_monster.opponents_fought:
-		if opponent != null and opponent.is_alive():
-			alive_opponents.append(opponent)
-	
-	if alive_opponents.is_empty():
+	# Teamweite EXP: alle lebenden Monster im Siegerteam bekommen Anteile.
+	var alive_team_members: Array[MTMonsterInstance] = []
+	for member in exp_receiver_team.monsters:
+		if member != null and member.is_alive():
+			alive_team_members.append(member)
+
+	if alive_team_members.is_empty():
 		return
-	
-	# Berechne EXP
-	var total_exp = defeated_monster._calculate_earned_exp(defeated_monster)
-	var exp_per_monster = int(total_exp / float(alive_opponents.size()))
-	
-	var ordered_opponents := _order_exp_recipients(alive_opponents)
-	# Verteile EXP (levelweise) über die Szene
+
+	var base_exp: int = defeated_monster._calculate_earned_exp(defeated_monster)
+	var team_bonus_multiplier: float = 1.0 + TEAM_EXP_BONUS_PER_EXTRA_MEMBER * float(max(0, alive_team_members.size() - 1))
+	team_bonus_multiplier = min(team_bonus_multiplier, TEAM_EXP_MAX_MULTIPLIER)
+	var total_exp: int = int(ceil(float(base_exp) * team_bonus_multiplier))
+
+	var highest_level: int = 1
+	for member in alive_team_members:
+		highest_level = max(highest_level, member.level)
+
+	var active_receiver: MTMonsterInstance = exp_receiver_team.get_active_monster()
+	var weighted_members: Array = []
+	var total_weight: float = 0.0
+	for member in alive_team_members:
+		var level_delta: int = max(0, highest_level - member.level)
+		var catchup_ratio: float = min(1.0, float(level_delta) / TEAM_EXP_CATCHUP_LEVEL_SPAN)
+		var weight: float = 1.0 + catchup_ratio * TEAM_EXP_CATCHUP_MAX_BONUS
+		if member == active_receiver:
+			weight *= 1.0 + TEAM_EXP_ACTIVE_FIGHTER_BONUS
+		weighted_members.append({"monster": member, "weight": weight})
+		total_weight += weight
+
+	if total_weight <= 0.0:
+		return
+
+	var ordered_opponents: Array[MTMonsterInstance] = _order_exp_recipients(alive_team_members)
+	var exp_by_monster: Dictionary = {}
+	for entry in weighted_members:
+		var receiver: MTMonsterInstance = entry["monster"] as MTMonsterInstance
+		var receiver_weight: float = float(entry["weight"])
+		var raw_share: float = float(total_exp) * (receiver_weight / total_weight)
+		exp_by_monster[receiver] = int(ceil(raw_share))
+
 	if battle != null and battle.scene != null:
 		for opponent in ordered_opponents:
+			if not exp_by_monster.has(opponent):
+				continue
 			battle.scene.queue_exp_step(
 				Callable(self, "_process_exp_gain_with_flush"),
-				[opponent, exp_per_monster]
+				[opponent, int(exp_by_monster[opponent])]
 			)
 	else:
 		for opponent in ordered_opponents:
-			_process_exp_gain_with_flush(opponent, exp_per_monster)
+			if not exp_by_monster.has(opponent):
+				continue
+			_process_exp_gain_with_flush(opponent, int(exp_by_monster[opponent]))
+
+func _find_team_index_for_monster(monster: MTMonsterInstance) -> int:
+	if battle == null or monster == null:
+		return -1
+	for i in range(battle.teams.size()):
+		var team: MTMonsterTeam = battle.teams[i]
+		if team == null:
+			continue
+		if team.monsters.has(monster):
+			return i
+	return -1
 
 func _check_level_up_with_flush(monster: MTMonsterInstance):
 	while monster.current_exp >= monster.exp_to_next_level and monster.level < 100:
@@ -298,7 +407,7 @@ func _level_up_with_flush(monster: MTMonsterInstance):
 	
 	# Flush Level-Up Block BEVOR Lern-Messages kommen
 	if battle != null and battle.scene != null:
-		battle.scene.message_box.flush_action_messages()
+		battle.scene.flush_action_messages()
 
 	if queued_evolution:
 		return
@@ -321,7 +430,7 @@ func _process_exp_gain_with_flush(monster: MTMonsterInstance, exp_remaining: int
 		monster.current_exp, monster.exp_to_next_level
 	])
 	if battle != null and battle.scene != null:
-		battle.scene.message_box.flush_action_messages()
+		battle.scene.flush_action_messages()
 
 	var remaining = exp_remaining - gain
 	if monster.current_exp >= monster.exp_to_next_level:
@@ -364,7 +473,7 @@ func _check_learning_with_flush(monster: MTMonsterInstance):
 			battle_log("⚔️ %s learned %s!" % [monster.data.name, learn_data.attack.name])
 			# Flush nach jeder erlernten Attacke für separaten Block
 			if battle != null and battle.scene != null:
-				battle.scene.message_box.flush_action_messages()
+				battle.scene.flush_action_messages()
 	
 	# Check traits
 	var available_traits = monster.get_available_traits_to_learn()
@@ -373,7 +482,7 @@ func _check_learning_with_flush(monster: MTMonsterInstance):
 		battle_log("✨ %s learned trait %s!" % [monster.data.name, learn_data.trait_data.name])
 		# Flush nach jedem erlernten Trait für separaten Block
 		if battle != null and battle.scene != null:
-			battle.scene.message_box.flush_action_messages()
+			battle.scene.flush_action_messages()
 
 
 # --------------------------------------------------

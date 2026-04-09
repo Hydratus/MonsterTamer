@@ -12,7 +12,7 @@ func enter(battle):
 			monster.on_round_end(logger)
 
 	if battle.scene != null and battle.scene.message_box.current_action_messages.size() > 0:
-		battle.scene.message_box.flush_action_messages()
+		battle.scene.flush_action_messages()
 		battle.scene.show_battle_messages()
 		return
 

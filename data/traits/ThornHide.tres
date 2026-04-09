@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="MTTraitData" format=3]
+
+[ext_resource type="Script" path="res://core/battle/traits/trait_data.gd" id="1_trait"]
+
+[resource]
+script = ExtResource("1_trait")
+name = "Thorn Hide"
+description = "Contact attackers take reflected damage based on damage dealt."
+contact_thorns_ratio = 0.25
+metadata/_custom_type_script = "uid://devgkm5eu4v73"

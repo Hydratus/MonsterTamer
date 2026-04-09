@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="AttackData" format=3 uid="uid://brlc7xaw4tj8c"]
+[gd_resource type="Resource" script_class="MTAttackData" format=3 uid="uid://brlc7xaw4tj8c"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_fp4bp"]
 [ext_resource type="Script" uid="uid://d3c72pjv8iek2" path="res://core/battle/stats/stat_change_data.gd" id="2_563ts"]
@@ -9,5 +9,6 @@ script = ExtResource("1_fp4bp")
 name = "Howl"
 description = "Debuff enemy Strength -5."
 power = 0
+damage_type = 2
 stat_changes = Array[ExtResource("2_563ts")]([ExtResource("3_563ts")])
 metadata/_custom_type_script = "uid://byip331ngwvgq"

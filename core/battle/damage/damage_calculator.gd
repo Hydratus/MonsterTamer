@@ -2,8 +2,33 @@ extends RefCounted
 class_name MTDamageCalculator
 
 static func calculate_damage(action: MTBattleAction) -> Dictionary:
+	if action == null or action.actor == null or action.target == null:
+		return {
+			"damage": 0,
+			"effectiveness": 0.0,
+			"effectiveness_text": "",
+			"stab": 1.0,
+			"is_crit": false
+		}
+
 	var attacker: MTMonsterInstance = action.actor
 	var defender: MTMonsterInstance = action.target
+	if attacker.data == null or defender.data == null:
+		return {
+			"damage": 0,
+			"effectiveness": 0.0,
+			"effectiveness_text": "",
+			"stab": 1.0,
+			"is_crit": false
+		}
+	if action.damage_type == MTDamageType.Type.STATUS:
+		return {
+			"damage": 0,
+			"effectiveness": 1.0,
+			"effectiveness_text": "",
+			"stab": 1.0,
+			"is_crit": false
+		}
 	print("Traits:", attacker.passive_traits)
 
 	# ----------------------------
@@ -28,6 +53,8 @@ static func calculate_damage(action: MTBattleAction) -> Dictionary:
 	# PASSIVE TRAITS (DAMAGE)
 	# ----------------------------
 	for trait_effect in attacker.passive_traits:
+		if trait_effect == null:
+			continue
 		base_damage = trait_effect.modify_damage(
 			attacker,
 			defender,

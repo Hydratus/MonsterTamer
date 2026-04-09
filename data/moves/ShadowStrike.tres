@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="AttackData" format=3 uid="uid://bsh3dwstlap4r"]
+[gd_resource type="Resource" script_class="MTAttackData" format=3 uid="uid://bsh3dwstlap4r"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
+[ext_resource type="Script" uid="uid://d3c72pjv8iek2" path="res://core/battle/stats/stat_change_data.gd" id="2_c7j1e"]
 
 [resource]
 script = ExtResource("1_atsc")
@@ -10,4 +11,5 @@ power = 45
 energy_cost = 2
 crit_rate = 0.3
 element = 4
+makes_contact = true
 metadata/_custom_type_script = "uid://byip331ngwvgq"

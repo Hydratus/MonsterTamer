@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="AttackData" format=3 uid="uid://bvd4drn2t6p5s"]
+[gd_resource type="Resource" script_class="MTAttackData" format=3 uid="uid://bvd4drn2t6p5s"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
+[ext_resource type="Script" uid="uid://d3c72pjv8iek2" path="res://core/battle/stats/stat_change_data.gd" id="2_nrngj"]
 
 [resource]
 script = ExtResource("1_atsc")
@@ -8,7 +9,9 @@ name = "Void Drain"
 description = "Channels ghostly energy through the target, draining life force back to the user."
 power = 50
 energy_cost = 3
-damage_type = 1
 element = 4
+damage_type = 1
+makes_contact = true
+requires_contact_for_effect = true
 lifesteal = 0.3
 metadata/_custom_type_script = "uid://byip331ngwvgq"

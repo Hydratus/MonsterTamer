@@ -24,7 +24,7 @@ func enter(battle):
 		if active != null and not active.is_alive():
 			# Monster wurde besiegt
 			battle.log_message("%s wurde besiegt!" % active.data.name)
-			battle.scene.message_box.flush_action_messages()  # Speichere "wurde besiegt" Message
+			battle.scene.flush_action_messages()  # Speichere "wurde besiegt" Message
 			
 			print("DEBUG: Wechsle Monster für Team %d - aktiv war %s (tot)" % [i, active.data.name])
 			if team.switch_to_next_alive():
@@ -32,7 +32,7 @@ func enter(battle):
 				var team_name = "Player" if i == 0 else "Enemy"
 				var switch_text = "%s sent out %s!" % [team_name, new_monster.data.name]
 				battle.log_message(switch_text)
-				battle.scene.message_box.flush_action_messages()  # Speichere "sent out" Message
+				battle.scene.flush_action_messages()  # Speichere "sent out" Message
 				print("--- %s ---" % switch_text)
 				monster_switched = true
 			else:
