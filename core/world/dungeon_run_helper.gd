@@ -17,7 +17,7 @@ static func start_dungeon_run_if_needed(owner) -> void:
 	var start_gold: int = owner.run_start_gold + Game.get_meta_unlock_level("starting_gold") * 25
 	Game.reset_run_state(start_gold)
 	Game.flags["dungeon_run_active"] = true
-	owner._enqueue_message("Run started. Gold: %d" % Game.run_gold)
+	owner._enqueue_message(TranslationServer.translate("Run started. Gold: %d") % Game.run_gold)
 
 static func finish_dungeon_run(owner) -> void:
 	if Game == null:
@@ -43,4 +43,4 @@ static func award_battle_rewards(owner, winner_team_index: int, interaction: Str
 	if gold_reward > 0:
 		Game.add_run_gold(gold_reward)
 		if interaction != "":
-			owner._enqueue_message("Gold +%d" % gold_reward)
+			owner._enqueue_message(TranslationServer.translate("Gold +%d") % gold_reward)

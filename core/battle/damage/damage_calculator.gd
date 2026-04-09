@@ -124,9 +124,9 @@ static func calculate_damage(action: MTBattleAction) -> Dictionary:
 
 static func _get_effectiveness_text(value: float) -> String:
 	match value:
-		0.0: return "It has no effect!"
-		0.25: return "It's barely effective…"
-		0.5: return "It's not very effective…"
-		2.0: return "It's very effective!"
-		4.0: return "It's extremely effective!" 
+		0.0: return TranslationServer.translate("It has no effect!")
+		0.25: return TranslationServer.translate("It's barely effective!")
+		0.5: return TranslationServer.translate("It's not very effective!")
+		2.0: return TranslationServer.translate("It's very effective!")
+		4.0: return TranslationServer.translate("It's extremely effective!")
 	return ""

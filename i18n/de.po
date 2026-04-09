@@ -1,0 +1,1200 @@
+﻿msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: de\n"
+
+msgid "0"
+msgstr "0"
+
+msgid "Accept"
+msgstr "Bestaetigen"
+
+msgid "Action"
+msgstr "Aktion"
+
+msgid "Attack"
+msgstr "Angriff"
+
+msgid "Attacks"
+msgstr "Attacken"
+
+msgid "Accuracy: -"
+msgstr "Genauigkeit: -"
+
+msgid "Accuracy: %d%%"
+msgstr "Genauigkeit: %d%%"
+
+msgid "Back"
+msgstr "Zurueck"
+
+msgid "Choose a battle-ready monster to switch in"
+msgstr "Waehle ein kampffaehiges Monster zum Wechseln"
+
+msgid "Close"
+msgstr "Schliessen"
+
+msgid "Controller"
+msgstr "Controller"
+
+msgid "Controls"
+msgstr "Steuerung"
+
+msgid "DEF"
+msgstr "DEF"
+
+msgid "Description"
+msgstr "Beschreibung"
+
+msgid "Deutsch"
+msgstr "Deutsch"
+
+msgid "Borderless"
+msgstr "Randlos"
+
+msgid "Fullscreen"
+msgstr "Vollbild"
+
+msgid "Windowed"
+msgstr "Fenster"
+
+msgid "Do you really want to escape?"
+msgstr "Moechtest du wirklich fliehen?"
+
+msgid "Down"
+msgstr "Unten"
+
+msgid "EN"
+msgstr "EN"
+
+msgid "ERROR: Team is null"
+msgstr "FEHLER: Team ist null"
+
+msgid "Element: -"
+msgstr "Element: -"
+
+msgid "Element: %s"
+msgstr "Element: %s"
+
+msgid "End Game"
+msgstr "Spiel beenden"
+
+msgid "Energy Cost: -"
+msgstr "Energiekosten: -"
+
+msgid "Energy Cost: %d"
+msgstr "Energiekosten: %d"
+
+msgid "English"
+msgstr "Englisch"
+
+msgid "Escape"
+msgstr "Flucht"
+
+msgid "HP"
+msgstr "HP"
+
+msgid "Hover: Attack"
+msgstr "Auswahl: Angriff"
+
+msgid "Interaction"
+msgstr "Interaktion"
+
+msgid "Inventory"
+msgstr "Inventar"
+
+msgid "Keyboard"
+msgstr "Tastatur"
+
+msgid "Language"
+msgstr "Sprache"
+
+msgid "Left"
+msgstr "Links"
+
+msgid "MAG"
+msgstr "MAG"
+
+msgid "Master Volume"
+msgstr "Master-Lautstaerke"
+
+msgid "Max FPS"
+msgstr "Max FPS"
+
+msgid "Menu"
+msgstr "Menue"
+
+msgid "Movement"
+msgstr "Bewegung"
+
+msgid "Music Volume"
+msgstr "Musik-Lautstaerke"
+
+msgid "No"
+msgstr "Nein"
+
+msgid "No attacks learned."
+msgstr "Keine Attacken gelernt."
+
+msgid "No team members."
+msgstr "Keine Teammitglieder."
+
+msgid "No traits."
+msgstr "Keine Traits."
+
+msgid "No, back"
+msgstr "Nein, zurueck"
+
+msgid "Pause Menu"
+msgstr "Pausemenue"
+
+msgid "Power: -"
+msgstr "Staerke: -"
+
+msgid "Power: %d"
+msgstr "Staerke: %d"
+
+msgid "Press key..."
+msgstr "Taste druecken..."
+
+msgid "Priority: -"
+msgstr "Prioritaet: -"
+
+msgid "Priority: %d"
+msgstr "Prioritaet: %d"
+
+msgid "RES"
+msgstr "RES"
+
+msgid "Reset Controls"
+msgstr "Steuerung zuruecksetzen"
+
+msgid "Reset all controls to defaults?"
+msgstr "Steuerung auf Standardwerte zuruecksetzen?"
+
+msgid "Resolution"
+msgstr "Aufloesung"
+
+msgid "Rest (+25% EN)"
+msgstr "Rasten (+25% EN)"
+
+msgid "Right"
+msgstr "Rechts"
+
+msgid "Run"
+msgstr "Rennen"
+
+msgid "SFX Volume"
+msgstr "SFX-Lautstaerke"
+
+msgid "SPD"
+msgstr "SPD"
+
+msgid "STR"
+msgstr "STR"
+
+msgid "Settings"
+msgstr "Einstellungen"
+
+msgid "Stats"
+msgstr "Werte"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Swap %s with ..."
+msgstr "%s tauschen mit ..."
+
+msgid "Switch"
+msgstr "Wechseln"
+
+msgid "Team"
+msgstr "Team"
+
+msgid "Traits"
+msgstr "Traits"
+
+msgid "Unlimited"
+msgstr "Unbegrenzt"
+
+msgid "Up"
+msgstr "Oben"
+
+msgid "VSync"
+msgstr "VSync"
+
+msgid "Window Mode"
+msgstr "Fenstermodus"
+
+msgid "Yes"
+msgstr "Ja"
+
+msgid "Yes, escape!"
+msgstr "Ja, fliehen!"
+
+msgid "%s %s | Lv. %d | %d/%d HP | %d/%d EN"
+msgstr "%s %s | Lv. %d | %d/%d HP | %d/%d EN"
+
+msgid "%s - Level %d\n\nHP: %d/%d\nEN: %d/%d\nSTR: %d | MAG: %d\nDEF: %d | RES: %d\nSPD: %d"
+msgstr "%s - Level %d\n\nHP: %d/%d\nEN: %d/%d\nSTR: %d | MAG: %d\nDEF: %d | RES: %d\nSPD: %d"
+
+msgid "%s  |  %s  |  Power: %d  |  EN: %d  |  Acc: %d%%"
+msgstr "%s  |  %s  |  Staerke: %d  |  EN: %d  |  Genau: %d%%"
+
+msgid "%s  Lv. %d  |  HP %d/%d  |  EN %d/%d"
+msgstr "%s  Lv. %d  |  HP %d/%d  |  EN %d/%d"
+
+msgid "%s  Lv. %d  |  HP %d/%d"
+msgstr "%s  Lv. %d  |  HP %d/%d"
+
+msgid "%s | Lv. %d | HP %d/%d | EN %d/%d\nSTR %d | MAG %d | DEF %d | RES %d | SPD %d"
+msgstr "%s | Lv. %d | HP %d/%d | EN %d/%d\nSTR %d | MAG %d | DEF %d | RES %d | SPD %d"
+
+msgid "%s: %s"
+msgstr "%s: %s"
+
+msgid "<- Back"
+msgstr "<- Zurueck"
+
+msgid "← Back"
+msgstr "← Zurueck"
+
+msgid "► %s  Lv. %d  [current position]"
+msgstr "► %s  Lv. %d  [aktuelle Position]"
+
+msgid "No items."
+msgstr "Keine Gegenstaende."
+
+msgid "Select Target"
+msgstr "Ziel waehlen"
+
+msgid "%s %d/%d HP"
+msgstr "%s %d/%d HP"
+
+msgid "Merchant"
+msgstr "Haendler"
+
+msgid "Hunter"
+msgstr "Jaeger"
+
+msgid "Thief"
+msgstr "Dieb"
+
+msgid "Please, find me a healing potion on this level!"
+msgstr "Bitte finde auf dieser Ebene einen Heiltrank fuer mich!"
+
+msgid "Thank you! You're a lifesaver."
+msgstr "Danke! Du hast mich gerettet."
+
+msgid "Help me defeat the monsters on this floor!"
+msgstr "Hilf mir, die Monster auf dieser Ebene zu besiegen!"
+
+msgid "Excellent work! You're a true warrior."
+msgstr "Ausgezeichnete Arbeit! Du bist ein wahrer Krieger."
+
+msgid "You've encountered a notorious thief!"
+msgstr "Du bist auf einen beruechtigten Dieb gestoessen!"
+
+msgid "Ha! You win this time..."
+msgstr "Ha! Dieses Mal gewinnst du..."
+
+msgid "Lost Satchel"
+msgstr "Verlorene Tasche"
+
+msgid "You found the merchant's lost satchel."
+msgstr "Du hast die verlorene Tasche des Haendlers gefunden."
+
+msgid "The merchant seems to have lost track of the package."
+msgstr "Der Haendler scheint den Ueberblick ueber das Paket verloren zu haben."
+
+msgid "Merchant Quest: Find the lost satchel somewhere on this floor."
+msgstr "Haendler-Quest: Finde die verlorene Tasche irgendwo auf dieser Ebene."
+
+msgid "Merchant Quest: Please find my lost satchel and bring it back."
+msgstr "Haendler-Quest: Bitte finde meine verlorene Tasche und bring sie zurueck."
+
+msgid "Quest Complete: You returned the lost satchel."
+msgstr "Quest abgeschlossen: Du hast die verlorene Tasche zurueckgebracht."
+
+msgid "Merchant unlocked: Trade with run gold is now available."
+msgstr "Haendler freigeschaltet: Handel mit Run-Gold ist jetzt verfuegbar."
+
+msgid "Hunter Quest accepted: Defeat %d wild encounters on this floor."
+msgstr "Jaeger-Quest angenommen: Besiege %d wilde Kaempfe auf dieser Ebene."
+
+msgid "Quest Complete: The hunter rewards your work."
+msgstr "Quest abgeschlossen: Der Jaeger belohnt deine Arbeit."
+
+msgid "Hunt Quest: %d/%d encounters defeated. Return when the hunt is done."
+msgstr "Jagd-Quest: %d/%d Kaempfe besiegt. Komm zurueck, wenn die Jagd beendet ist."
+
+msgid "A battle begins!"
+msgstr "Ein Kampf beginnt!"
+
+msgid "Player uses %s"
+msgstr "Spieler nutzt %s"
+
+msgid "Enemy uses %s"
+msgstr "Gegner nutzt %s"
+
+msgid "%s was defeated!"
+msgstr "%s wurde besiegt!"
+
+msgid "Player"
+msgstr "Spieler"
+
+msgid "Enemy"
+msgstr "Gegner"
+
+msgid "%s sent out %s!"
+msgstr "%s schickt %s in den Kampf!"
+
+msgid "%s cannot act because it has already been defeated!"
+msgstr "%s kann nicht handeln, da es bereits besiegt wurde!"
+
+msgid "%s switched to %s!"
+msgstr "%s wechselte zu %s!"
+
+msgid "%s uses %s on %s for %d HP."
+msgstr "%s benutzt %s auf %s fuer %d HP."
+
+msgid "%s attempts to flee!"
+msgstr "%s versucht zu fliehen!"
+
+msgid "Escape chance: %d%%"
+msgstr "Fluchtchance: %d%%"
+
+msgid "Escape successful!"
+msgstr "Flucht erfolgreich!"
+
+msgid "Escape failed!"
+msgstr "Flucht fehlgeschlagen!"
+
+msgid "%s is too exhausted to use %s!"
+msgstr "%s ist zu erschoepft, um %s zu nutzen!"
+
+msgid "Escape is not possible here."
+msgstr "Flucht ist hier nicht moeglich."
+
+msgid "Couldn't use!"
+msgstr "Konnte nicht verwendet werden!"
+
+msgid "%s uses %s!"
+msgstr "%s benutzt %s!"
+
+msgid "%s was successfully bound!"
+msgstr "%s wurde erfolgreich gebunden!"
+
+msgid "%s broke free!"
+msgstr "%s hat sich befreit!"
+
+msgid "Team is full. Choose a monster to release."
+msgstr "Team ist voll. Waehle ein Monster zum Freilassen."
+
+msgid " (New)"
+msgstr " (Neu)"
+
+msgid "%s Lv%d%s"
+msgstr "%s Lv%d%s"
+
+msgid "%s did not evolve."
+msgstr "%s hat sich nicht entwickelt."
+
+msgid "Enemy: ---"
+msgstr "Gegner: ---"
+
+msgid "Level: ---"
+msgstr "Level: ---"
+
+msgid "Player: ---"
+msgstr "Spieler: ---"
+
+msgid "Enemy: %s"
+msgstr "Gegner: %s"
+
+msgid "Level: %d"
+msgstr "Level: %d"
+
+msgid "Player: %s"
+msgstr "Spieler: %s"
+
+msgid "Run started. Gold: %d"
+msgstr "Run gestartet. Gold: %d"
+
+msgid "Gold +%d"
+msgstr "Gold +%d"
+
+msgid "Elite pack defeated. The path to the stairs is now open."
+msgstr "Elite-Trupp besiegt. Der Weg zur Treppe ist jetzt offen."
+
+msgid "Soul Essence +%d"
+msgstr "Seelenessenz +%d"
+
+msgid "Quest Complete: You defeated the thief!"
+msgstr "Quest abgeschlossen: Du hast den Dieb besiegt!"
+
+msgid "Hunt complete. Return to the hunter for your reward."
+msgstr "Jagd abgeschlossen. Kehre fuer deine Belohnung zum Jaeger zurueck."
+
+msgid "You were defeated. Returning to the city."
+msgstr "Du wurdest besiegt. Rueckkehr in die Stadt."
+
+msgid "Boss defeated! Returning to the city."
+msgstr "Boss besiegt! Rueckkehr in die Stadt."
+
+msgid "Floor %d / %d"
+msgstr "Ebene %d / %d"
+
+msgid "An elite presence fills this room."
+msgstr "Eine Elite-Praesenz erfuellt diesen Raum."
+
+msgid "You picked up %s!"
+msgstr "Du hast %s aufgehoben!"
+
+msgid "Healing Spring: Your team is refreshed. (%d healed, %d recharged)"
+msgstr "Heilquelle: Dein Team wurde erfrischt. (%d geheilt, %d aufgeladen)"
+
+msgid "You found a gold stash! Gold +%d"
+msgstr "Du hast einen Goldvorrat gefunden! Gold +%d"
+
+msgid "Soul Essence Cache: You absorb the power. Soul Essence +%d"
+msgstr "Seelenessenz-Vorrat: Du absorbierst die Kraft. Seelenessenz +%d"
+
+msgid "A trap springs! But there is nothing to harm."
+msgstr "Eine Falle schnappt zu! Aber es ist nichts da, das verletzt werden kann."
+
+msgid "Monster"
+msgstr "Monster"
+
+msgid "It's a trap! %s lost %d HP!"
+msgstr "Eine Falle! %s verliert %d HP!"
+
+msgid "You found a Monster Egg! It will hatch on the next floor."
+msgstr "Du hast ein Monster-Ei gefunden! Es schluepft auf der naechsten Ebene."
+
+msgid "The altar pulses with dark energy, but nothing happens."
+msgstr "Der Altar pulsiert mit dunkler Energie, aber nichts passiert."
+
+msgid "Cursed Altar: Your team suffers %d total damage... Soul Essence +1, Gold +%d."
+msgstr "Verfluchter Altar: Dein Team erleidet insgesamt %d Schaden... Seelenessenz +1, Gold +%d."
+
+msgid "Locked. You need a Secret Key to open this vault."
+msgstr "Verschlossen. Du brauchst einen Geheimschluessel, um dieses Gewoelbe zu oeffnen."
+
+msgid "Secret Vault opened! Found items, Gold +%d, and Soul Essence +2!"
+msgstr "Geheimes Gewoelbe geoeffnet! Gegenstaende gefunden, Gold +%d und Seelenessenz +2!"
+
+msgid "Your egg is ready to hatch, but your team is full!"
+msgstr "Dein Ei ist bereit zum Schluepfen, aber dein Team ist voll!"
+
+msgid "Your Monster Egg hatched! %s joined your team!"
+msgstr "Dein Monster-Ei ist geschluepft! %s ist deinem Team beigetreten!"
+
+msgid "A powerful presence blocks your descent. Defeat the elite room first."
+msgstr "Eine maechtige Praesenz blockiert deinen Abstieg. Besiege zuerst den Elite-Raum."
+
+msgid "The stairs are sealed. You must find the key on this floor."
+msgstr "Die Treppe ist versiegelt. Du musst den Schluessel auf dieser Ebene finden."
+
+msgid "The stairs are sealed. You must activate all 3 switches (%d/%d)."
+msgstr "Die Treppe ist versiegelt. Du musst alle 3 Schalter aktivieren (%d/%d)."
+
+msgid "You cannot proceed."
+msgstr "Du kannst nicht weitergehen."
+
+msgid "Switch %d activated! (%d/%d)"
+msgstr "Schalter %d aktiviert! (%d/%d)"
+
+msgid "All switches activated! The stairs are now open."
+msgstr "Alle Schalter aktiviert! Die Treppe ist jetzt offen."
+
+msgid "Merchant: I'm out of stock for this run."
+msgstr "Haendler: Fuer diesen Run bin ich ausverkauft."
+
+msgid "You found the key! The stairs are now accessible."
+msgstr "Du hast den Schluessel gefunden! Die Treppe ist jetzt zugaenglich."
+
+msgid "Scene: %s"
+msgstr "Szene: %s"
+
+msgid "%s tried to use %s, but doesn't have enough energy!"
+msgstr "%s wollte %s einsetzen, hat aber nicht genug Energie!"
+
+msgid "%s uses %s on %s, but it misses!"
+msgstr "%s setzt %s auf %s ein, aber es verfehlt!"
+
+msgid "%s takes %d damage."
+msgstr "%s erleidet %d Schaden."
+
+msgid "A critical hit!"
+msgstr "Ein kritischer Treffer!"
+
+msgid " (STAB)"
+msgstr " (STAB)"
+
+msgid "%s steals %d HP through lifesteal!"
+msgstr "%s stiehlt %d HP durch Lebensraub!"
+
+msgid "%s's %s won't go any higher!"
+msgstr "%s' %s kann nicht weiter erhoeht werden!"
+
+msgid "%s's %s won't go any lower!"
+msgstr "%s' %s kann nicht weiter gesenkt werden!"
+
+msgid "%s's %s changed by %s%d!"
+msgstr "%s' %s hat sich um %s%d geaendert!"
+
+msgid "HP+%d"
+msgstr "HP+%d"
+
+msgid "Energy+%d"
+msgstr "Energie+%d"
+
+msgid "Strength+%d"
+msgstr "Staerke+%d"
+
+msgid "Magic+%d"
+msgstr "Magie+%d"
+
+msgid "Defense+%d"
+msgstr "Verteidigung+%d"
+
+msgid "Resistance+%d"
+msgstr "Resistenz+%d"
+
+msgid "Speed+%d"
+msgstr "Tempo+%d"
+
+msgid "%s leveled up to level %d!"
+msgstr "%s ist auf Level %d aufgestiegen!"
+
+msgid "%s gained %d EXP! (Total: %d/%d)"
+msgstr "%s erhielt %d EXP! (Gesamt: %d/%d)"
+
+msgid "%s learned %s!"
+msgstr "%s hat %s gelernt!"
+
+msgid "%s learned trait %s!"
+msgstr "%s hat den Trait %s gelernt!"
+
+msgid "%s x%d"
+msgstr "%s x%d"
+
+msgid "%s uses Rest!"
+msgstr "%s nutzt Ausruhen!"
+
+msgid "%s restores %d Energy. (%d/%d EN)"
+msgstr "%s stellt %d Energie wieder her. (%d/%d EN)"
+
+msgid "It has no effect!"
+msgstr "Es hat keine Wirkung!"
+
+msgid "It's barely effective!"
+msgstr "Es ist kaum wirksam!"
+
+msgid "It's not very effective!"
+msgstr "Es ist nicht sehr wirksam!"
+
+msgid "It's very effective!"
+msgstr "Es ist sehr wirksam!"
+
+msgid "It's extremely effective!"
+msgstr "Es ist extrem wirksam!"
+
+msgid "%s is hurt by %s's %s for %d contact damage!"
+msgstr "%s wird durch %s' %s fuer %d Kontaktschaden verletzt!"
+
+msgid "%s's %s changed by %s%d due to %s's %s!"
+msgstr "%s' %s hat sich durch %s' %s um %s%d geaendert!"
+
+msgid " (%d/%d HP | %d/%d EN)"
+msgstr " (%d/%d HP | %d/%d EN)"
+
+msgid "Crit Rate"
+msgstr "Krit-Rate"
+
+msgid "Crit Damage"
+msgstr "Krit-Schaden"
+
+msgid "Soulbinder"
+msgstr "Seelenbinder"
+
+msgid "Used %s on %s, healed %d HP."
+msgstr "%s auf %s verwendet, %d HP geheilt."
+
+msgid "You found the lost satchel. Return it to the merchant."
+msgstr "Du hast die verlorene Tasche gefunden. Bring sie zum Haendler zurueck."
+
+msgid "The thief engages you in battle!"
+msgstr "Der Dieb verwickelt dich in einen Kampf!"
+
+msgid "Received %d gold and %d Soul Essence!"
+msgstr "Du hast %d Gold und %d Seelenessenz erhalten!"
+
+msgid "Quest rewarded! (Game singleton not found)"
+msgstr "Quest belohnt! (Game-Singleton nicht gefunden)"
+
+msgid "Choose a dungeon"
+msgstr "Waehle einen Dungeon"
+
+msgid "Soul Essence: %d"
+msgstr "Seelenessenz: %d"
+
+msgid "%s [MAX]"
+msgstr "%s [MAX]"
+
+msgid "%s (Cost: %d SE) [Lv %d/%d]"
+msgstr "%s (Kosten: %d SE) [Lv %d/%d]"
+
+msgid "No dungeons available"
+msgstr "Keine Dungeons verfuegbar"
+
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgid "Meta unlock failed: Game singleton missing."
+msgstr "Meta-Freischaltung fehlgeschlagen: Game-Singleton fehlt."
+
+msgid "Unlocked %s. Soul Essence left: %d"
+msgstr "%s freigeschaltet. Verbleibende Seelenessenz: %d"
+
+msgid "%s is already at max level."
+msgstr "%s ist bereits auf maximaler Stufe."
+
+msgid "Not enough Soul Essence for %s (Cost: %d)."
+msgstr "Nicht genug Seelenessenz fuer %s (Kosten: %d)."
+
+msgid "Dungeon Merchant"
+msgstr "Dungeon-Haendler"
+
+msgid "Merchant unavailable"
+msgstr "Haendler nicht verfuegbar"
+
+msgid "%s  -  %d gold"
+msgstr "%s  -  %d Gold"
+
+msgid "Select an item to buy."
+msgstr "Waehle ein Item zum Kaufen."
+
+msgid "Not enough gold (%d needed, %d available)."
+msgstr "Nicht genug Gold (%d benoetigt, %d verfuegbar)."
+
+msgid "Bought %s for %d gold."
+msgstr "%s fuer %d Gold gekauft."
+
+msgid "Gold: -\nSoul Essence: -"
+msgstr "Gold: -\nSeelenessenz: -"
+
+msgid "Gold: %d\nSoul Essence: %d"
+msgstr "Gold: %d\nSeelenessenz: %d"
+
+msgid "Wanderer %d"
+msgstr "Wanderer %d"
+
+msgid "The dungeon belongs to the strongest."
+msgstr "Der Dungeon gehoert den Staerksten."
+
+msgid "Explorer %d"
+msgstr "Entdecker %d"
+
+msgid "Found this on this floor. Take it."
+msgstr "Hab das auf dieser Ebene gefunden. Nimm es."
+
+msgid "Elite"
+msgstr "Elite"
+
+msgid "A concentrated pack of wild monsters surrounds you."
+msgstr "Ein konzentriertes Rudel wilder Monster umringt dich."
+
+msgid "The elite pack has been defeated."
+msgstr "Das Elite-Rudel wurde besiegt."
+
+msgid "Mimic"
+msgstr "Mimik"
+
+msgid "A lonely chest twitches... it was bait!"
+msgstr "Eine einsame Truhe zuckt... es war eine Falle!"
+
+msgid "The mimic vanishes into the shadows."
+msgstr "Die Mimik verschwindet in den Schatten."
+
+msgid "Switch %d"
+msgstr "Schalter %d"
+
+msgid "You activate the switch. A mechanism clicks into place."
+msgstr "Du aktivierst den Schalter. Ein Mechanismus rastet ein."
+
+msgid "Glowing Key"
+msgstr "Leuchtender Schluessel"
+
+msgid "You pick up the ancient key. It glows with power."
+msgstr "Du hebst den uralten Schluessel auf. Er leuchtet vor Kraft."
+
+msgid "Healing Spring"
+msgstr "Heilquelle"
+
+msgid "A bubbling spring glows with restorative energy. (Restores HP and Energy once)"
+msgstr "Eine sprudelnde Quelle leuchtet mit heilender Energie. (Stellt einmalig HP und Energie wieder her)"
+
+msgid "Gold Chest"
+msgstr "Goldtruhe"
+
+msgid "A dusty chest rests here, filled with coins!"
+msgstr "Hier steht eine staubige Truhe, gefuellt mit Goldmuenzen!"
+
+msgid "Soul Essence Cache"
+msgstr "Seelenessenz-Depot"
+
+msgid "A crystalline orb pulses with condensed Soul Essence."
+msgstr "Eine kristalline Kugel pulsiert mit verdichteter Seelenessenz."
+
+msgid "Suspicious Rune"
+msgstr "Verdaechtige Rune"
+
+msgid "Strange runes glow on the floor here... (Possible trap!)"
+msgstr "Seltsame Runen leuchten hier auf dem Boden... (Moegliche Falle!)"
+
+msgid "Hidden Merchant Cache"
+msgstr "Verstecktes Haendlerdepot"
+
+msgid "A small supply cache has been left behind by a passing merchant."
+msgstr "Ein vorbeiziehender Haendler hat ein kleines Vorratsdepot hinterlassen."
+
+msgid "Monster Egg"
+msgstr "Monster-Ei"
+
+msgid "A warm egg rests here. Something stirs inside..."
+msgstr "Hier liegt ein warmes Ei. Etwas bewegt sich darin..."
+
+msgid "Cursed Altar"
+msgstr "Verfluchter Altar"
+
+msgid "A dark altar radiates power. Risk your team's health for rewards?"
+msgstr "Ein dunkler Altar strahlt Macht aus. Riskierst du die Gesundheit deines Teams fuer Belohnungen?"
+
+msgid "You find %s lying on the ground."
+msgstr "Du findest %s auf dem Boden."
+
+msgid "Secret Vault"
+msgstr "Geheimes Gewoelbe"
+
+msgid "A heavy iron vault. This requires a Secret Key to open."
+msgstr "Ein schweres Eisengewoelbe. Zum Oeffnen wird ein geheimer Schluessel benoetigt."
+
+msgid "%s tries to evolve into %s.\nDo you want to evolve %s?"
+msgstr "%s versucht sich zu %s zu entwickeln.\nMoechtest du %s entwickeln?"
+
+
+msgid "+10% Lifesteal"
+msgstr "+10% Lebensraub"
+
+msgid "A bite that drains blood from the target."
+msgstr "Ein Biss, der dem Ziel Blut und Lebenskraft entzieht."
+
+msgid "A fiery bite that has the chance to burn enemies."
+msgstr "Ein feuriger Biss mit Chance, Gegner zu verbrennen."
+
+msgid "A swift strike from the shadows with a high chance to land a critical hit."
+msgstr "Ein schneller Schlag aus den Schatten mit hoher Chance auf einen kritischen Treffer."
+
+msgid "An explosive burst of compressed water. High power, slightly imprecise."
+msgstr "Eine explosive Salve aus komprimiertem Wasser. Hohe Kraft, leicht ungenau."
+
+msgid "Aqua Blast"
+msgstr "Aqua-Explosion"
+
+msgid "Battle Cry"
+msgstr "Schlachtruf"
+
+msgid "Buff self Strength +2.\nDebuff self Speed -5."
+msgstr "Erhoeht eigene STR um +2.\nSenkt eigene SPD um 5."
+
+msgid "Buff self Strength +2."
+msgstr "Erhoeht eigene STR um +2."
+
+msgid "Debuff self Speed -5."
+msgstr "Senkt eigene SPD um 5."
+
+msgid "Buff self Strength +2.\r\nDebuff self Speed -5."
+msgstr "Erhoeht eigene STR um +2.\r\nSenkt eigene SPD um 5."
+
+msgid "Blood Drinker"
+msgstr "Bluttrinker"
+
+msgid "Brute Force"
+msgstr "Rohe Gewalt"
+
+msgid "Buff Strength +1 at Round Start"
+msgstr "Erhoeht STR zu Rundenbeginn um +1"
+
+msgid "Channels ghostly energy through the target, draining life force back to the user."
+msgstr "Leitet geisterhafte Energie durch das Ziel und entzieht ihm Lebenskraft fuer den Anwender."
+
+msgid "Charges forward with bone-crushing force. Devastating physical impact."
+msgstr "Stuermt mit knochenbrechender Wucht vor. Verheerender physischer Aufprall."
+
+msgid "Concentrates solar energy into a radiant beam of plant-infused light."
+msgstr "Buendelt Sonnenenergie zu einem strahlenden, pflanzeninfundierten Lichtstrahl."
+
+msgid "Contact attackers take reflected damage based on damage dealt."
+msgstr "Angreifer mit Kontakt erleiden reflektierten Schaden basierend auf verursachtem Schaden."
+
+msgid "Deals 30% more physical damage."
+msgstr "Verursacht 30% mehr physischen Schaden."
+
+msgid "Debuff enemy Strength -5."
+msgstr "Senkt die gegnerische STR um 5."
+
+msgid "Drain Bite"
+msgstr "Saugbiss"
+
+msgid "Ember"
+msgstr "Glut"
+
+msgid "Entangle"
+msgstr "Umschlingen"
+
+msgid "Fire Bite"
+msgstr "Feuerbiss"
+
+msgid "Fire Crunch"
+msgstr "Feuerknirschen"
+
+msgid "Fires a pressurized jet of water that strikes with force."
+msgstr "Feuert einen Druckwasserstrahl ab, der mit Wucht trifft."
+
+msgid "Flamethrower"
+msgstr "Flammenwerfer"
+
+msgid "Grass Whip"
+msgstr "Graspeitsche"
+
+msgid "Howl"
+msgstr "Heulen"
+
+msgid "HP Regen"
+msgstr "HP-Regeneration"
+
+msgid "Hurls small flames at the target. A reliable fire-magic attack."
+msgstr "Schleudert kleine Flammen auf das Ziel. Ein verlaesslicher Feuer-Magieangriff."
+
+msgid "Inferno"
+msgstr "Hoellenfeuer"
+
+msgid "Iron Charge"
+msgstr "Eisenansturm"
+
+msgid "Normal Attack"
+msgstr "Normalangriff"
+
+msgid "On contact, lowers the attacker's Strength by 1 stage."
+msgstr "Bei Kontakt wird die STR des Angreifers um 1 Stufe gesenkt."
+
+msgid "Quick Attack"
+msgstr "Schnellangriff"
+
+msgid "Shadow Strike"
+msgstr "Schattenschlag"
+
+msgid "Solar Strike"
+msgstr "Solarschlag"
+
+msgid "Strong Beginning"
+msgstr "Starker Auftakt"
+
+msgid "Strong Body"
+msgstr "Kraeftiger Koerper"
+
+msgid "Thorn Hide"
+msgstr "Dornenhaut"
+
+msgid "Unleashes a devastating inferno. Tremendous power but hard to aim."
+msgstr "Entfesselt ein verheerendes Inferno. Enorme Kraft, aber schwer zu zielen."
+
+msgid "Void Drain"
+msgstr "Leerenraub"
+
+msgid "Water Gun"
+msgstr "Wasserstrahl"
+
+msgid "Weakening Hide"
+msgstr "Schwaechende Haut"
+
+msgid "Wraps the enemy in thorny vines dealing physical damage."
+msgstr "Umwickelt den Gegner mit dornenbewehrten Ranken und verursacht physischen Schaden."
+
+msgid "Received %s."
+msgstr "%s erhalten."
+
+msgid "Received %s x%d."
+msgstr "%s x%d erhalten."
+
+msgid "Guild Guide"
+msgstr "Gildenfuehrer"
+
+msgid "Ready for the Test Dungeon?"
+msgstr "Bereit fuer den Test-Dungeon?"
+
+msgid "Dungeon Boss"
+msgstr "Dungeon-Boss"
+
+msgid "You made it. Let's battle!"
+msgstr "Du hast es geschafft. Kaempfen wir!"
+
+msgid "Impressive."
+msgstr "Beeindruckend."
+
+msgid "Stairs"
+msgstr "Treppe"
+
+msgid "Descend to the next floor?"
+msgstr "Zur naechsten Ebene hinabsteigen?"
+
+msgid "Test NPC 1"
+msgstr "Test-NPC 1"
+
+msgid "Hey! Ausm Weg, Geringverdiener!"
+msgstr "Hey! Ausm Weg, Geringverdiener!"
+
+msgid "Test NPC 2"
+msgstr "Test-NPC 2"
+
+msgid "Hier für dich:"
+msgstr "Hier fuer dich:"
+
+msgid "Hier fuer dich:"
+msgstr "Hier fuer dich:"
+
+msgid "Viel Erfolg!"
+msgstr "Viel Erfolg!"
+
+
+msgid "A legendary fire binding rune used to capture monsters."
+msgstr "Eine legendaere Feuer-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A legendary ghost binding rune used to capture monsters."
+msgstr "Eine legendaere Geister-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A legendary normal binding rune used to capture monsters."
+msgstr "Eine legendaere Normal-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A legendary plant binding rune used to capture monsters."
+msgstr "Eine legendaere Pflanzen-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A legendary universal binding rune used to capture monsters."
+msgstr "Eine legendaere universelle-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A legendary water binding rune used to capture monsters."
+msgstr "Eine legendaere Wasser-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A potent fire binding rune used to capture monsters."
+msgstr "Eine kraftvolle Feuer-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A potent ghost binding rune used to capture monsters."
+msgstr "Eine kraftvolle Geister-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A potent normal binding rune used to capture monsters."
+msgstr "Eine kraftvolle Normal-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A potent plant binding rune used to capture monsters."
+msgstr "Eine kraftvolle Pflanzen-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A potent universal binding rune used to capture monsters."
+msgstr "Eine kraftvolle universelle-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A potent water binding rune used to capture monsters."
+msgstr "Eine kraftvolle Wasser-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A rare fire binding rune used to capture monsters."
+msgstr "Eine seltene Feuer-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A rare ghost binding rune used to capture monsters."
+msgstr "Eine seltene Geister-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A rare normal binding rune used to capture monsters."
+msgstr "Eine seltene Normal-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A rare plant binding rune used to capture monsters."
+msgstr "Eine seltene Pflanzen-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A rare universal binding rune used to capture monsters."
+msgstr "Eine seltene universelle-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A rare water binding rune used to capture monsters."
+msgstr "Eine seltene Wasser-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A stronger fire binding rune used to capture monsters."
+msgstr "Eine staerkere Feuer-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A stronger ghost binding rune used to capture monsters."
+msgstr "Eine staerkere Geister-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A stronger normal binding rune used to capture monsters."
+msgstr "Eine staerkere Normal-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A stronger plant binding rune used to capture monsters."
+msgstr "Eine staerkere Pflanzen-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A stronger universal binding rune used to capture monsters."
+msgstr "Eine staerkere universelle-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A stronger water binding rune used to capture monsters."
+msgstr "Eine staerkere Wasser-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A warm egg found in the dungeon. It will hatch when you descend to the next floor."
+msgstr "Ein warmes Ei, das im Dungeon gefunden wurde. Es schluepft, wenn du zur naechsten Ebene hinabsteigst."
+
+msgid "A weak fire binding rune used to capture monsters."
+msgstr "Eine schwache Feuer-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A weak ghost binding rune used to capture monsters."
+msgstr "Eine schwache Geister-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A weak normal binding rune used to capture monsters."
+msgstr "Eine schwache Normal-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A weak plant binding rune used to capture monsters."
+msgstr "Eine schwache Pflanzen-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A weak universal binding rune used to capture monsters."
+msgstr "Eine schwache universelle-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "A weak water binding rune used to capture monsters."
+msgstr "Eine schwache Wasser-Bindungsrune, die zum Fangen von Monstern verwendet wird."
+
+msgid "An excellent fire binding rune used to capture monsters."
+msgstr "An excellent fire binding rune used to capture monsters."
+
+msgid "An excellent ghost binding rune used to capture monsters."
+msgstr "An excellent ghost binding rune used to capture monsters."
+
+msgid "An excellent normal binding rune used to capture monsters."
+msgstr "An excellent normal binding rune used to capture monsters."
+
+msgid "An excellent plant binding rune used to capture monsters."
+msgstr "An excellent plant binding rune used to capture monsters."
+
+msgid "An excellent universal binding rune used to capture monsters."
+msgstr "An excellent universal binding rune used to capture monsters."
+
+msgid "An excellent water binding rune used to capture monsters."
+msgstr "An excellent water binding rune used to capture monsters."
+
+msgid "Greater Fire Binding Rune"
+msgstr "Groessere Feuer-Bindungsrune"
+
+msgid "Greater Ghost Binding Rune"
+msgstr "Groessere Geister-Bindungsrune"
+
+msgid "Greater Normal Binding Rune"
+msgstr "Groessere Normal-Bindungsrune"
+
+msgid "Greater Plant Binding Rune"
+msgstr "Groessere Pflanzen-Bindungsrune"
+
+msgid "Greater Universal Binding Rune"
+msgstr "Groessere Universelle-Bindungsrune"
+
+msgid "Greater Water Binding Rune"
+msgstr "Groessere Wasser-Bindungsrune"
+
+msgid "Heals 10-20 HP."
+msgstr "Heilt 10-20 HP."
+
+msgid "Improved Fire Binding Rune"
+msgstr "Verbesserte Feuer-Bindungsrune"
+
+msgid "Improved Ghost Binding Rune"
+msgstr "Verbesserte Geister-Bindungsrune"
+
+msgid "Improved Normal Binding Rune"
+msgstr "Verbesserte Normal-Bindungsrune"
+
+msgid "Improved Plant Binding Rune"
+msgstr "Verbesserte Pflanzen-Bindungsrune"
+
+msgid "Improved Universal Binding Rune"
+msgstr "Verbesserte Universelle-Bindungsrune"
+
+msgid "Improved Water Binding Rune"
+msgstr "Verbesserte Wasser-Bindungsrune"
+
+msgid "Legendary Fire Binding Rune"
+msgstr "Legendaere Feuer-Bindungsrune"
+
+msgid "Legendary Ghost Binding Rune"
+msgstr "Legendaere Geister-Bindungsrune"
+
+msgid "Legendary Normal Binding Rune"
+msgstr "Legendaere Normal-Bindungsrune"
+
+msgid "Legendary Plant Binding Rune"
+msgstr "Legendaere Pflanzen-Bindungsrune"
+
+msgid "Legendary Universal Binding Rune"
+msgstr "Legendaere Universelle-Bindungsrune"
+
+msgid "Legendary Water Binding Rune"
+msgstr "Legendaere Wasser-Bindungsrune"
+
+msgid "Lesser Fire Binding Rune"
+msgstr "Schwache Feuer-Bindungsrune"
+
+msgid "Lesser Ghost Binding Rune"
+msgstr "Schwache Geister-Bindungsrune"
+
+msgid "Lesser Healing Potion"
+msgstr "Schwacher Heiltrank"
+
+msgid "Lesser Normal Binding Rune"
+msgstr "Schwache Normal-Bindungsrune"
+
+msgid "Lesser Plant Binding Rune"
+msgstr "Schwache Pflanzen-Bindungsrune"
+
+msgid "Lesser Universal Binding Rune"
+msgstr "Schwache Universelle-Bindungsrune"
+
+msgid "Lesser Water Binding Rune"
+msgstr "Schwache Wasser-Bindungsrune"
+
+msgid "Mythic Fire Binding Rune"
+msgstr "Mythische Feuer-Bindungsrune"
+
+msgid "Mythic Ghost Binding Rune"
+msgstr "Mythische Geister-Bindungsrune"
+
+msgid "Mythic Normal Binding Rune"
+msgstr "Mythische Normal-Bindungsrune"
+
+msgid "Mythic Plant Binding Rune"
+msgstr "Mythische Pflanzen-Bindungsrune"
+
+msgid "Mythic Universal Binding Rune"
+msgstr "Mythische Universelle-Bindungsrune"
+
+msgid "Mythic Water Binding Rune"
+msgstr "Mythische Wasser-Bindungsrune"
+
+msgid "Opens locked Secret Vaults hidden in dungeons."
+msgstr "Oeffnet verschlossene geheime Gewoelbe, die in Dungeons verborgen sind."
+
+msgid "Secret Key"
+msgstr "Geheimschluessel"
+
+msgid "Superior Fire Binding Rune"
+msgstr "Ueberlegene Feuer-Bindungsrune"
+
+msgid "Superior Ghost Binding Rune"
+msgstr "Ueberlegene Geister-Bindungsrune"
+
+msgid "Superior Normal Binding Rune"
+msgstr "Ueberlegene Normal-Bindungsrune"
+
+msgid "Superior Plant Binding Rune"
+msgstr "Ueberlegene Pflanzen-Bindungsrune"
+
+msgid "Superior Universal Binding Rune"
+msgstr "Ueberlegene Universelle-Bindungsrune"
+
+msgid "Superior Water Binding Rune"
+msgstr "Ueberlegene Wasser-Bindungsrune"

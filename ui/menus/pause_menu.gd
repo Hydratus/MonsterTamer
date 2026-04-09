@@ -9,6 +9,7 @@ const CONFIG_PATH := "user://settings.cfg"
 const ItemDataClass = preload("res://core/items/item_data.gd")
 const ItemMenuClass = preload("res://ui/menus/item_menu.gd")
 const InputButtonsClass = preload("res://core/systems/input_buttons.gd")
+const MonsterStatusViewHelper = preload("res://core/ui/monster_status_view_helper.gd")
 
 
 const GAMEPAD_BTN_A := InputButtonsClass.GAMEPAD_BTN_A
@@ -27,9 +28,9 @@ const GAMEPAD_BTN_DPAD_LEFT := InputButtonsClass.GAMEPAD_BTN_DPAD_LEFT
 const GAMEPAD_BTN_DPAD_RIGHT := InputButtonsClass.GAMEPAD_BTN_DPAD_RIGHT
 
 const MODE_OPTIONS: Array = [
-	{"label": "Vollbild", "value": "fullscreen"},
-	{"label": "RandlosFenster", "value": "borderless"},
-	{"label": "Fenster", "value": "windowed"}
+	{"label_key": "Fullscreen", "value": "fullscreen"},
+	{"label_key": "Borderless", "value": "borderless"},
+	{"label_key": "Windowed", "value": "windowed"}
 ]
 
 const RESOLUTIONS: Array = [
@@ -40,6 +41,12 @@ const RESOLUTIONS: Array = [
 	Vector2i(2560, 1440),
 	Vector2i(3840, 2160)
 ]
+
+const LANGUAGE_OPTIONS: Array = [
+	{"label_key": "English", "value": "en"},
+	{"label_key": "Deutsch", "value": "de"}
+]
+const FALLBACK_LOCALE := "en"
 
 const CONTROL_CATEGORIES: Array = [
 	{
@@ -122,6 +129,7 @@ const MOVEMENT_ARROW_KEYS: Dictionary = {
 @onready var _item_menu: ItemMenuClass = $Root/Window/WindowVBox/ContentRow/ContentPanel/ContentStack/InventoryPanel/ItemMenu as ItemMenuClass
 
 var _mode_option: OptionButton
+var _language_option: OptionButton
 var _resolution_option: OptionButton
 var _vsync_check: CheckBox
 var _fps_slider: HSlider
@@ -151,9 +159,14 @@ var _last_team: Array = []
 var _overlay_message_active := false
 var _inputmap_defaults: Dictionary = {}
 var _last_item_tab: int = 0
+var _team_sub_level: String = "list"  # "list" | "options" | "switch" | "status"
+var _team_selected_index: int = -1
+var _team_status_tab: int = 0
+var _team_sub_nav: Array[Button] = []
 var _settings_control_active := false
 var _settings_nav_controls: Array[Control] = []
 var _settings_nav_focus_index := 0
+var _controls_reset_button: Button
 
 const ACTION_ALIASES: Dictionary = {
 	"ui_up": "up",
@@ -166,6 +179,9 @@ const ACTION_ALIASES: Dictionary = {
 var _reset_confirm: ConfirmationDialog
 
 var _settings: Dictionary = {
+	"general": {
+		"language": "en"
+	},
 	"video": {
 		"mode": "windowed",
 		"resolution": Vector2i(1280, 720),
@@ -218,13 +234,13 @@ func _enter_inventory() -> void:
 	_active_section = "inventory"
 	_in_content = false
 	_menu_level = "content"
-	_set_sidebar_focus_enabled(false)
-	_set_inventory_focus_enabled(false)
 	_item_menu.select_tab(_last_item_tab)
 	_item_menu.open_inventory(_last_team, false, false)
 	_item_menu.set_allow_enter_from_tabs(false)
 	_item_menu.set_tabs_focus_enabled(false)
 	_item_menu.set_auto_focus_content(false)
+	_set_sidebar_focus_enabled(false)
+	_set_inventory_focus_enabled(false)
 	_inventory_to_content()
 
 func _inventory_to_content() -> void:
@@ -233,6 +249,7 @@ func _inventory_to_content() -> void:
 	_item_menu.set_auto_focus_content(true)
 	_item_menu.set_allow_enter_from_tabs(true)
 	_item_menu.refresh()
+	_item_menu.lock_item_lateral_navigation()
 	_item_menu.grab_first_focus()
 	_menu_level = "content"
 	_in_content = true
@@ -265,11 +282,11 @@ func _apply_item_overworld(item: ItemDataClass, target: MTMonsterInstance) -> vo
 		var healed := target.hp - before
 		if healed > 0:
 			Game.remove_item(item.id, 1)
-			item_used_message.emit("Used %s on %s, healed %d HP." % [item.name, target.data.name, healed])
+			item_used_message.emit(tr("Used %s on %s, healed %d HP.") % [TranslationServer.translate(item.name), target.data.name, healed])
 		else:
-			item_used_message.emit("Couldn't use!")
+			item_used_message.emit(tr("Couldn't use!"))
 	else:
-		item_used_message.emit("Couldn't use!")
+		item_used_message.emit(tr("Couldn't use!"))
 
 func open(team: Array) -> void:
 	visible = true
@@ -299,10 +316,40 @@ func _reset_menu_state_for_open_close() -> void:
 	_set_tabs_focus_enabled(false)
 	_set_all_tab_content_focus_enabled(false)
 	_set_team_buttons_focus_enabled(false)
+	_team_sub_level = "list"
+	_team_selected_index = -1
+	_team_sub_nav.clear()
 	_set_inventory_focus_enabled(false)
 	_item_menu.set_tabs_focus_enabled(false)
 	_item_menu.set_allow_enter_from_tabs(false)
 	_item_menu.set_auto_focus_content(false)
+
+func _apply_localized_static_texts() -> void:
+	_team_button.text = tr("Team")
+	_inventory_button.text = tr("Inventory")
+	_settings_button.text = tr("Settings")
+	_close_button.text = tr("Close")
+	_end_game_button.text = tr("End Game")
+
+func _clear_children(container: Node) -> void:
+	if container == null:
+		return
+	for child in container.get_children():
+		child.queue_free()
+
+func _rebuild_localized_ui() -> void:
+	_settings_control_active = false
+	_settings_nav_controls.clear()
+	_settings_nav_focus_index = 0
+	_apply_localized_static_texts()
+	_clear_children(_video_tab)
+	_build_video_tab()
+	_clear_children(_sound_tab)
+	_build_sound_tab()
+	_clear_children(_controls_list)
+	_build_controls_tab()
+	_sync_ui_from_settings()
+	_update_team_list(_last_team)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
@@ -348,13 +395,23 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		if event.is_action_pressed("ui_left"):
-			_settings_tabs.current_tab = max(_settings_tabs.current_tab - 1, 0)
-			_settings_to_content()
+			var controls_focus_owner := get_viewport().gui_get_focus_owner() as Control
+			if _move_controls_horizontal_focus(-1):
+				get_viewport().set_input_as_handled()
+				return
+			if controls_focus_owner != null and controls_focus_owner == _controls_reset_button:
+				_settings_tabs.current_tab = max(_settings_tabs.current_tab - 1, 0)
+				_settings_to_content()
 			get_viewport().set_input_as_handled()
 			return
 		if event.is_action_pressed("ui_right"):
-			_settings_tabs.current_tab = min(_settings_tabs.current_tab + 1, _settings_tabs.get_tab_count() - 1)
-			_settings_to_content()
+			var controls_focus_owner := get_viewport().gui_get_focus_owner() as Control
+			if _move_controls_horizontal_focus(1):
+				get_viewport().set_input_as_handled()
+				return
+			if controls_focus_owner != null and controls_focus_owner == _controls_reset_button:
+				_settings_tabs.current_tab = min(_settings_tabs.current_tab + 1, _settings_tabs.get_tab_count() - 1)
+				_settings_to_content()
 			get_viewport().set_input_as_handled()
 			return
 		if _is_action_press(event, "ui_up"):
@@ -368,23 +425,42 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.is_action_pressed("ui_up") and _is_first_settings_focus():
 			get_viewport().set_input_as_handled()
 			return
-	# --- Inventory content: Left/Right switches tabs ---
+	# --- Inventory content: Left/Right completely blocked ---
 	if _menu_level == "content" and _active_section == "inventory":
 		if event.is_action_pressed("ui_cancel"):
 			_inventory_to_sidebar()
 			get_viewport().set_input_as_handled()
 			return
-		if event.is_action_pressed("ui_left"):
-			_item_menu.select_prev_tab()
-			get_viewport().set_input_as_handled()
-			return
-		if event.is_action_pressed("ui_right"):
-			_item_menu.select_next_tab()
+		if event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right"):
 			get_viewport().set_input_as_handled()
 			return
 		if event.is_action_pressed("ui_up") and _item_menu.is_first_item_focused():
 			get_viewport().set_input_as_handled()
 			return
+	# --- Team content sub-views ---
+	if _menu_level == "content" and _active_section == "team":
+		if event.is_action_pressed("ui_cancel"):
+			_team_go_back()
+			get_viewport().set_input_as_handled()
+			return
+		if _team_sub_level != "list":
+			if event.is_action_pressed("ui_up"):
+				_team_sub_nav_move(-1)
+				get_viewport().set_input_as_handled()
+				return
+			if event.is_action_pressed("ui_down"):
+				_team_sub_nav_move(1)
+				get_viewport().set_input_as_handled()
+				return
+		if _team_sub_level == "list":
+			if event.is_action_pressed("ui_up"):
+				_team_list_move_focus(-1)
+				get_viewport().set_input_as_handled()
+				return
+			if event.is_action_pressed("ui_down"):
+				_team_list_move_focus(1)
+				get_viewport().set_input_as_handled()
+				return
 	if event.is_action_pressed("ui_cancel"):
 		if _menu_level == "content" and _active_section == "settings":
 			_settings_to_sidebar()
@@ -460,6 +536,27 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 
+	if _menu_level == "content" and _active_section == "settings" and _is_controls_tab_active():
+		var focus_owner := get_viewport().gui_get_focus_owner() as Control
+		if event.is_action_pressed("ui_left"):
+			if _move_controls_horizontal_focus(-1):
+				get_viewport().set_input_as_handled()
+				return
+			if focus_owner != null and (focus_owner == _controls_reset_button or focus_owner in _controls_nav_keyboard or focus_owner in _controls_nav_controller):
+				_settings_tabs.current_tab = max(_settings_tabs.current_tab - 1, 0)
+				_settings_to_content()
+				get_viewport().set_input_as_handled()
+				return
+		if event.is_action_pressed("ui_right"):
+			if _move_controls_horizontal_focus(1):
+				get_viewport().set_input_as_handled()
+				return
+			if focus_owner != null and (focus_owner == _controls_reset_button or focus_owner in _controls_nav_keyboard or focus_owner in _controls_nav_controller):
+				_settings_tabs.current_tab = min(_settings_tabs.current_tab + 1, _settings_tabs.get_tab_count() - 1)
+				_settings_to_content()
+				get_viewport().set_input_as_handled()
+				return
+
 	var settings_direct_result := _handle_settings_direct_controls_input(event)
 	if settings_direct_result == "handled":
 		get_viewport().set_input_as_handled()
@@ -476,14 +573,17 @@ func _handle_settings_direct_controls_input(event: InputEvent) -> String:
 			return "handled"
 		if event.is_action_pressed("ui_up") or event.is_action_pressed("ui_down"):
 			return "handled"
-		# In active mode, let the focused control consume left/right.
 		return "stop"
 	if event.is_action_pressed("ui_cancel"):
 		_settings_to_sidebar()
 		return "handled"
 	if event.is_action_pressed("ui_accept"):
-		_activate_settings_control()
-		return "handled"
+		var focus_owner := get_viewport().gui_get_focus_owner()
+		if focus_owner is Range:
+			_activate_settings_control()
+			return "handled"
+		# Let non-slider controls (OptionButton, CheckBox) consume accept normally.
+		return "stop"
 	if event.is_action_pressed("ui_up"):
 		if _settings_nav_focus_index > 0:
 			_move_settings_nav_focus(-1)
@@ -535,6 +635,7 @@ func _on_sidebar_focus(section: String) -> void:
 		_active_section = "inventory"
 		_item_menu.select_tab(_last_item_tab)
 		_item_menu.open_inventory(_last_team, false, false)
+		_item_menu.set_focus_enabled(false)
 		_item_menu.set_allow_enter_from_tabs(false)
 	elif section == "settings":
 		_show_section("settings")
@@ -550,19 +651,20 @@ func _show_section(section: String) -> void:
 func _update_team_list(team: Array) -> void:
 	_team_buttons.clear()
 	for child in _team_list.get_children():
-		child.free()
+		child.queue_free()
 	if team == null or team.is_empty():
 		var empty_label := Label.new()
-		empty_label.text = "No team members."
+		empty_label.text = tr("No team members.")
 		_team_list.add_child(empty_label)
 		return
-	for member in team:
+	for i in range(team.size()):
+		var member: MTMonsterInstance = team[i] as MTMonsterInstance
 		if member == null:
 			continue
 		var entry_button := Button.new()
 		entry_button.focus_mode = Control.FOCUS_NONE
 		entry_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		entry_button.text = "%s | Lvl %d | HP %d/%d | EN %d/%d\nSTR %d | MAG %d | DEF %d | RES %d | SPD %d" % [
+		entry_button.text = tr("%s | Lv. %d | HP %d/%d | EN %d/%d\nSTR %d | MAG %d | DEF %d | RES %d | SPD %d") % [
 			member.data.name,
 			member.level,
 			member.hp,
@@ -578,22 +680,38 @@ func _update_team_list(team: Array) -> void:
 		entry_button.focus_entered.connect(func():
 			_ensure_scroll_visible(_team_scroll, entry_button)
 		)
+		var captured_i := i
+		entry_button.pressed.connect(func():
+			_team_open_monster_options(captured_i)
+		)
 		_team_list.add_child(entry_button)
 		_team_buttons.append(entry_button)
 
 func _build_video_tab() -> void:
 	_video_tab.add_theme_constant_override("separation", 8)
+	_language_option = OptionButton.new()
+	_language_option.focus_mode = Control.FOCUS_NONE
+	for item in LANGUAGE_OPTIONS:
+		_language_option.add_item(tr(str(item["label_key"])))
+	_language_option.item_selected.connect(func(index: int):
+		_settings.general.language = str(LANGUAGE_OPTIONS[index]["value"])
+		_apply_language()
+		_save_settings()
+		_rebuild_localized_ui()
+	)
+	_video_tab.add_child(_create_labeled_row(tr("Language"), _language_option))
+
 	_mode_option = OptionButton.new()
 	_mode_option.focus_mode = Control.FOCUS_NONE
 	for item in MODE_OPTIONS:
-		_mode_option.add_item(item.label)
+		_mode_option.add_item(tr(str(item["label_key"])))
 	_mode_option.item_selected.connect(func(index: int):
 		var value: String = str(MODE_OPTIONS[index].value)
 		_settings.video.mode = value
 		_apply_video_settings()
 		_save_settings()
 	)
-	_video_tab.add_child(_create_labeled_row("Window Mode", _mode_option))
+	_video_tab.add_child(_create_labeled_row(tr("Window Mode"), _mode_option))
 
 	_resolution_option = OptionButton.new()
 	_resolution_option.focus_mode = Control.FOCUS_NONE
@@ -604,17 +722,17 @@ func _build_video_tab() -> void:
 		_apply_video_settings()
 		_save_settings()
 	)
-	_video_tab.add_child(_create_labeled_row("Resolution", _resolution_option))
+	_video_tab.add_child(_create_labeled_row(tr("Resolution"), _resolution_option))
 
 	_vsync_check = CheckBox.new()
 	_vsync_check.focus_mode = Control.FOCUS_NONE
-	_vsync_check.text = "VSync"
+	_vsync_check.text = tr("VSync")
 	_vsync_check.toggled.connect(func(pressed: bool):
 		_settings.video.vsync = pressed
 		_apply_video_settings()
 		_save_settings()
 	)
-	_video_tab.add_child(_create_labeled_row("VSync", _vsync_check))
+	_video_tab.add_child(_create_labeled_row(tr("VSync"), _vsync_check))
 
 	_fps_slider = HSlider.new()
 	_fps_slider.focus_mode = Control.FOCUS_NONE
@@ -629,19 +747,19 @@ func _build_video_tab() -> void:
 		_save_settings()
 	)
 	_fps_value_label = Label.new()
-	_fps_value_label.text = "0"
+	_fps_value_label.text = tr("0")
 	_fps_value_label.custom_minimum_size = Vector2(50, 0)
 	var fps_extra_row := HBoxContainer.new()
 	fps_extra_row.add_theme_constant_override("separation", 4)
 	fps_extra_row.add_child(_fps_slider)
 	fps_extra_row.add_child(_fps_value_label)
-	_video_tab.add_child(_create_labeled_row("Max FPS", fps_extra_row))
+	_video_tab.add_child(_create_labeled_row(tr("Max FPS"), fps_extra_row))
 
 func _build_sound_tab() -> void:
 	_sound_tab.add_theme_constant_override("separation", 8)
-	_master_slider = _create_volume_slider("Master Volume", "master")
-	_music_slider = _create_volume_slider("Music Volume", "music")
-	_sfx_slider = _create_volume_slider("SFX Volume", "sfx")
+	_master_slider = _create_volume_slider(tr("Master Volume"), "master")
+	_music_slider = _create_volume_slider(tr("Music Volume"), "music")
+	_sfx_slider = _create_volume_slider(tr("SFX Volume"), "sfx")
 
 func _build_controls_tab() -> void:
 	_controls_list.add_theme_constant_override("separation", 8)
@@ -650,10 +768,11 @@ func _build_controls_tab() -> void:
 	_controls_nav_keyboard.clear()
 	_controls_nav_controller.clear()
 	_controls_header_for_button.clear()
+	_controls_reset_button = null
 	_controls_list.add_child(_create_reset_controls_row())
 	for category in CONTROL_CATEGORIES:
 		var header := Label.new()
-		header.text = category.name
+		header.text = tr(str(category.name))
 		header.add_theme_font_size_override("font_size", 14)
 		_controls_list.add_child(header)
 		var first_in_category := true
@@ -661,15 +780,15 @@ func _build_controls_tab() -> void:
 		var column_row := HBoxContainer.new()
 		column_row.add_theme_constant_override("separation", 8)
 		var col_action := Label.new()
-		col_action.text = "Action"
+		col_action.text = tr("Action")
 		col_action.custom_minimum_size = Vector2(160, 0)
 		column_row.add_child(col_action)
 		var col_keyboard := Label.new()
-		col_keyboard.text = "Keyboard"
+		col_keyboard.text = tr("Keyboard")
 		col_keyboard.custom_minimum_size = Vector2(160, 0)
 		column_row.add_child(col_keyboard)
 		var col_controller := Label.new()
-		col_controller.text = "Controller"
+		col_controller.text = tr("Controller")
 		col_controller.custom_minimum_size = Vector2(160, 0)
 		column_row.add_child(col_controller)
 		_controls_list.add_child(column_row)
@@ -679,7 +798,7 @@ func _build_controls_tab() -> void:
 			var row := HBoxContainer.new()
 			row.add_theme_constant_override("separation", 8)
 			var action_label := Label.new()
-			action_label.text = action_info.label
+			action_label.text = tr(str(action_info.label))
 			action_label.custom_minimum_size = Vector2(160, 0)
 			row.add_child(action_label)
 
@@ -724,19 +843,20 @@ func _create_reset_controls_row() -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	var label := Label.new()
-	label.text = "Controls"
+	label.text = tr("Controls")
 	label.custom_minimum_size = Vector2(160, 0)
 	row.add_child(label)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer)
 	var button := Button.new()
-	button.text = "Reset Controls"
+	button.text = tr("Reset Controls")
 	button.pressed.connect(func():
 		if _reset_confirm != null:
 			_reset_confirm.popup_centered()
 	)
 	row.add_child(button)
+	_controls_reset_button = button
 	_controls_nav_keyboard.append(button)
 	_controls_nav_controller.append(button)
 	return row
@@ -745,10 +865,10 @@ func _ensure_reset_dialog() -> void:
 	if _reset_confirm != null:
 		return
 	_reset_confirm = ConfirmationDialog.new()
-	_reset_confirm.title = "Reset Controls"
-	_reset_confirm.dialog_text = "Reset all controls to defaults?"
-	_reset_confirm.ok_button_text = "Yes"
-	_reset_confirm.cancel_button_text = "No"
+	_reset_confirm.title = tr("Reset Controls")
+	_reset_confirm.dialog_text = tr("Reset all controls to defaults?")
+	_reset_confirm.ok_button_text = tr("Yes")
+	_reset_confirm.cancel_button_text = tr("No")
 	_reset_confirm.confirmed.connect(func():
 		_reset_controls_to_defaults()
 	)
@@ -781,6 +901,7 @@ func _deactivate_settings_control() -> void:
 			_settings_nav_focus_index = idx
 
 func _move_settings_nav_focus(direction: int) -> bool:
+	_prune_settings_nav_controls()
 	if _settings_nav_controls.is_empty():
 		return false
 	var new_index := _settings_nav_focus_index + direction
@@ -788,9 +909,61 @@ func _move_settings_nav_focus(direction: int) -> bool:
 		return false
 	_settings_nav_focus_index = new_index
 	var target := _settings_nav_controls[_settings_nav_focus_index]
+	if target == null or not is_instance_valid(target):
+		_prune_settings_nav_controls()
+		if _settings_nav_controls.is_empty():
+			return false
+		_settings_nav_focus_index = clamp(_settings_nav_focus_index, 0, _settings_nav_controls.size() - 1)
+		target = _settings_nav_controls[_settings_nav_focus_index]
 	target.grab_focus()
 	_ensure_scroll_visible(_controls_scroll, target)
 	return true
+
+func _prune_settings_nav_controls() -> void:
+	var valid_controls: Array[Control] = []
+	for ctrl in _settings_nav_controls:
+		if ctrl == null or not is_instance_valid(ctrl):
+			continue
+		valid_controls.append(ctrl)
+	_settings_nav_controls = valid_controls
+	if _settings_nav_controls.is_empty():
+		_settings_nav_focus_index = 0
+	else:
+		_settings_nav_focus_index = clamp(_settings_nav_focus_index, 0, _settings_nav_controls.size() - 1)
+
+func _prune_controls_nav_buttons() -> void:
+	var valid_keyboard: Array[Button] = []
+	for button in _controls_nav_keyboard:
+		if button == null or not is_instance_valid(button):
+			continue
+		valid_keyboard.append(button)
+	_controls_nav_keyboard = valid_keyboard
+
+	var valid_controller: Array[Button] = []
+	for button in _controls_nav_controller:
+		if button == null or not is_instance_valid(button):
+			continue
+		valid_controller.append(button)
+	_controls_nav_controller = valid_controller
+
+	var valid_headers: Dictionary = {}
+	for key in _controls_header_for_button.keys():
+		var button: Button = key as Button
+		if button == null or not is_instance_valid(button):
+			continue
+		var header: Control = _controls_header_for_button.get(key, null) as Control
+		if header != null and not is_instance_valid(header):
+			header = null
+		valid_headers[button] = header
+	_controls_header_for_button = valid_headers
+
+func _prune_team_sub_nav() -> void:
+	var valid_buttons: Array[Button] = []
+	for button in _team_sub_nav:
+		if button == null or not is_instance_valid(button):
+			continue
+		valid_buttons.append(button)
+	_team_sub_nav = valid_buttons
 
 func _create_volume_slider(text: String, key: String) -> HSlider:
 	var slider := HSlider.new()
@@ -818,7 +991,7 @@ func _create_volume_slider(text: String, key: String) -> HSlider:
 
 func _update_fps_label() -> void:
 	if _settings.video.max_fps <= 0:
-		_fps_value_label.text = "Unlimited"
+		_fps_value_label.text = tr("Unlimited")
 	else:
 		_fps_value_label.text = str(_settings.video.max_fps)
 
@@ -863,11 +1036,21 @@ func _set_bus_volume(bus_name: String, linear_value: float) -> void:
 	AudioServer.set_bus_volume_db(index, db)
 
 func _apply_all_settings() -> void:
+	_apply_language()
 	_apply_video_settings()
 	_apply_audio_settings()
+	_apply_localized_static_texts()
 	_sync_ui_from_settings()
 
 func _sync_ui_from_settings() -> void:
+	if _language_option != null:
+		var language_index := 0
+		for i in range(LANGUAGE_OPTIONS.size()):
+			if str(LANGUAGE_OPTIONS[i]["value"]) == str(_settings.general.language):
+				language_index = i
+				break
+		_language_option.select(language_index)
+
 	var mode_index := 2
 	for i in range(MODE_OPTIONS.size()):
 		if MODE_OPTIONS[i].value == _settings.video.mode:
@@ -890,6 +1073,27 @@ func _sync_ui_from_settings() -> void:
 	_update_volume_label("music", _music_slider.value)
 	_update_volume_label("sfx", _sfx_slider.value)
 	_refresh_control_buttons()
+
+func _apply_language() -> void:
+	var requested_locale := str(_settings.general.language)
+	var resolved_locale := _resolve_supported_locale(requested_locale)
+	_settings.general.language = resolved_locale
+	TranslationServer.set_locale(resolved_locale)
+
+func _resolve_supported_locale(requested_locale: String) -> String:
+	var requested := requested_locale.strip_edges().to_lower()
+	if requested == "":
+		return FALLBACK_LOCALE
+	for option in LANGUAGE_OPTIONS:
+		var value := str(option["value"]).to_lower()
+		if requested == value:
+			return value
+	# Support locale variants like de_AT or en-US by matching base language.
+	for option in LANGUAGE_OPTIONS:
+		var value := str(option["value"]).to_lower()
+		if requested.begins_with(value + "_") or requested.begins_with(value + "-"):
+			return value
+	return FALLBACK_LOCALE
 
 func _ensure_default_bindings() -> void:
 	for category in CONTROL_CATEGORIES:
@@ -1040,7 +1244,7 @@ func _start_binding(action_name: String, device: String, button: Button) -> void
 	_binding_action = action_name
 	_binding_device = device
 	_binding_button = button
-	button.text = "Press key..."
+	button.text = tr("Press key...")
 	button.disabled = true
 
 func _apply_binding(event: InputEvent) -> void:
@@ -1178,7 +1382,9 @@ func _update_volume_label(key: String, value: float) -> void:
 	label.text = "%d%%" % int(round(value * 100.0))
 
 func _ensure_scroll_visible(scroll: ScrollContainer, control: Control) -> void:
-	if scroll == null or control == null:
+	if scroll == null or not is_instance_valid(scroll):
+		return
+	if control == null or not is_instance_valid(control):
 		return
 	if scroll.is_ancestor_of(control):
 		scroll.ensure_control_visible(control)
@@ -1189,8 +1395,12 @@ func _ensure_controls_focus_visible(header: Control, row: Control, button: Contr
 func _ensure_controls_focus_visible_deferred(header: Control, row: Control, button: Control) -> void:
 	if _controls_scroll == null:
 		return
-	if header != null:
+	if header != null and is_instance_valid(header):
 		_ensure_scroll_visible(_controls_scroll, header)
+	if row != null and not is_instance_valid(row):
+		row = null
+	if button != null and not is_instance_valid(button):
+		button = null
 	_ensure_scroll_visible(_controls_scroll, row)
 	_ensure_scroll_visible(_controls_scroll, button)
 
@@ -1217,6 +1427,7 @@ func _is_first_settings_focus() -> bool:
 	if focus_owner == null:
 		return false
 	# Proxy-nav mode (Video/Sound tabs)
+	_prune_settings_nav_controls()
 	if not _settings_nav_controls.is_empty():
 		return focus_owner == _settings_nav_controls[0] and _settings_nav_focus_index == 0
 	# Controls tab: check against first focusable child
@@ -1229,6 +1440,7 @@ func _is_first_settings_focus() -> bool:
 	return focus_owner == first_focus
 
 func _move_controls_focus(direction: int) -> bool:
+	_prune_controls_nav_buttons()
 	var focus_owner := get_viewport().gui_get_focus_owner()
 	if focus_owner == null:
 		return false
@@ -1246,15 +1458,48 @@ func _move_controls_focus(direction: int) -> bool:
 	if next_index < 0 or next_index >= list.size():
 		return false
 	var target := list[next_index]
-	if target == null:
+	if target == null or not is_instance_valid(target):
 		return false
 	var header: Control = _controls_header_for_button.get(target, null) as Control
 	var row: Control = target.get_parent() as Control
+	if row != null and not is_instance_valid(row):
+		row = null
+	_ensure_controls_focus_visible(header, row, target)
+	target.grab_focus()
+	return true
+
+func _move_controls_horizontal_focus(direction: int) -> bool:
+	_prune_controls_nav_buttons()
+	if direction == 0:
+		return false
+	var focus_owner := get_viewport().gui_get_focus_owner() as Control
+	if focus_owner == null:
+		return false
+	if _controls_reset_button != null and is_instance_valid(_controls_reset_button) and focus_owner == _controls_reset_button:
+		return false
+	var target: Button = null
+	if direction > 0 and focus_owner in _controls_nav_keyboard:
+		var idx := _controls_nav_keyboard.find(focus_owner)
+		if idx >= 0 and idx < _controls_nav_controller.size():
+			target = _controls_nav_controller[idx]
+	elif direction < 0 and focus_owner in _controls_nav_controller:
+		var idx := _controls_nav_controller.find(focus_owner)
+		if idx >= 0 and idx < _controls_nav_keyboard.size():
+			target = _controls_nav_keyboard[idx]
+	if target == null or not is_instance_valid(target) or target == focus_owner:
+		return false
+	var header: Control = _controls_header_for_button.get(target, null) as Control
+	var row: Control = target.get_parent() as Control
+	if row != null and not is_instance_valid(row):
+		row = null
 	_ensure_controls_focus_visible(header, row, target)
 	target.grab_focus()
 	return true
 
 func _enter_team() -> void:
+	_team_sub_level = "list"
+	_team_selected_index = -1
+	_team_sub_nav.clear()
 	_show_section("team")
 	_in_content = true
 	_menu_level = "content"
@@ -1411,8 +1656,13 @@ func _set_tab_content_focus_enabled(enabled: bool) -> void:
 	_set_focus_for_controls(tab_control, enabled)
 
 func _set_team_buttons_focus_enabled(enabled: bool) -> void:
+	var valid_buttons: Array[Button] = []
 	for button in _team_buttons:
+		if button == null or not is_instance_valid(button):
+			continue
 		button.focus_mode = Control.FOCUS_ALL if enabled else Control.FOCUS_NONE
+		valid_buttons.append(button)
+	_team_buttons = valid_buttons
 
 func _set_all_tab_content_focus_enabled(enabled: bool) -> void:
 	for i in range(_settings_tabs.get_child_count()):
@@ -1480,6 +1730,7 @@ func _load_settings() -> void:
 	var config := ConfigFile.new()
 	if config.load(CONFIG_PATH) != OK:
 		return
+	_settings.general.language = str(config.get_value("general", "language", _settings.general.language))
 	_settings.video.mode = str(config.get_value("video", "mode", _settings.video.mode))
 	var res_value: Variant = config.get_value("video", "resolution", _settings.video.resolution)
 	if res_value is Vector2i:
@@ -1575,6 +1826,7 @@ func _normalize_legacy_keyboard_key(action_name: String, keycode: int) -> int:
 
 func _save_settings() -> void:
 	var config := ConfigFile.new()
+	config.set_value("general", "language", _settings.general.language)
 	config.set_value("video", "mode", _settings.video.mode)
 	config.set_value("video", "resolution", _settings.video.resolution)
 	config.set_value("video", "vsync", _settings.video.vsync)
@@ -1606,3 +1858,233 @@ func _get_binding_codes(action_name: String, device: String) -> Array[int]:
 			if not codes.has(button_index):
 				codes.append(button_index)
 	return codes
+
+
+# ================================================================
+# Team sub-view management
+# ================================================================
+
+func _team_go_back() -> void:
+	match _team_sub_level:
+		"list":
+			_leave_content()
+		"options":
+			var prev_idx := _team_selected_index
+			_team_sub_level = "list"
+			_team_selected_index = -1
+			_team_sub_nav.clear()
+			_update_team_list(_last_team)
+			_set_team_buttons_focus_enabled(true)
+			if prev_idx >= 0 and prev_idx < _team_buttons.size():
+				_team_buttons[prev_idx].grab_focus()
+				_ensure_scroll_visible(_team_scroll, _team_buttons[prev_idx])
+			elif not _team_buttons.is_empty():
+				_team_buttons[0].grab_focus()
+		"switch":
+			_team_sub_level = "options"
+			_team_sub_nav.clear()
+			_build_team_options_view(_team_selected_index)
+		"status":
+			_team_sub_level = "options"
+			_team_sub_nav.clear()
+			_build_team_options_view(_team_selected_index)
+
+func _team_open_monster_options(index: int) -> void:
+	_team_selected_index = index
+	_team_sub_level = "options"
+	_team_sub_nav.clear()
+	_build_team_options_view(index)
+
+func _build_team_options_view(index: int) -> void:
+	_team_sub_nav.clear()
+	_team_buttons.clear()
+	for child in _team_list.get_children():
+		child.queue_free()
+	if index < 0 or index >= _last_team.size():
+		return
+	var monster: MTMonsterInstance = _last_team[index] as MTMonsterInstance
+	if monster == null:
+		return
+
+	var title := Label.new()
+	title.text = tr("%s  Lv. %d  |  HP %d/%d  |  EN %d/%d") % [
+		monster.data.name, monster.level,
+		monster.hp, monster.get_max_hp(),
+		monster.energy, monster.get_max_energy()
+	]
+	_team_list.add_child(title)
+
+	_team_list.add_child(HSeparator.new())
+
+	var btn_status := Button.new()
+	btn_status.text = tr("Status")
+	btn_status.focus_mode = Control.FOCUS_ALL
+	btn_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn_status.pressed.connect(func(): _team_show_status(index))
+	_team_list.add_child(btn_status)
+	_team_sub_nav.append(btn_status)
+
+	var btn_switch := Button.new()
+	btn_switch.text = tr("Switch")
+	btn_switch.focus_mode = Control.FOCUS_ALL
+	btn_switch.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn_switch.pressed.connect(func(): _team_start_switch(index))
+	_team_list.add_child(btn_switch)
+	_team_sub_nav.append(btn_switch)
+
+	_prune_team_sub_nav()
+	if not _team_sub_nav.is_empty():
+		_team_sub_nav[0].grab_focus()
+
+func _team_start_switch(source_index: int) -> void:
+	_team_selected_index = source_index
+	_team_sub_level = "switch"
+	_team_sub_nav.clear()
+	_build_team_switch_view(source_index)
+
+func _build_team_switch_view(source_index: int) -> void:
+	_team_sub_nav.clear()
+	_team_buttons.clear()
+	for child in _team_list.get_children():
+		child.queue_free()
+	if source_index < 0 or source_index >= _last_team.size():
+		return
+	var source: MTMonsterInstance = _last_team[source_index] as MTMonsterInstance
+	if source == null:
+		return
+
+	var header := Label.new()
+	header.text = tr("Swap %s with ...") % source.data.name
+	_team_list.add_child(header)
+	_team_list.add_child(HSeparator.new())
+
+	for i in range(_last_team.size()):
+		var m: MTMonsterInstance = _last_team[i] as MTMonsterInstance
+		if m == null:
+			continue
+		var btn := Button.new()
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if i == source_index:
+			btn.text = tr("► %s  Lv. %d  [current position]") % [m.data.name, m.level]
+			btn.disabled = true
+			btn.focus_mode = Control.FOCUS_NONE
+		else:
+			btn.text = tr("%s  Lv. %d  |  HP %d/%d") % [m.data.name, m.level, m.hp, m.get_max_hp()]
+			btn.focus_mode = Control.FOCUS_ALL
+			var captured_i := i
+			btn.pressed.connect(func(): _team_finish_switch(captured_i))
+			_team_sub_nav.append(btn)
+		_team_list.add_child(btn)
+
+	_prune_team_sub_nav()
+	if not _team_sub_nav.is_empty():
+		_team_sub_nav[0].grab_focus()
+
+func _team_finish_switch(target_index: int) -> void:
+	var source_index := _team_selected_index
+	if source_index < 0 or source_index >= _last_team.size():
+		return
+	if target_index < 0 or target_index >= _last_team.size():
+		return
+	if not Game.swap_party_positions(source_index, target_index):
+		return
+	_team_sub_level = "list"
+	_team_selected_index = -1
+	_team_sub_nav.clear()
+	_update_team_list(_last_team)
+	_set_team_buttons_focus_enabled(true)
+	var focus_idx := mini(source_index, _team_buttons.size() - 1)
+	if not _team_buttons.is_empty():
+		_team_buttons[focus_idx].grab_focus()
+		_ensure_scroll_visible(_team_scroll, _team_buttons[focus_idx])
+
+func _team_show_status(index: int) -> void:
+	_team_selected_index = index
+	_team_sub_level = "status"
+	_team_status_tab = 0
+	_team_sub_nav.clear()
+	_build_team_status_view(index)
+
+func _build_team_status_view(index: int) -> void:
+	_team_sub_nav.clear()
+	_team_buttons.clear()
+	for child in _team_list.get_children():
+		child.queue_free()
+	if index < 0 or index >= _last_team.size():
+		return
+	var monster: MTMonsterInstance = _last_team[index] as MTMonsterInstance
+	if monster == null:
+		return
+
+	MonsterStatusViewHelper.add_title(_team_list, monster)
+
+	# Tab buttons
+	var tab_row := HBoxContainer.new()
+	tab_row.add_theme_constant_override("separation", 4)
+	_team_list.add_child(tab_row)
+
+	var tab_names: Array[String] = MonsterStatusViewHelper.get_tab_names()
+	var tab_buttons: Array[Button] = []
+	for ti in range(tab_names.size()):
+		var tb := Button.new()
+		tb.text = tab_names[ti]
+		tb.focus_mode = Control.FOCUS_ALL
+		tb.toggle_mode = true
+		tb.button_pressed = (ti == _team_status_tab)
+		var captured_ti := ti
+		var captured_idx := index
+		tb.pressed.connect(func():
+			_team_status_tab = captured_ti
+			_build_team_status_view(captured_idx)
+		)
+		tab_row.add_child(tb)
+		tab_buttons.append(tb)
+		_team_sub_nav.append(tb)
+
+	_team_list.add_child(HSeparator.new())
+
+	# Content
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 4)
+	_team_list.add_child(content)
+	MonsterStatusViewHelper.add_tab_content(content, monster, _team_status_tab)
+
+	if _team_status_tab < tab_buttons.size():
+		tab_buttons[_team_status_tab].grab_focus()
+
+func _team_sub_nav_move(direction: int) -> void:
+	_prune_team_sub_nav()
+	if _team_sub_nav.is_empty():
+		return
+	var focus_owner := get_viewport().gui_get_focus_owner()
+	var current_idx := -1
+	for i in range(_team_sub_nav.size()):
+		if _team_sub_nav[i] == focus_owner:
+			current_idx = i
+			break
+	var next_idx := current_idx + direction
+	if next_idx < 0 or next_idx >= _team_sub_nav.size():
+		return
+	var target := _team_sub_nav[next_idx]
+	if target == null or not is_instance_valid(target):
+		return
+	target.grab_focus()
+
+func _team_list_move_focus(direction: int) -> void:
+	_set_team_buttons_focus_enabled(true)
+	if _team_buttons.is_empty():
+		return
+	var focus_owner := get_viewport().gui_get_focus_owner()
+	var current_idx := -1
+	for i in range(_team_buttons.size()):
+		if _team_buttons[i] == focus_owner:
+			current_idx = i
+			break
+	var next_idx := current_idx + direction
+	if next_idx < 0 or next_idx >= _team_buttons.size():
+		return
+	var target := _team_buttons[next_idx]
+	if target == null or not is_instance_valid(target):
+		return
+	target.grab_focus()
+	_ensure_scroll_visible(_team_scroll, target)

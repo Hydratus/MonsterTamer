@@ -414,7 +414,7 @@ func _check_attack_learning(logger: Callable = Callable()) -> void:
 	for learn_data in available_attacks:
 		if learn_data.attack != null and not attacks.has(learn_data.attack):
 			attacks.append(learn_data.attack)
-			var msg = "⚔️ %s learned %s!" % [data.name, learn_data.attack.name]
+			var msg = TranslationServer.translate("%s learned %s!") % [data.name, TranslationServer.translate(learn_data.attack.name)]
 			if logger.is_valid():
 				logger.call(msg)
 			else:
@@ -440,7 +440,12 @@ func _check_trait_learning(logger: Callable = Callable()) -> void:
 	
 	for learn_data in available_traits:
 		add_trait(learn_data.trait_data as MTTraitData)
-		var msg = "✨ %s learned trait %s!" % [data.name, learn_data.trait_data.name]
+		var trait_name: String = ""
+		if learn_data.trait_data != null and learn_data.trait_data.has_method("get_localized_name"):
+			trait_name = str(learn_data.trait_data.get_localized_name())
+		elif learn_data.trait_data != null:
+			trait_name = TranslationServer.translate(learn_data.trait_data.name)
+		var msg = TranslationServer.translate("%s learned trait %s!") % [data.name, trait_name]
 		if logger.is_valid():
 			logger.call(msg)
 		else:

@@ -32,6 +32,7 @@ var _nav_repeat_timer: float = 0.0
 var _ignore_hold_until_release := false
 var _require_focus_owner := true
 var _allow_enter_from_tabs := true
+var _focus_enabled := true
 
 const NAV_REPEAT_DELAY := 0.35
 const NAV_REPEAT_INTERVAL := 0.08
@@ -188,6 +189,7 @@ func refresh() -> void:
 	_show_items_for_tab(_tabs.current_tab)
 
 func set_focus_enabled(enabled: bool) -> void:
+	_focus_enabled = enabled
 	for button in _buttons:
 		button.focus_mode = Control.FOCUS_ALL if enabled else Control.FOCUS_NONE
 	_back_button.focus_mode = Control.FOCUS_ALL if enabled and _allow_back else Control.FOCUS_NONE
@@ -264,8 +266,8 @@ func _show_items_for_tab(tab_index: int) -> void:
 
 	if filtered.is_empty():
 		var empty_button := Button.new()
-		empty_button.text = "No items."
-		empty_button.focus_mode = Control.FOCUS_ALL
+		empty_button.text = tr("No items.")
+		empty_button.focus_mode = Control.FOCUS_ALL if _focus_enabled else Control.FOCUS_NONE
 		empty_button.pressed.connect(func():
 			# Keep a focus target in empty tabs so left/right tab navigation remains possible.
 			pass
@@ -279,7 +281,8 @@ func _show_items_for_tab(tab_index: int) -> void:
 	for item in filtered:
 		var count: int = Game.get_item_count(item.id)
 		var button := Button.new()
-		button.text = "%s x%d" % [item.name, count]
+		button.focus_mode = Control.FOCUS_ALL if _focus_enabled else Control.FOCUS_NONE
+		button.text = tr("%s x%d") % [TranslationServer.translate(item.name), count]
 		button.focus_entered.connect(func():
 			_ensure_scroll_visible(_get_scroll_for_tab(tab_index), button)
 		)
@@ -308,14 +311,15 @@ func _show_targets(item: MTItemData) -> void:
 	_buttons.clear()
 
 	var title := Label.new()
-	title.text = "Select Target"
+	title.text = tr("Select Target")
 	list.add_child(title)
 
 	for monster in _team:
 		if monster == null:
 			continue
 		var button := Button.new()
-		button.text = "%s %d/%d HP" % [monster.data.name, monster.hp, monster.get_max_hp()]
+		button.focus_mode = Control.FOCUS_ALL if _focus_enabled else Control.FOCUS_NONE
+		button.text = tr("%s %d/%d HP") % [monster.data.name, monster.hp, monster.get_max_hp()]
 		button.focus_entered.connect(func():
 			_ensure_scroll_visible(_get_scroll_for_tab(_tabs.current_tab), button)
 		)
@@ -380,3 +384,9 @@ func _move_button_focus(step: int) -> bool:
 	_buttons[next_index].grab_focus()
 	call_deferred("_ensure_scroll_visible", _get_scroll_for_tab(_tabs.current_tab), _buttons[next_index])
 	return true
+
+func lock_item_lateral_navigation() -> void:
+	for button in _buttons:
+		if button != null and is_instance_valid(button):
+			button.focus_neighbor_left = NodePath("")
+			button.focus_neighbor_right = NodePath("")

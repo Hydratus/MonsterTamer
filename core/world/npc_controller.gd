@@ -235,8 +235,8 @@ func get_dialogue() -> String:
 	if npc_data == null:
 		return ""
 	if _has_battled and npc_data.dialogue_after != "":
-		return npc_data.dialogue_after
-	return npc_data.dialogue_before
+		return TranslationServer.translate(npc_data.dialogue_after)
+	return TranslationServer.translate(npc_data.dialogue_before)
 
 func build_team() -> Array:
 	var team: Array = []

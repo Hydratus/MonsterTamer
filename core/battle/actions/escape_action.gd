@@ -17,15 +17,15 @@ func execute(controller = null) -> Variant:
 	rng.randomize()
 	var roll: float = rng.randf_range(0.0, 100.0)
 
-	battle_ref.log_message("%s attempts to flee!" % actor.data.name)
-	battle_ref.log_message("Escape chance: %d%%" % int(round(chance)))
+	battle_ref.log_message(TranslationServer.translate("%s attempts to flee!") % actor.data.name)
+	battle_ref.log_message(TranslationServer.translate("Escape chance: %d%%") % int(round(chance)))
 
 	if roll <= chance:
-		battle_ref.log_message("Escape successful!")
+		battle_ref.log_message(TranslationServer.translate("Escape successful!"))
 		battle_ref.escape_resolved = true
 		battle_ref.forced_battle_result = -1
 	else:
-		battle_ref.log_message("Escape failed!")
+		battle_ref.log_message(TranslationServer.translate("Escape failed!"))
 
 	return null
 

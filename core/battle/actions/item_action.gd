@@ -27,7 +27,7 @@ func execute(controller = null) -> Variant:
 			var user_name := actor.data.name
 			if battle_ref.scene != null and battle_ref.scene.has_method("get_item_user_name"):
 				user_name = battle_ref.scene.get_item_user_name(actor)
-			battle_ref.log_message("%s uses %s on %s for %d HP." % [user_name, item.name, target.data.name, healed])
+			battle_ref.log_message(TranslationServer.translate("%s uses %s on %s for %d HP.") % [user_name, TranslationServer.translate(item.name), target.data.name, healed])
 		else:
 			print(actor.data.name, "uses", item.name, "on", target.data.name, "for", healed)
 	if item.consumable:

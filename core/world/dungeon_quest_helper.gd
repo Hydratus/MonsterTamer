@@ -56,19 +56,19 @@ static func create_quest_npc_data(owner, quest_type: int) -> MTNPCData:
 
 	match quest_type:
 		owner.QUEST_TYPE.ITEM_DELIVERY:
-			data.display_name = "Merchant"
-			dialogue_before = "Please, find me a healing potion on this level!"
-			dialogue_after = "Thank you! You're a lifesaver."
+			data.display_name = TranslationServer.translate("Merchant")
+			dialogue_before = TranslationServer.translate("Please, find me a healing potion on this level!")
+			dialogue_after = TranslationServer.translate("Thank you! You're a lifesaver.")
 			interaction_id = "dungeon_quest_delivery"
 		owner.QUEST_TYPE.MONSTER_HUNT:
-			data.display_name = "Hunter"
-			dialogue_before = "Help me defeat the monsters on this floor!"
-			dialogue_after = "Excellent work! You're a true warrior."
+			data.display_name = TranslationServer.translate("Hunter")
+			dialogue_before = TranslationServer.translate("Help me defeat the monsters on this floor!")
+			dialogue_after = TranslationServer.translate("Excellent work! You're a true warrior.")
 			interaction_id = "dungeon_quest_hunt"
 		owner.QUEST_TYPE.THIEF_AMBUSH:
-			data.display_name = "Thief"
-			dialogue_before = "You've encountered a notorious thief!"
-			dialogue_after = "Ha! You win this time..."
+			data.display_name = TranslationServer.translate("Thief")
+			dialogue_before = TranslationServer.translate("You've encountered a notorious thief!")
+			dialogue_after = TranslationServer.translate("Ha! You win this time...")
 			interaction_id = "dungeon_quest_thief"
 
 	data.dialogue_before = dialogue_before
@@ -120,8 +120,8 @@ static func spawn_delivery_quest_item(owner, quest_cell: Vector2i) -> void:
 
 static func create_delivery_quest_item_npc_data() -> MTNPCData:
 	var data := NPCDataClass.new()
-	data.display_name = "Lost Satchel"
-	data.dialogue_before = "You found the merchant's lost satchel."
+	data.display_name = TranslationServer.translate("Lost Satchel")
+	data.dialogue_before = TranslationServer.translate("You found the merchant's lost satchel.")
 	data.dialogue_after = ""
 	data.interaction_id = "dungeon_quest_delivery_item"
 	data.battle_once = false
@@ -133,22 +133,22 @@ static func handle_quest_delivery(owner, npc) -> bool:
 		return owner._handle_merchant_shop(npc)
 	var delivery_item_id: String = str(owner._active_quest.get("delivery_item_id", ""))
 	if delivery_item_id == "":
-		owner._enqueue_message("The merchant seems to have lost track of the package.")
+		owner._enqueue_message(TranslationServer.translate("The merchant seems to have lost track of the package."))
 		return true
 	if not owner._active_quest.get("accepted", false):
 		owner._active_quest["accepted"] = true
-		owner._enqueue_message("Merchant Quest: Find the lost satchel somewhere on this floor.")
+		owner._enqueue_message(TranslationServer.translate("Merchant Quest: Find the lost satchel somewhere on this floor."))
 		return true
 	if Game.get_item_count(delivery_item_id) <= 0:
-		owner._enqueue_message("Merchant Quest: Please find my lost satchel and bring it back.")
+		owner._enqueue_message(TranslationServer.translate("Merchant Quest: Please find my lost satchel and bring it back."))
 		return true
 	Game.remove_item(delivery_item_id, 1)
 	owner._active_quest["completed"] = true
 	owner._active_quest["ready_to_turn_in"] = false
 	owner._active_quest["shop_unlocked"] = true
-	owner._enqueue_message("Quest Complete: You returned the lost satchel.")
+	owner._enqueue_message(TranslationServer.translate("Quest Complete: You returned the lost satchel."))
 	owner._award_quest_rewards()
-	owner._enqueue_message("Merchant unlocked: Trade with run gold is now available.")
+	owner._enqueue_message(TranslationServer.translate("Merchant unlocked: Trade with run gold is now available."))
 	owner._log_dungeon("[Dungeon] quest completed type=delivery")
 	return true
 
@@ -156,7 +156,7 @@ static func handle_quest_hunt(owner, _npc) -> bool:
 	if not owner._active_quest.get("accepted", false):
 		owner._active_quest["accepted"] = true
 		var target_count: int = owner._active_quest.get("monsters_needed", 2)
-		owner._enqueue_message("Hunter Quest accepted: Defeat %d wild encounters on this floor." % target_count)
+		owner._enqueue_message(TranslationServer.translate("Hunter Quest accepted: Defeat %d wild encounters on this floor.") % target_count)
 		owner._log_dungeon("[Dungeon] quest hunt accepted target=%d" % target_count)
 		return true
 	if owner._active_quest.get("ready_to_turn_in", false):
@@ -164,13 +164,13 @@ static func handle_quest_hunt(owner, _npc) -> bool:
 		owner._active_quest["ready_to_turn_in"] = false
 		if owner._quest_npc != null:
 			owner._set_npc_active(owner._quest_npc, false, Vector2i.ZERO)
-		owner._enqueue_message("Quest Complete: The hunter rewards your work.")
+		owner._enqueue_message(TranslationServer.translate("Quest Complete: The hunter rewards your work."))
 		owner._award_quest_rewards()
 		owner._log_dungeon("[Dungeon] quest completed type=hunt")
 		return true
 	var needed: int = owner._active_quest.get("monsters_needed", 2)
 	var killed: int = owner._active_quest.get("monsters_killed", 0)
-	owner._enqueue_message("Hunt Quest: %d/%d encounters defeated. Return when the hunt is done." % [killed, needed])
+	owner._enqueue_message(TranslationServer.translate("Hunt Quest: %d/%d encounters defeated. Return when the hunt is done.") % [killed, needed])
 	owner._log_dungeon("[Dungeon] quest hunt status=%d/%d" % [killed, needed])
 	return true
 
@@ -182,22 +182,22 @@ static func handle_quest_delivery_item(owner, npc) -> bool:
 	if npc != null:
 		owner._set_npc_active(npc, false, Vector2i.ZERO)
 	owner._active_quest["ready_to_turn_in"] = true
-	owner._enqueue_message("You found the lost satchel. Return it to the merchant.")
+	owner._enqueue_message(TranslationServer.translate("You found the lost satchel. Return it to the merchant."))
 	owner._log_dungeon("[Dungeon] quest delivery item picked id=%s" % delivery_item_id)
 	return true
 
 static func handle_quest_thief(owner, _npc) -> bool:
-	owner._enqueue_message("The thief engages you in battle!")
+	owner._enqueue_message(TranslationServer.translate("The thief engages you in battle!"))
 	return false
 
 static func award_quest_rewards(owner) -> void:
 	if Game != null:
 		Game.add_run_gold(owner.quest_reward_gold)
 		Game.add_soul_essence(owner.quest_reward_soul_essence)
-		owner._enqueue_message("Received %d gold and %d Soul Essence!" % [owner.quest_reward_gold, owner.quest_reward_soul_essence])
+		owner._enqueue_message(TranslationServer.translate("Received %d gold and %d Soul Essence!") % [owner.quest_reward_gold, owner.quest_reward_soul_essence])
 		owner._log_dungeon("[Dungeon] quest reward gold=%d essence=%d" % [owner.quest_reward_gold, owner.quest_reward_soul_essence])
 	else:
-		owner._enqueue_message("Quest rewarded! (Game singleton not found)")
+		owner._enqueue_message(TranslationServer.translate("Quest rewarded! (Game singleton not found)"))
 		owner._log_dungeon("[Dungeon] quest reward failed - Game not initialized")
 
 static func reset_floor_quest_state(owner) -> void:

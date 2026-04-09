@@ -221,7 +221,7 @@ func resolve_actions() -> void:
 		
 		# Überprüfe ob der Akteur noch lebt
 		if action.actor != null and not action.actor.is_alive():
-			log_message("%s kann nicht angreifen, ist bereits besiegt!" % action.actor.data.name)
+			log_message(TranslationServer.translate("%s cannot act because it has already been defeated!") % action.actor.data.name)
 			continue
 		
 		if action.has_method("execute"):

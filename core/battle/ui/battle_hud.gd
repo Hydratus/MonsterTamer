@@ -54,12 +54,12 @@ func _ready():
 	enemy_panel.add_child(enemy_vbox)
 	
 	enemy_name_label = Label.new()
-	enemy_name_label.text = "Enemy: ---"
+	enemy_name_label.text = tr("Enemy: ---")
 	enemy_name_label.add_theme_font_size_override("font_size", 16)
 	enemy_vbox.add_child(enemy_name_label)
 	
 	enemy_level_label = Label.new()
-	enemy_level_label.text = "Level: ---"
+	enemy_level_label.text = tr("Level: ---")
 	enemy_vbox.add_child(enemy_level_label)
 	
 	enemy_hp_bar = ProgressBar.new()
@@ -98,12 +98,12 @@ func _ready():
 	player_panel.add_child(player_vbox)
 	
 	player_name_label = Label.new()
-	player_name_label.text = "Player: ---"
+	player_name_label.text = tr("Player: ---")
 	player_name_label.add_theme_font_size_override("font_size", 16)
 	player_vbox.add_child(player_name_label)
 	
 	player_level_label = Label.new()
-	player_level_label.text = "Level: ---"
+	player_level_label.text = tr("Level: ---")
 	player_vbox.add_child(player_level_label)
 	
 	player_hp_bar = ProgressBar.new()
@@ -171,14 +171,14 @@ func _build_monster_state(monster: MTMonsterInstance) -> Dictionary:
 
 func _apply_display_state(player_state: Dictionary, enemy_state: Dictionary) -> void:
 	if enemy_state.is_empty():
-		enemy_name_label.text = "Enemy: ---"
-		enemy_level_label.text = "Level: ---"
+		enemy_name_label.text = tr("Enemy: ---")
+		enemy_level_label.text = tr("Level: ---")
 		enemy_hp_bar.max_value = 100
 		_enemy_hp_target = 0.0
 		enemy_hp_label.text = "0/0"
 	else:
-		enemy_name_label.text = "Enemy: %s" % String(enemy_state.get("name", "---"))
-		enemy_level_label.text = "Level: %d" % int(enemy_state.get("level", 0))
+		enemy_name_label.text = tr("Enemy: %s") % String(enemy_state.get("name", "---"))
+		enemy_level_label.text = tr("Level: %d") % int(enemy_state.get("level", 0))
 		enemy_hp_bar.max_value = 100
 		_enemy_hp_target = _to_percent(
 			int(enemy_state.get("hp", 0)),
@@ -190,8 +190,8 @@ func _apply_display_state(player_state: Dictionary, enemy_state: Dictionary) -> 
 		)
 
 	if player_state.is_empty():
-		player_name_label.text = "Player: ---"
-		player_level_label.text = "Level: ---"
+		player_name_label.text = tr("Player: ---")
+		player_level_label.text = tr("Level: ---")
 		player_hp_bar.max_value = 100
 		_player_hp_target = 0.0
 		player_hp_label.text = "0/0"
@@ -199,8 +199,8 @@ func _apply_display_state(player_state: Dictionary, enemy_state: Dictionary) -> 
 		_player_energy_target = 0.0
 		player_energy_label.text = "0/0"
 	else:
-		player_name_label.text = "Player: %s" % String(player_state.get("name", "---"))
-		player_level_label.text = "Level: %d" % int(player_state.get("level", 0))
+		player_name_label.text = tr("Player: %s") % String(player_state.get("name", "---"))
+		player_level_label.text = tr("Level: %d") % int(player_state.get("level", 0))
 		player_hp_bar.max_value = 100
 		_player_hp_target = _to_percent(
 			int(player_state.get("hp", 0)),

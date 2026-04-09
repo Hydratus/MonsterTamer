@@ -64,27 +64,28 @@ func execute(_controller = null) -> Variant:
 	# � Trackiere, dass diese Monster gegeneinander kämpfen
 	actor.register_opponent(target)
 	target.register_opponent(actor)
+	var localized_action_name: String = TranslationServer.translate(action_name)
 
 	# �🔋 Energy Check
 	if not actor.spend_energy(energy_cost):
 		battle_log(
-			"%s tried to use %s — but doesn't have enough energy!"
-			% [actor.data.name, action_name]
+			TranslationServer.translate("%s tried to use %s, but doesn't have enough energy!")
+			% [actor.data.name, localized_action_name]
 		)
 		return null
 
 	# 🎯 Accuracy Check
 	if not _roll_hit():
 		battle_log(
-			"%s uses %s on %s — but it MISSES!"
-			% [actor.data.name, action_name, target.data.name]
+			TranslationServer.translate("%s uses %s on %s, but it misses!")
+			% [actor.data.name, localized_action_name, target.data.name]
 		)
 		return null
 
 	# --------------------------------------------------
 	# 🗣️ ATTACK HEADER
 	# --------------------------------------------------
-	battle_log("%s uses %s!" % [actor.data.name, action_name])
+	battle_log(TranslationServer.translate("%s uses %s!") % [actor.data.name, localized_action_name])
 
 	# --------------------------------------------------
 	# 💥 STEP 1: DAMAGE
@@ -129,7 +130,7 @@ func _execute_damage_step() -> void:
 			target.clamp_resources()
 			_phase_dealt_damage = max(0, hp_before - target.hp)
 
-			var line := "%s takes %d damage." % [
+			var line := TranslationServer.translate("%s takes %d damage.") % [
 				target.data.name,
 				_phase_dealt_damage
 			]
@@ -138,12 +139,12 @@ func _execute_damage_step() -> void:
 				line += " " + effectiveness_text
 
 			if is_crit:
-				line += " A critical hit!"
+				line += " " + TranslationServer.translate("A critical hit!")
 
 			if result.stab > 1.0:
-				line += " (STAB)"
+				line += TranslationServer.translate(" (STAB)")
 
-			line += " (%d/%d HP | %d/%d EN)" % [
+			line += TranslationServer.translate(" (%d/%d HP | %d/%d EN)") % [
 				target.hp,
 				target.get_max_hp(),
 				actor.energy,
@@ -183,7 +184,7 @@ func _execute_lifesteal_step() -> void:
 				var healed: int = actor.hp - before
 				if healed > 0:
 					battle_log(
-						"%s steals %d HP through lifesteal!"
+						TranslationServer.translate("%s steals %d HP through lifesteal!")
 						% [actor.data.name, healed]
 					)
 
@@ -205,23 +206,23 @@ func _execute_final_step() -> void:
 			change.stages
 		)
 
-		var stat_name: String = MTMonsterInstance.StatType.keys()[change.stat]
+		var stat_name: String = _localize_stat_name(MTMonsterInstance.StatType.keys()[change.stat])
 
 		if delta == 0:
 			if change.stages > 0:
-				battle_log("%s's %s won't go any higher!" % [
+				battle_log(TranslationServer.translate("%s's %s won't go any higher!") % [
 					receiver.data.name,
 					stat_name
 				])
 			else:
-				battle_log("%s's %s won't go any lower!" % [
+				battle_log(TranslationServer.translate("%s's %s won't go any lower!") % [
 					receiver.data.name,
 					stat_name
 				])
 		else:
 			var sign_prefix := "+" if delta > 0 else ""
 			battle_log(
-				"%s's %s changed by %s%d!"
+				TranslationServer.translate("%s's %s changed by %s%d!")
 				% [
 					receiver.data.name,
 					stat_name,
@@ -237,6 +238,29 @@ func _execute_final_step() -> void:
 		_phase_actor_was_ko_before_action
 	)
 	_flush_step_messages()
+
+func _localize_stat_name(stat_key: String) -> String:
+	match stat_key:
+		"MAX_HP":
+			return TranslationServer.translate("HP")
+		"MAX_ENERGY":
+			return TranslationServer.translate("EN")
+		"STRENGTH":
+			return TranslationServer.translate("STR")
+		"MAGIC":
+			return TranslationServer.translate("MAG")
+		"DEFENSE":
+			return TranslationServer.translate("DEF")
+		"RESISTANCE":
+			return TranslationServer.translate("RES")
+		"SPEED":
+			return TranslationServer.translate("SPD")
+		"CRIT_RATE":
+			return TranslationServer.translate("Crit Rate")
+		"CRIT_DAMAGE":
+			return TranslationServer.translate("Crit Damage")
+		_:
+			return TranslationServer.translate(stat_key)
 
 func _trigger_contact_hooks() -> void:
 	if actor != null and actor.passive_traits != null:
@@ -384,17 +408,17 @@ func _level_up_with_flush(monster: MTMonsterInstance):
 	
 	# Level-Up Nachricht mit allen Stat-Erhöhungen (auch +0)
 	var levelup_stat_changes: Array[String] = []
-	levelup_stat_changes.append("HP+%d" % hp_gain)
-	levelup_stat_changes.append("Energy+%d" % energy_gain)
-	levelup_stat_changes.append("Strength+%d" % str_gain)
-	levelup_stat_changes.append("Magic+%d" % mag_gain)
-	levelup_stat_changes.append("Defense+%d" % def_gain)
-	levelup_stat_changes.append("Resistance+%d" % res_gain)
-	levelup_stat_changes.append("Speed+%d" % spd_gain)
+	levelup_stat_changes.append(TranslationServer.translate("HP+%d") % hp_gain)
+	levelup_stat_changes.append(TranslationServer.translate("Energy+%d") % energy_gain)
+	levelup_stat_changes.append(TranslationServer.translate("Strength+%d") % str_gain)
+	levelup_stat_changes.append(TranslationServer.translate("Magic+%d") % mag_gain)
+	levelup_stat_changes.append(TranslationServer.translate("Defense+%d") % def_gain)
+	levelup_stat_changes.append(TranslationServer.translate("Resistance+%d") % res_gain)
+	levelup_stat_changes.append(TranslationServer.translate("Speed+%d") % spd_gain)
 	
 	var stat_text = " | ".join(levelup_stat_changes)
 	
-	battle_log("🎉 %s leveled up to level %d!" % [monster.data.name, monster.level])
+	battle_log(TranslationServer.translate("%s leveled up to level %d!") % [monster.data.name, monster.level])
 	battle_log(stat_text)
 
 	var queued_evolution := false
@@ -425,7 +449,7 @@ func _process_exp_gain_with_flush(monster: MTMonsterInstance, exp_remaining: int
 	var gain = min(exp_remaining, to_next)
 	monster.current_exp += gain
 
-	battle_log("%s gained %d EXP! (Total: %d/%d)" % [
+	battle_log(TranslationServer.translate("%s gained %d EXP! (Total: %d/%d)") % [
 		monster.data.name, gain,
 		monster.current_exp, monster.exp_to_next_level
 	])
@@ -470,7 +494,7 @@ func _check_learning_with_flush(monster: MTMonsterInstance):
 	for learn_data in available_attacks:
 		if learn_data.attack != null and not monster.attacks.has(learn_data.attack):
 			monster.attacks.append(learn_data.attack)
-			battle_log("⚔️ %s learned %s!" % [monster.data.name, learn_data.attack.name])
+			battle_log(TranslationServer.translate("%s learned %s!") % [monster.data.name, TranslationServer.translate(learn_data.attack.name)])
 			# Flush nach jeder erlernten Attacke für separaten Block
 			if battle != null and battle.scene != null:
 				battle.scene.flush_action_messages()
@@ -479,7 +503,12 @@ func _check_learning_with_flush(monster: MTMonsterInstance):
 	var available_traits = monster.get_available_traits_to_learn()
 	for learn_data in available_traits:
 		monster.add_trait(learn_data.trait_data as MTTraitData)
-		battle_log("✨ %s learned trait %s!" % [monster.data.name, learn_data.trait_data.name])
+		var trait_name: String = ""
+		if learn_data.trait_data != null and learn_data.trait_data.has_method("get_localized_name"):
+			trait_name = str(learn_data.trait_data.get_localized_name())
+		elif learn_data.trait_data != null:
+			trait_name = TranslationServer.translate(learn_data.trait_data.name)
+		battle_log(TranslationServer.translate("%s learned trait %s!") % [monster.data.name, trait_name])
 		# Flush nach jedem erlernten Trait für separaten Block
 		if battle != null and battle.scene != null:
 			battle.scene.flush_action_messages()

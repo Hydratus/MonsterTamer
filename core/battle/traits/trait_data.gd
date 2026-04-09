@@ -55,6 +55,16 @@ var contact_thorns_ratio: float = 0.0
 
 @export var contact_stat_stage_modifiers: Array[MTTraitStatStageModifier] = []
 
+func get_localized_name() -> String:
+	if name == "":
+		return ""
+	return TranslationServer.translate(name)
+
+func get_localized_description() -> String:
+	if description == "":
+		return ""
+	return TranslationServer.translate(description)
+
 
 # =========================================================
 # DAMAGE MODIFICATION
@@ -143,8 +153,8 @@ func on_contact_taken(
 		attacker.clamp_resources()
 		_log_contact(
 			action,
-			"%s is hurt by %s's %s for %d contact damage!"
-			% [attacker.data.name, owner.data.name, name, reflected]
+			TranslationServer.translate("%s is hurt by %s's %s for %d contact damage!")
+			% [attacker.data.name, owner.data.name, get_localized_name(), reflected]
 		)
 
 	for stat_modifier in contact_stat_stage_modifiers:
@@ -156,13 +166,36 @@ func on_contact_taken(
 			stat_modifier.stage_change
 		)
 		if delta != 0:
-			var stat_name: String = MTMonsterInstance.StatType.keys()[stat_modifier.stat]
+			var stat_name: String = _localize_stat_name(MTMonsterInstance.StatType.keys()[stat_modifier.stat])
 			var sign_prefix := "+" if delta > 0 else ""
 			_log_contact(
 				action,
-				"%s's %s changed by %s%d due to %s's %s!"
-				% [attacker.data.name, stat_name, sign_prefix, delta, owner.data.name, name]
+				TranslationServer.translate("%s's %s changed by %s%d due to %s's %s!")
+				% [attacker.data.name, stat_name, sign_prefix, delta, owner.data.name, get_localized_name()]
 			)
+
+func _localize_stat_name(stat_key: String) -> String:
+	match stat_key:
+		"MAX_HP":
+			return TranslationServer.translate("HP")
+		"MAX_ENERGY":
+			return TranslationServer.translate("EN")
+		"STRENGTH":
+			return TranslationServer.translate("STR")
+		"MAGIC":
+			return TranslationServer.translate("MAG")
+		"DEFENSE":
+			return TranslationServer.translate("DEF")
+		"RESISTANCE":
+			return TranslationServer.translate("RES")
+		"SPEED":
+			return TranslationServer.translate("SPD")
+		"CRIT_RATE":
+			return TranslationServer.translate("Crit Rate")
+		"CRIT_DAMAGE":
+			return TranslationServer.translate("Crit Damage")
+		_:
+			return TranslationServer.translate(stat_key)
 
 func _log_contact(action: MTBattleAction, text: String) -> void:
 	if action != null and action.has_method("battle_log"):

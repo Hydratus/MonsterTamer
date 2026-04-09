@@ -280,7 +280,7 @@ func _create_scene_label() -> void:
 	add_child(_scene_label_layer)
 
 	_scene_label = Label.new()
-	_scene_label.text = "Scene: %s" % _get_scene_title()
+	_scene_label.text = tr("Scene: %s") % _get_scene_title()
 	_scene_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_scene_label.anchor_left = 0.5
 	_scene_label.anchor_right = 0.5
@@ -320,7 +320,7 @@ func _create_dungeon_menu() -> void:
 	_dungeon_menu_panel.add_child(outer)
 
 	_dungeon_menu_title = Label.new()
-	_dungeon_menu_title.text = "Choose a dungeon"
+	_dungeon_menu_title.text = tr("Choose a dungeon")
 	_dungeon_menu_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_dungeon_menu_title.add_theme_color_override("font_color", Color(1, 1, 1, 1))
 	outer.add_child(_dungeon_menu_title)
@@ -339,7 +339,7 @@ func _rebuild_dungeon_buttons() -> void:
 	for child in _dungeon_menu_container.get_children():
 		child.queue_free()
 
-	var essence_text := "Soul Essence: %d" % int(Game.soul_essence if Game != null else 0)
+	var essence_text := tr("Soul Essence: %d") % int(Game.soul_essence if Game != null else 0)
 	var essence_label := Label.new()
 	essence_label.text = essence_text
 	essence_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -354,10 +354,10 @@ func _rebuild_dungeon_buttons() -> void:
 			current_level = Game.get_meta_unlock_level(unlock_id)
 		var unlock_button := Button.new()
 		if current_level >= max_level:
-			unlock_button.text = "%s [MAX]" % str(unlock_def.get("name", unlock_id))
+			unlock_button.text = tr("%s [MAX]") % str(unlock_def.get("name", unlock_id))
 			unlock_button.disabled = true
 		else:
-			unlock_button.text = "%s (Cost: %d SE) [Lv %d/%d]" % [
+			unlock_button.text = tr("%s (Cost: %d SE) [Lv %d/%d]") % [
 				str(unlock_def.get("name", unlock_id)),
 				int(unlock_def.get("cost", 0)),
 				current_level,
@@ -373,7 +373,7 @@ func _rebuild_dungeon_buttons() -> void:
 
 	if dungeon_options.is_empty():
 		var empty_label := Label.new()
-		empty_label.text = "No dungeons available"
+		empty_label.text = tr("No dungeons available")
 		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		empty_label.add_theme_color_override("font_color", Color(1, 1, 1, 1))
 		_dungeon_menu_container.add_child(empty_label)
@@ -390,7 +390,7 @@ func _rebuild_dungeon_buttons() -> void:
 		_dungeon_menu_buttons.append(button)
 
 	var cancel_button := Button.new()
-	cancel_button.text = "Cancel"
+	cancel_button.text = tr("Cancel")
 	cancel_button.focus_mode = Control.FOCUS_ALL
 	cancel_button.pressed.connect(_close_dungeon_menu)
 	_dungeon_menu_container.add_child(cancel_button)
@@ -398,19 +398,19 @@ func _rebuild_dungeon_buttons() -> void:
 
 func _on_meta_unlock_button_pressed(unlock_id: String, cost: int, max_level: int) -> void:
 	if Game == null:
-		_enqueue_message("Meta unlock failed: Game singleton missing.")
+		_enqueue_message(tr("Meta unlock failed: Game singleton missing."))
 		return
 	if Game.buy_meta_unlock(unlock_id, cost, max_level):
-		_enqueue_message("Unlocked %s. Soul Essence left: %d" % [unlock_id, Game.soul_essence])
+		_enqueue_message(tr("Unlocked %s. Soul Essence left: %d") % [unlock_id, Game.soul_essence])
 		_rebuild_dungeon_buttons()
 		if _dungeon_menu_buttons.size() > 0:
 			_dungeon_menu_buttons[0].grab_focus()
 		return
 	var current_level: int = Game.get_meta_unlock_level(unlock_id)
 	if current_level >= max_level:
-		_enqueue_message("%s is already at max level." % unlock_id)
+		_enqueue_message(tr("%s is already at max level.") % unlock_id)
 	else:
-		_enqueue_message("Not enough Soul Essence for %s (Cost: %d)." % [unlock_id, cost])
+		_enqueue_message(tr("Not enough Soul Essence for %s (Cost: %d).") % [unlock_id, cost])
 
 func _open_dungeon_menu(title: String) -> void:
 	if _dungeon_menu_panel == null or _dungeon_menu_panel.get_parent() == null:
@@ -708,7 +708,7 @@ func _try_interact() -> void:
 			if npc.npc_data != null and npc.npc_data.interaction_id == "dungeon_select":
 				var prompt: String = npc.get_dialogue()
 				if prompt == "":
-					prompt = "Choose a dungeon"
+					prompt = tr("Choose a dungeon")
 				_message_label.text = prompt
 				_message_panel.visible = true
 				_message_visible = true
@@ -730,10 +730,10 @@ func _try_interact() -> void:
 				var item_data: MTItemData = ITEM_DB.new().get_item(item_id)
 				var item_name: String = item_id
 				if item_data != null:
-					item_name = item_data.name
-				var line := "Received %s." % item_name
+					item_name = TranslationServer.translate(item_data.name)
+				var line := tr("Received %s.") % item_name
 				if amount > 1:
-					line = "Received %s x%d." % [item_name, amount]
+					line = tr("Received %s x%d.") % [item_name, amount]
 				_enqueue_message(line)
 			return
 		if npc.can_battle():
@@ -879,7 +879,7 @@ func _start_npc_battle(npc) -> void:
 	_battle_scene.player_soulbinder_name = Game.player_name
 	var npc_name: String = "NPC"
 	if npc.npc_data != null and npc.npc_data.display_name != "":
-		npc_name = npc.npc_data.display_name
+		npc_name = TranslationServer.translate(npc.npc_data.display_name)
 	_battle_scene.enemy_soulbinder_name = npc_name
 	var player_team: Array[MTMonsterInstance] = []
 	for monster in Game.party:

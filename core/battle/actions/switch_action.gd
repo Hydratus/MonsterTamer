@@ -22,6 +22,6 @@ func execute(controller = null) -> Variant:
 	if success:
 		var team = controller.teams[team_index]
 		var new_monster = team.get_active_monster()
-		var team_name = "Player" if team_index == 0 else "Enemy"
-		controller.log_message("%s switched to %s!" % [team_name, new_monster.data.name])
+		var team_name = TranslationServer.translate("Player") if team_index == 0 else TranslationServer.translate("Enemy")
+		controller.log_message(TranslationServer.translate("%s switched to %s!") % [team_name, new_monster.data.name])
 	return null

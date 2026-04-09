@@ -35,6 +35,18 @@ func remove_item(item_id: String, amount: int) -> bool:
 		inventory[item_id] = next
 	return true
 
+func swap_party_positions(index_a: int, index_b: int) -> bool:
+	if index_a < 0 or index_b < 0:
+		return false
+	if index_a >= party.size() or index_b >= party.size():
+		return false
+	if index_a == index_b:
+		return true
+	var temp: Variant = party[index_a]
+	party[index_a] = party[index_b]
+	party[index_b] = temp
+	return true
+
 func reset_run_state(starting_gold: int = 0) -> void:
 	run_gold = max(0, starting_gold)
 

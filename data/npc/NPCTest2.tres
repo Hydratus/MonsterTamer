@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_rnogv")
 display_name = "Test NPC 2"
-dialogue_before = "Hier für dich:"
+dialogue_before = "Hier fuer dich:"
 dialogue_after = "Viel Erfolg!"
 gives_items = true
 give_item_ids = Array[String](["lesser_binding_rune", "improved_binding_rune", "greater_binding_rune", "superior_binding_rune", "mythic_binding_rune", "legendary_binding_rune", "lesser_normal_binding_rune", "lesser_fire_binding_rune", "lesser_plant_binding_rune", "lesser_water_binding_rune", "lesser_ghost_binding_rune", "improved_normal_binding_rune", "improved_fire_binding_rune", "improved_plant_binding_rune", "improved_water_binding_rune", "improved_ghost_binding_rune", "greater_normal_binding_rune", "greater_fire_binding_rune", "greater_plant_binding_rune", "greater_water_binding_rune", "greater_ghost_binding_rune", "superior_normal_binding_rune", "superior_fire_binding_rune", "superior_plant_binding_rune", "superior_water_binding_rune", "superior_ghost_binding_rune", "mythic_normal_binding_rune", "mythic_fire_binding_rune", "mythic_plant_binding_rune", "mythic_water_binding_rune", "mythic_ghost_binding_rune", "legendary_normal_binding_rune", "legendary_fire_binding_rune", "legendary_plant_binding_rune", "legendary_water_binding_rune", "legendary_ghost_binding_rune"])

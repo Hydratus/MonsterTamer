@@ -42,7 +42,7 @@ func _execute_next_action(battle):
 	
 	# Überprüfe ob der Akteur noch lebt (nur für Actions mit actor Property)
 	if "actor" in action and action.actor != null and not action.actor.is_alive():
-		battle.log_message("%s kann nicht angreifen, ist bereits besiegt!" % action.actor.data.name)
+		battle.log_message(TranslationServer.translate("%s cannot act because it has already been defeated!") % action.actor.data.name)
 		battle.scene.flush_action_messages()
 		battle.scene.show_battle_messages()
 		return

@@ -29,7 +29,7 @@ static func create_merchant_shop_ui(owner) -> void:
 	owner._merchant_shop_panel.add_child(outer)
 
 	owner._merchant_shop_title = Label.new()
-	owner._merchant_shop_title.text = "Dungeon Merchant"
+	owner._merchant_shop_title.text = TranslationServer.translate("Dungeon Merchant")
 	owner._merchant_shop_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	owner._merchant_shop_title.add_theme_color_override("font_color", Color(1, 0.95, 0.75, 1))
 	outer.add_child(owner._merchant_shop_title)
@@ -47,7 +47,7 @@ static func create_merchant_shop_ui(owner) -> void:
 	outer.add_child(owner._merchant_shop_status)
 
 	owner._merchant_shop_close_button = Button.new()
-	owner._merchant_shop_close_button.text = "Close"
+	owner._merchant_shop_close_button.text = TranslationServer.translate("Close")
 	owner._merchant_shop_close_button.focus_mode = Control.FOCUS_ALL
 	owner._merchant_shop_close_button.pressed.connect(owner._close_merchant_shop)
 	outer.add_child(owner._merchant_shop_close_button)
@@ -60,7 +60,7 @@ static func rebuild_merchant_shop_buttons(owner, item_db_class) -> void:
 		child.queue_free()
 	if Game == null:
 		var unavailable: Label = Label.new()
-		unavailable.text = "Merchant unavailable"
+		unavailable.text = TranslationServer.translate("Merchant unavailable")
 		unavailable.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		owner._merchant_shop_list.add_child(unavailable)
 		return
@@ -76,7 +76,7 @@ static func rebuild_merchant_shop_buttons(owner, item_db_class) -> void:
 		var price: int = owner._apply_merchant_discount(base_price)
 		var button: Button = Button.new()
 		button.focus_mode = Control.FOCUS_ALL
-		button.text = "%s  -  %d gold" % [item_name, price]
+		button.text = TranslationServer.translate("%s  -  %d gold") % [item_name, price]
 		if Game.run_gold < price:
 			button.disabled = true
 		button.pressed.connect(owner._on_merchant_buy_pressed.bind(i))
@@ -87,7 +87,7 @@ static func open_merchant_shop(owner, item_db_class) -> void:
 	if owner._merchant_shop_panel == null or owner._merchant_shop_panel.get_parent() == null:
 		create_merchant_shop_ui(owner)
 	rebuild_merchant_shop_buttons(owner, item_db_class)
-	owner._merchant_shop_status.text = "Select an item to buy."
+	owner._merchant_shop_status.text = TranslationServer.translate("Select an item to buy.")
 	owner._merchant_shop_panel.visible = true
 	owner._merchant_shop_open = true
 	owner._pause_npc_walks()
@@ -107,7 +107,7 @@ static func close_merchant_shop(owner) -> void:
 
 static func on_merchant_buy_pressed(owner, index: int, item_db_class) -> void:
 	if Game == null:
-		owner._merchant_shop_status.text = "Merchant unavailable"
+		owner._merchant_shop_status.text = TranslationServer.translate("Merchant unavailable")
 		return
 	if index < 0 or index >= owner.merchant_shop_items.size():
 		return
@@ -117,7 +117,7 @@ static func on_merchant_buy_pressed(owner, index: int, item_db_class) -> void:
 		base_price = int(owner.merchant_shop_prices[index])
 	var price: int = owner._apply_merchant_discount(base_price)
 	if not Game.spend_run_gold(price):
-		owner._merchant_shop_status.text = "Not enough gold (%d needed, %d available)." % [price, Game.run_gold]
+		owner._merchant_shop_status.text = TranslationServer.translate("Not enough gold (%d needed, %d available).") % [price, Game.run_gold]
 		rebuild_merchant_shop_buttons(owner, item_db_class)
 		return
 	Game.add_item(item_id, 1)
@@ -125,7 +125,7 @@ static func on_merchant_buy_pressed(owner, index: int, item_db_class) -> void:
 	var item_data = item_db_class.new().get_item(item_id)
 	if item_data != null:
 		item_name = item_data.name
-	owner._merchant_shop_status.text = "Bought %s for %d gold." % [item_name, price]
+	owner._merchant_shop_status.text = TranslationServer.translate("Bought %s for %d gold.") % [item_name, price]
 	owner._log_dungeon("[Dungeon] merchant sale item=%s price=%d run_gold=%d" % [item_id, price, Game.run_gold])
 	rebuild_merchant_shop_buttons(owner, item_db_class)
 	if owner._merchant_shop_buttons.size() > 0:
@@ -154,7 +154,7 @@ static func update_currency_hud(owner, force: bool = false) -> void:
 		return
 	if Game == null:
 		if force:
-			owner._currency_hud_label.text = "Gold: -\nSoul Essence: -"
+			owner._currency_hud_label.text = TranslationServer.translate("Gold: -\nSoul Essence: -")
 		return
 	var gold: int = Game.run_gold
 	var essence: int = Game.soul_essence
@@ -162,7 +162,7 @@ static func update_currency_hud(owner, force: bool = false) -> void:
 		return
 	owner._last_gold_display = gold
 	owner._last_essence_display = essence
-	owner._currency_hud_label.text = "Gold: %d\nSoul Essence: %d" % [gold, essence]
+	owner._currency_hud_label.text = TranslationServer.translate("Gold: %d\nSoul Essence: %d") % [gold, essence]
 
 static func apply_merchant_discount(_owner, base_price: int) -> int:
 	if Game == null:

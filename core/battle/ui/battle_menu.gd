@@ -6,6 +6,7 @@ signal rest_selected
 signal escape_battle
 signal menu_changed(menu_name: String)  # Neues Signal für HUD-Sichtbarkeit
 signal item_used(item: MTItemData, target: MTMonsterInstance)
+signal forced_switch_selected(monster_index: int)
 
 @onready var control := $Control
 @onready var vbox := $Control/VBoxContainer
@@ -13,6 +14,7 @@ signal item_used(item: MTItemData, target: MTMonsterInstance)
 const MENU_OFFSET_TOP_DEFAULT := -80.0
 const MENU_OFFSET_TOP_ATTACKS := -140.0
 const ITEM_MENU_SCENE := preload("res://ui/menus/item_menu.tscn")
+const MonsterStatusViewHelper = preload("res://core/ui/monster_status_view_helper.gd")
 const DEBUG_MENU_LOGS := false
 
 var current_monster: MTMonsterInstance
@@ -20,6 +22,11 @@ var current_team: MTMonsterTeam
 var battle_controller: MTBattleController  # Referenz zum MTBattleController für Aktionen
 var current_menu: String = "main"  # "main", "attacks", "team", "inventory", "escape"
 var _is_showing_menu := false  # Flag um doppelte show_main_menu() Aufrufe zu verhindern
+var _forced_switch_mode := false
+var _forced_switch_team_index := -1
+var _status_team: MTMonsterTeam
+var _status_index: int = -1
+var _status_monster: MTMonsterInstance
 
 # Attack-Info UI (Hover)
 var attack_info_name: Label
@@ -76,6 +83,8 @@ func show_main_menu(monster: MTMonsterInstance, team: MTMonsterTeam = null, cont
 	current_team = team
 	battle_controller = controller
 	current_menu = "main"
+	_forced_switch_mode = false
+	_forced_switch_team_index = -1
 	
 	menu_changed.emit("main")
 	_apply_menu_offsets(_menu_offsets_default)
@@ -90,10 +99,10 @@ func show_main_menu(monster: MTMonsterInstance, team: MTMonsterTeam = null, cont
 	await get_tree().process_frame
 	
 	_show_menu_options([
-		{"label": "⚔️ Attack", "action": "attacks"},
-		{"label": "👥 Team", "action": "team"},
-		{"label": "🎒 Inventory", "action": "inventory"},
-		{"label": "💨 Escape", "action": "escape"}
+		{"label": "⚔️ %s" % tr("Attack"), "action": "attacks"},
+		{"label": "👥 %s" % tr("Team"), "action": "team"},
+		{"label": "🎒 %s" % tr("Inventory"), "action": "inventory"},
+		{"label": "💨 %s" % tr("Escape"), "action": "escape"}
 	])
 	
 	_log_debug("show_main_menu options built, children=%d" % vbox.get_child_count())
@@ -143,28 +152,28 @@ func show_attacks(monster: MTMonsterInstance):
 	info_panel.add_child(info_vbox)
 	
 	attack_info_name = Label.new()
-	attack_info_name.text = "Hover: Attack"
+	attack_info_name.text = tr("Hover: Attack")
 	attack_info_name.add_theme_font_size_override("font_size", 14)
 	info_vbox.add_child(attack_info_name)
 	
 	attack_info_power = Label.new()
-	attack_info_power.text = "Power: -"
+	attack_info_power.text = tr("Power: -")
 	info_vbox.add_child(attack_info_power)
 	
 	attack_info_element = Label.new()
-	attack_info_element.text = "MTElement: -"
+	attack_info_element.text = tr("Element: -")
 	info_vbox.add_child(attack_info_element)
 	
 	attack_info_energy = Label.new()
-	attack_info_energy.text = "Energy Cost: -"
+	attack_info_energy.text = tr("Energy Cost: -")
 	info_vbox.add_child(attack_info_energy)
 	
 	attack_info_accuracy = Label.new()
-	attack_info_accuracy.text = "Accuracy: -"
+	attack_info_accuracy.text = tr("Accuracy: -")
 	info_vbox.add_child(attack_info_accuracy)
 	
 	attack_info_priority = Label.new()
-	attack_info_priority.text = "Priority: -"
+	attack_info_priority.text = tr("Priority: -")
 	info_vbox.add_child(attack_info_priority)
 
 	# Beschreibung ganz rechts
@@ -178,7 +187,7 @@ func show_attacks(monster: MTMonsterInstance):
 	desc_panel.add_child(desc_vbox)
 
 	var desc_title := Label.new()
-	desc_title.text = "Description"
+	desc_title.text = tr("Description")
 	desc_title.add_theme_font_size_override("font_size", 12)
 	desc_vbox.add_child(desc_title)
 
@@ -191,7 +200,7 @@ func show_attacks(monster: MTMonsterInstance):
 	for i in range(monster.attacks.size()):
 		var attack := monster.attacks[i]
 		var button := Button.new()
-		button.text = attack.name
+		button.text = TranslationServer.translate(attack.name)
 		button.custom_minimum_size = Vector2(attack_button_width, 22)  # Breite wie Description
 		button.add_theme_font_size_override("font_size", 11)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -212,9 +221,11 @@ func show_attacks(monster: MTMonsterInstance):
 	visible = true
 	_focus_last_attack_button(attack_buttons)
 
-func show_team(team: MTMonsterTeam):
+func show_team(team: MTMonsterTeam, forced_switch: bool = false, forced_team_index: int = -1):
 	current_team = team
 	current_menu = "team"
+	_forced_switch_mode = forced_switch
+	_forced_switch_team_index = forced_team_index
 	menu_changed.emit("team")
 	vbox.offset_top = MENU_OFFSET_TOP_DEFAULT
 	_clear_menu()
@@ -224,22 +235,29 @@ func show_team(team: MTMonsterTeam):
 	if team == null:
 		_log_error("Team is null, cannot open team menu")
 		var label := Label.new()
-		label.text = "ERROR: Team ist null"
+		label.text = tr("ERROR: Team is null")
 		vbox.add_child(label)
 		_add_back_button()
 		visible = true
 		return
 	
 	_log_debug("show_team size=%d" % team.monsters.size())
+
+	if _forced_switch_mode:
+		var forced_label := Label.new()
+		forced_label.text = tr("Choose a battle-ready monster to switch in")
+		vbox.add_child(forced_label)
 	
 	for i in range(team.monsters.size()):
-		var monster = team.monsters[i]
+		var monster: MTMonsterInstance = team.monsters[i]
 		if monster == null:
 			continue
+		var is_active: bool = monster == team.get_active_monster()
+		var can_switch: bool = monster.is_alive() and not is_active
 		
 		var button := Button.new()
-		var status = "[KO]" if not monster.is_alive() else "[OK]"
-		button.text = "%s %s | Lvl %d | %d/%d HP | %d/%d EN" % [
+		var status = "[KO]" if not monster.is_alive() else "[ACTIVE]" if is_active else "[OK]"
+		button.text = tr("%s %s | Lv. %d | %d/%d HP | %d/%d EN") % [
 			monster.data.name,
 			status,
 			monster.data.level,
@@ -249,17 +267,25 @@ func show_team(team: MTMonsterTeam):
 			monster.get_max_energy()
 		]
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		
-		# Button für Monster-Details und Switch
-		button.pressed.connect(func():
-			_show_monster_options(team, i, monster)
-		)
+
+		if _forced_switch_mode:
+			button.disabled = not can_switch
+			if can_switch:
+				button.pressed.connect(func():
+					forced_switch_selected.emit(i)
+				)
+		else:
+			# Button für Monster-Details und Switch
+			button.pressed.connect(func():
+				_show_monster_options(team, i, monster)
+			)
 		
 		vbox.add_child(button)
 		_register_menu_button(button)
 	
-	# Back-Button
-	_add_back_button()
+	# Back-Button nur im normalen Team-Menü
+	if not _forced_switch_mode:
+		_add_back_button()
 	visible = true
 	_focus_first_button()
 
@@ -279,11 +305,11 @@ func show_escape_menu():
 	_menu_columns = 1
 	
 	var label := Label.new()
-	label.text = "Willst du wirklich fliehen?"
+	label.text = tr("Do you really want to escape?")
 	vbox.add_child(label)
 	
 	var yes_button := Button.new()
-	yes_button.text = "Ja, fliehen!"
+	yes_button.text = tr("Yes, escape!")
 	yes_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	yes_button.pressed.connect(func():
 		escape_battle.emit()
@@ -292,7 +318,7 @@ func show_escape_menu():
 	_register_menu_button(yes_button)
 	
 	var no_button := Button.new()
-	no_button.text = "Nein, zurück"
+	no_button.text = tr("No, back")
 	no_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	no_button.pressed.connect(func():
 		show_main_menu(current_monster, current_team)
@@ -349,6 +375,7 @@ func _handle_menu_action(action: String) -> void:
 			show_escape_menu()
 
 func _show_monster_options(team: MTMonsterTeam, index: int, monster: MTMonsterInstance) -> void:
+	current_menu = "team_options"
 	_clear_menu()
 	_menu_columns = 1
 	
@@ -359,7 +386,7 @@ func _show_monster_options(team: MTMonsterTeam, index: int, monster: MTMonsterIn
 	])
 	
 	var label := Label.new()
-	label.text = "%s - Level %d\n\nHP: %d/%d\nEN: %d/%d\nSTR: %d | MAG: %d\nDEF: %d | RES: %d\nSPD: %d" % [
+	label.text = tr("%s - Level %d\n\nHP: %d/%d\nEN: %d/%d\nSTR: %d | MAG: %d\nDEF: %d | RES: %d\nSPD: %d") % [
 		monster.data.name,
 		monster.data.level,
 		monster.hp,
@@ -373,12 +400,21 @@ func _show_monster_options(team: MTMonsterTeam, index: int, monster: MTMonsterIn
 		monster.speed
 	]
 	vbox.add_child(label)
+
+	var status_button := Button.new()
+	status_button.text = tr("Status")
+	status_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	status_button.pressed.connect(func():
+		_show_monster_status(team, index, monster, 0)
+	)
+	vbox.add_child(status_button)
+	_register_menu_button(status_button)
 	
 	# Switch-Button (nur wenn Monster lebt und nicht bereits aktiv)
 	if monster.is_alive() and monster != team.get_active_monster():
 		_log_debug("show switch button for %s" % monster.data.name)
 		var switch_button := Button.new()
-		switch_button.text = "Einwechseln"
+		switch_button.text = tr("Switch")
 		switch_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		switch_button.pressed.connect(func():
 			_log_debug("switch clicked for %s index=%d" % [monster.data.name, index])
@@ -409,8 +445,61 @@ func _show_monster_options(team: MTMonsterTeam, index: int, monster: MTMonsterIn
 			"ja" if monster == team.get_active_monster() else "nein"
 		])
 	
-	# Back-Button
-	_add_back_button()
+	var back_button := Button.new()
+	back_button.text = tr("<- Back")
+	back_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	back_button.pressed.connect(func():
+		show_team(team)
+	)
+	vbox.add_child(back_button)
+	_register_menu_button(back_button)
+	_focus_first_button()
+
+func _show_monster_status(team: MTMonsterTeam, index: int, monster: MTMonsterInstance, tab_index: int) -> void:
+	current_menu = "team_status"
+	_status_team = team
+	_status_index = index
+	_status_monster = monster
+	_clear_menu()
+	_menu_columns = 1
+
+	if monster == null:
+		show_team(team)
+		return
+
+	MonsterStatusViewHelper.add_title(vbox, monster)
+
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 6)
+	vbox.add_child(tabs)
+
+	var tab_names: Array[String] = MonsterStatusViewHelper.get_tab_names()
+	for ti in range(tab_names.size()):
+		var tab_button := Button.new()
+		tab_button.text = tab_names[ti]
+		tab_button.toggle_mode = true
+		tab_button.button_pressed = ti == tab_index
+		tab_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var captured_ti := ti
+		tab_button.pressed.connect(func():
+			_show_monster_status(team, index, monster, captured_ti)
+		)
+		tabs.add_child(tab_button)
+		_register_menu_button(tab_button)
+
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 4)
+	vbox.add_child(content)
+	MonsterStatusViewHelper.add_tab_content(content, monster, tab_index)
+
+	var back_button := Button.new()
+	back_button.text = tr("<- Back")
+	back_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	back_button.pressed.connect(func():
+		_show_monster_options(team, index, monster)
+	)
+	vbox.add_child(back_button)
+	_register_menu_button(back_button)
 	_focus_first_button()
 
 func _clear_menu() -> void:
@@ -435,7 +524,7 @@ func _add_attacks_footer_row(attacks_box: VBoxContainer, attack_button_width: in
 	back_row.add_child(back_spacer_left)
 
 	var rest_button := Button.new()
-	rest_button.text = "Rest (+25% EN)"
+	rest_button.text = tr("Rest (+25% EN)")
 	rest_button.custom_minimum_size = Vector2(attack_button_width, 0)
 	rest_button.add_theme_font_size_override("font_size", 12)
 	rest_button.pressed.connect(func():
@@ -446,7 +535,7 @@ func _add_attacks_footer_row(attacks_box: VBoxContainer, attack_button_width: in
 	_rest_button = rest_button
 
 	var back_button := Button.new()
-	back_button.text = "← Back"
+	back_button.text = tr("← Back")
 	back_button.custom_minimum_size = Vector2(attack_button_width, 0)
 	back_button.add_theme_font_size_override("font_size", 12)
 	back_button.pressed.connect(func():
@@ -509,7 +598,7 @@ func _add_back_button() -> void:
 	hbox.add_child(spacer)
 	
 	var back_button := Button.new()
-	back_button.text = "← Back"
+	back_button.text = tr("← Back")
 	back_button.custom_minimum_size = Vector2(140, 0)
 	back_button.add_theme_font_size_override("font_size", 12)
 	back_button.pressed.connect(func():
@@ -529,24 +618,44 @@ func hide_menu():
 func _update_attack_info(attack: MTAttackData) -> void:
 	if attack_info_name == null:
 		return
-	attack_info_name.text = attack.name
-	attack_info_description.text = attack.description
-	attack_info_power.text = "Power: %d" % attack.power
-	attack_info_element.text = "MTElement: %s" % MTElement.Type.keys()[attack.element]
-	attack_info_energy.text = "Energy Cost: %d" % attack.energy_cost
-	attack_info_accuracy.text = "Accuracy: %d%%" % attack.accuracy
-	attack_info_priority.text = "Priority: %d" % attack.priority
+	attack_info_name.text = TranslationServer.translate(attack.name)
+	attack_info_description.text = _localize_attack_description(attack.description)
+	attack_info_power.text = tr("Power: %d") % attack.power
+	var element_key: String = MTElement.Type.keys()[attack.element]
+	attack_info_element.text = tr("Element: %s") % TranslationServer.translate(element_key)
+	attack_info_energy.text = tr("Energy Cost: %d") % attack.energy_cost
+	attack_info_accuracy.text = tr("Accuracy: %d%%") % attack.accuracy
+	attack_info_priority.text = tr("Priority: %d") % attack.priority
+
+func _localize_attack_description(text: String) -> String:
+	var localized: String = TranslationServer.translate(text)
+	if localized == "":
+		return localized
+	if not TranslationServer.get_locale().begins_with("de"):
+		return localized
+
+	# Fallback for known English fragments when an exact PO key does not match.
+	if localized == text:
+		localized = localized.replace("Buff self Strength +2.\nDebuff self Speed -5.", "Erhoeht eigene STR um +2.\nSenkt eigene SPD um 5.")
+		localized = localized.replace("Buff self Strength +2.", "Erhoeht eigene STR um +2.")
+		localized = localized.replace("Debuff self Speed -5.", "Senkt eigene SPD um 5.")
+		localized = localized.replace("Debuff enemy Strength -5.", "Senkt die gegnerische STR um 5.")
+		localized = localized.replace("self", "eigene")
+		localized = localized.replace("target", "Ziel")
+		localized = localized.replace("enemy", "Gegner")
+
+	return localized
 
 func _clear_attack_info() -> void:
 	if attack_info_name == null:
 		return
-	attack_info_name.text = "Hover: Attack"
+	attack_info_name.text = tr("Hover: Attack")
 	attack_info_description.text = ""
-	attack_info_power.text = "Power: -"
-	attack_info_element.text = "MTElement: -"
-	attack_info_energy.text = "Energy Cost: -"
-	attack_info_accuracy.text = "Accuracy: -"
-	attack_info_priority.text = "Priority: -"
+	attack_info_power.text = tr("Power: -")
+	attack_info_element.text = tr("Element: -")
+	attack_info_energy.text = tr("Energy Cost: -")
+	attack_info_accuracy.text = tr("Accuracy: -")
+	attack_info_priority.text = tr("Priority: -")
 
 func _register_menu_button(button: Button) -> void:
 	button.focus_mode = Control.FOCUS_ALL
@@ -589,6 +698,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		_activate_focused_button()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("ui_cancel"):
+		if current_menu == "team_status" and _status_team != null and _status_monster != null:
+			_show_monster_options(_status_team, _status_index, _status_monster)
+			get_viewport().set_input_as_handled()
+			return
+		if current_menu == "team_options" and current_team != null:
+			show_team(current_team)
+			get_viewport().set_input_as_handled()
+			return
+		if _forced_switch_mode:
+			get_viewport().set_input_as_handled()
+			return
 		if current_menu != "main":
 			show_main_menu(current_monster, current_team, battle_controller)
 			get_viewport().set_input_as_handled()

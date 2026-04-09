@@ -359,16 +359,16 @@ func _on_battle_finished(winner_team_index: int) -> void:
 	_award_battle_rewards(winner_team_index, finished_interaction)
 	if winner_team_index == 0 and finished_interaction == "elite_pack":
 		_elite_cleared_this_floor = true
-		_enqueue_message("Elite pack defeated. The path to the stairs is now open.")
+		_enqueue_message(tr("Elite pack defeated. The path to the stairs is now open."))
 		if Game != null:
 			Game.add_soul_essence(elite_battle_soul_essence)
-			_enqueue_message("Soul Essence +%d" % elite_battle_soul_essence)
+			_enqueue_message(tr("Soul Essence +%d") % elite_battle_soul_essence)
 	
 	if winner_team_index == 0 and finished_interaction == "dungeon_quest_thief":
 		_active_quest["completed"] = true
 		if _quest_npc != null:
 			_set_npc_active(_quest_npc, false, Vector2i.ZERO)
-		_enqueue_message("Quest Complete: You defeated the thief!")
+		_enqueue_message(tr("Quest Complete: You defeated the thief!"))
 		_award_quest_rewards()
 		_log_dungeon("[Dungeon] quest completed type=thief")
 	
@@ -380,21 +380,21 @@ func _on_battle_finished(winner_team_index: int) -> void:
 			var needed: int = _active_quest.get("monsters_needed", 2)
 			if killed >= needed:
 				_active_quest["ready_to_turn_in"] = true
-				_enqueue_message("Hunt complete. Return to the hunter for your reward.")
+				_enqueue_message(tr("Hunt complete. Return to the hunter for your reward."))
 				_log_dungeon("[Dungeon] quest hunt ready_to_turn_in kills=%d" % killed)
 	
 	if winner_team_index == 1:
 		_boss_battle_active = false
 		_pending_return_to_hub = true
-		_enqueue_message("You were defeated. Returning to the city.")
+		_enqueue_message(tr("You were defeated. Returning to the city."))
 		return
 	if _boss_battle_active and winner_team_index == 0:
 		_boss_battle_active = false
 		_pending_return_to_hub = true
 		if Game != null:
 			Game.add_soul_essence(boss_battle_soul_essence)
-			_enqueue_message("Soul Essence +%d" % boss_battle_soul_essence)
-		_enqueue_message("Boss defeated! Returning to the city.")
+			_enqueue_message(tr("Soul Essence +%d") % boss_battle_soul_essence)
+		_enqueue_message(tr("Boss defeated! Returning to the city."))
 
 #  Floor advancement 
 
@@ -404,7 +404,7 @@ func _advance_floor() -> void:
 	current_floor += 1
 	_layout_seed = 0  # fresh layout per floor
 	_apply_floor_rules(true)
-	_enqueue_message("Floor %d / %d" % [current_floor, floor_count])
+	_enqueue_message(tr("Floor %d / %d") % [current_floor, floor_count])
 
 func _apply_floor_rules(reset_player: bool) -> void:
 	current_floor = clamp(current_floor, 1, max(floor_count, 1))
@@ -796,7 +796,7 @@ func _handle_room_entry_trigger() -> bool:
 
 	var room_type := str(_room_type_by_index.get(room_index, ROOM_TYPE_NORMAL))
 	if room_type == ROOM_TYPE_ELITE:
-		_enqueue_message("An elite presence fills this room.")
+		_enqueue_message(tr("An elite presence fills this room."))
 		return true
 	return false
 
@@ -813,14 +813,14 @@ func _handle_loose_item(npc) -> bool:
 	var item_data: MTItemData = ITEM_DB_CLASS.new().get_item(item_id)
 	var item_name := item_data.name if item_data != null else item_id
 	_set_npc_active(npc, false, Vector2i.ZERO)
-	_enqueue_message("You picked up %s!" % item_name)
+	_enqueue_message(tr("You picked up %s!") % item_name)
 	return true
 
 func _handle_healing_spring(npc) -> bool:
 	var healed := _heal_party_percent(0.40)
 	var energized := _restore_party_energy_percent(0.40)
 	_set_npc_active(npc, false, Vector2i.ZERO)
-	_enqueue_message("Healing Spring: Your team is refreshed. (%d healed, %d recharged)" % [healed, energized])
+	_enqueue_message(tr("Healing Spring: Your team is refreshed. (%d healed, %d recharged)") % [healed, energized])
 	_log_dungeon("[Dungeon] healing spring used healed=%d energized=%d" % [healed, energized])
 	return true
 
@@ -829,7 +829,7 @@ func _handle_gold_stash(npc) -> bool:
 	_set_npc_active(npc, false, Vector2i.ZERO)
 	if Game != null:
 		Game.add_run_gold(amount)
-	_enqueue_message("You found a gold stash! Gold +%d" % amount)
+	_enqueue_message(tr("You found a gold stash! Gold +%d") % amount)
 	_log_dungeon("[Dungeon] gold stash amount=%d" % amount)
 	return true
 
@@ -838,14 +838,14 @@ func _handle_essence_cache(npc) -> bool:
 	_set_npc_active(npc, false, Vector2i.ZERO)
 	if Game != null:
 		Game.add_soul_essence(amount)
-	_enqueue_message("Soul Essence Cache: You absorb the power. Soul Essence +%d" % amount)
+	_enqueue_message(tr("Soul Essence Cache: You absorb the power. Soul Essence +%d") % amount)
 	_log_dungeon("[Dungeon] essence cache amount=%d" % amount)
 	return true
 
 func _handle_status_trap(npc) -> bool:
 	_set_npc_active(npc, false, Vector2i.ZERO)
 	if Game == null or Game.party.is_empty():
-		_enqueue_message("A trap springs! But there is nothing to harm.")
+		_enqueue_message(tr("A trap springs! But there is nothing to harm."))
 		return true
 	for monster in Game.party:
 		if monster == null:
@@ -855,8 +855,8 @@ func _handle_status_trap(npc) -> bool:
 			continue
 		var damage := int(ceil(m.get_max_hp() * 0.25))
 		m.hp = max(1, m.hp - damage)
-		var mname := m.data.name if m.data != null else "Monster"
-		_enqueue_message("It's a trap! %s lost %d HP!" % [mname, damage])
+		var mname := m.data.name if m.data != null else tr("Monster")
+		_enqueue_message(tr("It's a trap! %s lost %d HP!") % [mname, damage])
 		_log_dungeon("[Dungeon] status trap triggered hp_lost=%d" % damage)
 		break
 	return true
@@ -865,14 +865,14 @@ func _handle_monster_egg(npc) -> bool:
 	_set_npc_active(npc, false, Vector2i.ZERO)
 	if Game != null:
 		Game.add_item("monster_egg", 1)
-	_enqueue_message("You found a Monster Egg! It will hatch on the next floor.")
+	_enqueue_message(tr("You found a Monster Egg! It will hatch on the next floor."))
 	_log_dungeon("[Dungeon] monster egg picked up")
 	return true
 
 func _handle_cursed_altar(npc) -> bool:
 	_set_npc_active(npc, false, Vector2i.ZERO)
 	if Game == null:
-		_enqueue_message("The altar pulses with dark energy, but nothing happens.")
+		_enqueue_message(tr("The altar pulses with dark energy, but nothing happens."))
 		return true
 	var total_lost := 0
 	for monster in Game.party:
@@ -887,13 +887,13 @@ func _handle_cursed_altar(npc) -> bool:
 	var gold_gain := 10 + current_floor * 2
 	Game.add_soul_essence(1)
 	Game.add_run_gold(gold_gain)
-	_enqueue_message("Cursed Altar: Your team suffers %d total damage... Soul Essence +1, Gold +%d." % [total_lost, gold_gain])
+	_enqueue_message(tr("Cursed Altar: Your team suffers %d total damage... Soul Essence +1, Gold +%d.") % [total_lost, gold_gain])
 	_log_dungeon("[Dungeon] cursed altar used hp_lost=%d gold=%d" % [total_lost, gold_gain])
 	return true
 
 func _handle_secret_vault(npc) -> bool:
 	if Game == null or Game.get_item_count("secret_key") <= 0:
-		_enqueue_message("Locked. You need a Secret Key to open this vault.")
+		_enqueue_message(tr("Locked. You need a Secret Key to open this vault."))
 		return true
 	Game.remove_item("secret_key", 1)
 	_set_npc_active(npc, false, Vector2i.ZERO)
@@ -905,7 +905,7 @@ func _handle_secret_vault(npc) -> bool:
 	if Game != null:
 		Game.add_run_gold(gold)
 		Game.add_soul_essence(2)
-	_enqueue_message("Secret Vault opened! Found items, Gold +%d, and Soul Essence +2!" % gold)
+	_enqueue_message(tr("Secret Vault opened! Found items, Gold +%d, and Soul Essence +2!") % gold)
 	_log_dungeon("[Dungeon] secret vault opened gold=%d" % gold)
 	return true
 
@@ -913,7 +913,7 @@ func _check_monster_egg_hatch() -> void:
 	if Game == null or Game.get_item_count("monster_egg") <= 0:
 		return
 	if Game.party.size() >= 6:
-		_enqueue_message("Your egg is ready to hatch, but your team is full!")
+		_enqueue_message(tr("Your egg is ready to hatch, but your team is full!"))
 		return
 	Game.remove_item("monster_egg", 1)
 	var monster_data := _pick_monster_for_habitat()
@@ -924,7 +924,7 @@ func _check_monster_egg_hatch() -> void:
 	new_monster._recalculate_stats()
 	new_monster.hp = new_monster.get_max_hp()
 	Game.party.append(new_monster)
-	_enqueue_message("Your Monster Egg hatched! %s joined your team!" % monster_data.name)
+	_enqueue_message(tr("Your Monster Egg hatched! %s joined your team!") % monster_data.name)
 	_log_dungeon("[Dungeon] monster egg hatched monster=%s level=%d" % [monster_data.name, new_monster.level])
 
 #  Floor Goal System 
@@ -945,13 +945,13 @@ func _is_floor_goal_satisfied() -> bool:
 func _get_goal_blocked_message() -> String:
 	match _current_floor_goal:
 		FLOOR_GOAL_TYPE.ELITE:
-			return "A powerful presence blocks your descent. Defeat the elite room first."
+			return tr("A powerful presence blocks your descent. Defeat the elite room first.")
 		FLOOR_GOAL_TYPE.KEY:
-			return "The stairs are sealed. You must find the key on this floor."
+			return tr("The stairs are sealed. You must find the key on this floor.")
 		FLOOR_GOAL_TYPE.PUZZLE:
-			return "The stairs are sealed. You must activate all 3 switches (%d/%d)." % [_switches_activated, _switches_total]
+			return tr("The stairs are sealed. You must activate all 3 switches (%d/%d).") % [_switches_activated, _switches_total]
 		_:
-			return "You cannot proceed."
+			return tr("You cannot proceed.")
 
 func _handle_puzzle_switch_interaction(npc, interaction: String) -> bool:
 	# Parse switch number from interaction_id "dungeon_switch_1" -> 1
@@ -964,13 +964,13 @@ func _handle_puzzle_switch_interaction(npc, interaction: String) -> bool:
 	_switches_activated += 1
 	_set_npc_active(npc, false, Vector2i.ZERO)
 	
-	var progress_msg := "Switch %d activated! (%d/%d)" % [switch_num, _switches_activated, _switches_total]
+	var progress_msg := tr("Switch %d activated! (%d/%d)") % [switch_num, _switches_activated, _switches_total]
 	_enqueue_message(progress_msg)
 	_log_dungeon("[Dungeon] puzzle switch %d activated progress=%d/%d" % [switch_num, _switches_activated, _switches_total])
 	
 	# Check if all switches are activated
 	if _switches_activated >= _switches_total:
-		_enqueue_message("All switches activated! The stairs are now open.")
+		_enqueue_message(tr("All switches activated! The stairs are now open."))
 		_log_dungeon("[Dungeon] puzzle completed all switches activated")
 	
 	return true
@@ -1012,7 +1012,7 @@ func _reset_floor_quest_state() -> void:
 
 func _handle_merchant_shop(_npc) -> bool:
 	if merchant_shop_items.is_empty():
-		_enqueue_message("Merchant: I'm out of stock for this run.")
+		_enqueue_message(tr("Merchant: I'm out of stock for this run."))
 		return true
 	_open_merchant_shop()
 	return true
@@ -1058,7 +1058,7 @@ func _handle_key_interaction(npc) -> bool:
 	_key_found_this_floor = true
 	_set_npc_active(npc, false, Vector2i.ZERO)
 	
-	_enqueue_message("You found the key! The stairs are now accessible.")
+	_enqueue_message(tr("You found the key! The stairs are now accessible."))
 	_log_dungeon("[Dungeon] key found and picked up")
 	
 	return true

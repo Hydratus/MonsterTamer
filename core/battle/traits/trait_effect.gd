@@ -2,13 +2,13 @@ extends Resource
 class_name MTTraitEffect
 
 # Wird beim Hinzufügen aufgerufen
-func on_apply(monster) -> void:
+func on_apply(_monster) -> void:
 	pass
 
 # Schadensmodifikation
-func modify_damage(attacker, defender, damage: float, action) -> float:
+func modify_damage(_attacker, _defender, damage: float, _action) -> float:
 	return damage
 
 # Stat-Modifikation
-func modify_stat(monster, stat: int, value: int) -> int:
+func modify_stat(_monster, _stat: int, value: int) -> int:
 	return value

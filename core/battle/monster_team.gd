@@ -10,7 +10,13 @@ var active_monster_index: int = 0
 # Initialisiere das Team
 func _init(team_monsters: Array[MTMonsterInstance]):
 	monsters = team_monsters
-	active_monster_index = 0
+	active_monster_index = _find_first_alive_index()
+
+func _find_first_alive_index() -> int:
+	for i in range(monsters.size()):
+		if monsters[i] != null and monsters[i].is_alive():
+			return i
+	return -1
 
 # Bekomme das aktuelle aktive Monster
 func get_active_monster() -> MTMonsterInstance:
@@ -80,6 +86,22 @@ func get_alive_count() -> int:
 			count += 1
 	return count
 
+func swap_positions(index_a: int, index_b: int) -> bool:
+	if index_a < 0 or index_b < 0:
+		return false
+	if index_a >= monsters.size() or index_b >= monsters.size():
+		return false
+	if index_a == index_b:
+		return true
+	var temp: MTMonsterInstance = monsters[index_a]
+	monsters[index_a] = monsters[index_b]
+	monsters[index_b] = temp
+	if active_monster_index == index_a:
+		active_monster_index = index_b
+	elif active_monster_index == index_b:
+		active_monster_index = index_a
+	return true
+
 func remove_monster(monster: MTMonsterInstance) -> bool:
 	if monster == null:
 		return false
@@ -95,15 +117,12 @@ func remove_monster_at(index: int) -> MTMonsterInstance:
 	var removed: MTMonsterInstance = monsters[index]
 	monsters.remove_at(index)
 	if monsters.is_empty():
-		active_monster_index = 0
+		active_monster_index = -1
 		return removed
 	if index < active_monster_index:
 		active_monster_index -= 1
 	elif index == active_monster_index:
 		active_monster_index = min(active_monster_index, monsters.size() - 1)
 		if monsters[active_monster_index] == null or not monsters[active_monster_index].is_alive():
-			for i in range(monsters.size()):
-				if monsters[i] != null and monsters[i].is_alive():
-					active_monster_index = i
-					break
+			active_monster_index = _find_first_alive_index()
 	return removed

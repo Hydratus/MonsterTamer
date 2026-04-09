@@ -225,8 +225,8 @@ static func clear_dynamic_npcs(owner) -> void:
 
 static func create_battle_npc_data(owner, index: int) -> MTNPCData:
 	var data := NPCDataClass.new()
-	data.display_name = "Wanderer %d" % index
-	data.dialogue_before = "The dungeon belongs to the strongest."
+	data.display_name = TranslationServer.translate("Wanderer %d") % index
+	data.dialogue_before = TranslationServer.translate("The dungeon belongs to the strongest.")
 	data.battle_once = true
 	data.walk_enabled = false
 	var team_size: int = 1 if owner.current_floor < 3 else 2
@@ -239,8 +239,8 @@ static func create_battle_npc_data(owner, index: int) -> MTNPCData:
 
 static func create_item_npc_data(owner, index: int) -> MTNPCData:
 	var data := NPCDataClass.new()
-	data.display_name = "Explorer %d" % index
-	data.dialogue_before = "Found this on this floor. Take it."
+	data.display_name = TranslationServer.translate("Explorer %d") % index
+	data.dialogue_before = TranslationServer.translate("Found this on this floor. Take it.")
 	data.gives_items = true
 	data.give_item_amount = 1
 	data.battle_once = true
@@ -252,9 +252,9 @@ static func create_item_npc_data(owner, index: int) -> MTNPCData:
 
 static func create_elite_npc_data(owner) -> MTNPCData:
 	var data := NPCDataClass.new()
-	data.display_name = "Elite"
-	data.dialogue_before = "A concentrated pack of wild monsters surrounds you."
-	data.dialogue_after = "The elite pack has been defeated."
+	data.display_name = TranslationServer.translate("Elite")
+	data.dialogue_before = TranslationServer.translate("A concentrated pack of wild monsters surrounds you.")
+	data.dialogue_after = TranslationServer.translate("The elite pack has been defeated.")
 	data.interaction_id = "elite_pack"
 	data.battle_once = true
 	data.walk_enabled = false
@@ -268,9 +268,9 @@ static func create_elite_npc_data(owner) -> MTNPCData:
 
 static func create_mimic_npc_data(owner) -> MTNPCData:
 	var data := NPCDataClass.new()
-	data.display_name = "Mimic"
-	data.dialogue_before = "A lonely chest twitches... it was bait!"
-	data.dialogue_after = "The mimic vanishes into the shadows."
+	data.display_name = TranslationServer.translate("Mimic")
+	data.dialogue_before = TranslationServer.translate("A lonely chest twitches... it was bait!")
+	data.dialogue_after = TranslationServer.translate("The mimic vanishes into the shadows.")
 	data.interaction_id = "mimic_pack"
 	data.battle_once = true
 	data.walk_enabled = false
@@ -284,8 +284,8 @@ static func create_mimic_npc_data(owner) -> MTNPCData:
 
 static func create_puzzle_switch_npc_data(switch_number: int) -> MTNPCData:
 	var data := NPCDataClass.new()
-	data.display_name = "Switch %d" % switch_number
-	data.dialogue_before = "You activate the switch. A mechanism clicks into place."
+	data.display_name = TranslationServer.translate("Switch %d") % switch_number
+	data.dialogue_before = TranslationServer.translate("You activate the switch. A mechanism clicks into place.")
 	data.dialogue_after = ""
 	data.interaction_id = "dungeon_switch_%d" % switch_number
 	data.battle_once = false
@@ -294,8 +294,8 @@ static func create_puzzle_switch_npc_data(switch_number: int) -> MTNPCData:
 
 static func create_key_npc_data() -> MTNPCData:
 	var data := NPCDataClass.new()
-	data.display_name = "Glowing Key"
-	data.dialogue_before = "You pick up the ancient key. It glows with power."
+	data.display_name = TranslationServer.translate("Glowing Key")
+	data.dialogue_before = TranslationServer.translate("You pick up the ancient key. It glows with power.")
 	data.dialogue_after = ""
 	data.interaction_id = "dungeon_key"
 	data.battle_once = false
@@ -304,8 +304,8 @@ static func create_key_npc_data() -> MTNPCData:
 
 static func create_healing_spring_npc_data() -> MTNPCData:
 	var data := NPCDataClass.new()
-	data.display_name = "Healing Spring"
-	data.dialogue_before = "A bubbling spring glows with restorative energy. (Restores HP and Energy once)"
+	data.display_name = TranslationServer.translate("Healing Spring")
+	data.dialogue_before = TranslationServer.translate("A bubbling spring glows with restorative energy. (Restores HP and Energy once)")
 	data.dialogue_after = ""
 	data.interaction_id = "dungeon_healing_spring"
 	data.battle_once = false
@@ -314,8 +314,8 @@ static func create_healing_spring_npc_data() -> MTNPCData:
 
 static func create_gold_stash_npc_data() -> MTNPCData:
 	var data := NPCDataClass.new()
-	data.display_name = "Gold Chest"
-	data.dialogue_before = "A dusty chest rests here, filled with coins!"
+	data.display_name = TranslationServer.translate("Gold Chest")
+	data.dialogue_before = TranslationServer.translate("A dusty chest rests here, filled with coins!")
 	data.dialogue_after = ""
 	data.interaction_id = "dungeon_gold_stash"
 	data.battle_once = false
@@ -324,8 +324,8 @@ static func create_gold_stash_npc_data() -> MTNPCData:
 
 static func create_essence_cache_npc_data() -> MTNPCData:
 	var data := NPCDataClass.new()
-	data.display_name = "Soul Essence Cache"
-	data.dialogue_before = "A crystalline orb pulses with condensed Soul Essence."
+	data.display_name = TranslationServer.translate("Soul Essence Cache")
+	data.dialogue_before = TranslationServer.translate("A crystalline orb pulses with condensed Soul Essence.")
 	data.dialogue_after = ""
 	data.interaction_id = "dungeon_essence_cache"
 	data.battle_once = false
@@ -334,8 +334,8 @@ static func create_essence_cache_npc_data() -> MTNPCData:
 
 static func create_status_trap_npc_data() -> MTNPCData:
 	var data := NPCDataClass.new()
-	data.display_name = "Suspicious Rune"
-	data.dialogue_before = "Strange runes glow on the floor here... (Possible trap!)"
+	data.display_name = TranslationServer.translate("Suspicious Rune")
+	data.dialogue_before = TranslationServer.translate("Strange runes glow on the floor here... (Possible trap!)")
 	data.dialogue_after = ""
 	data.interaction_id = "dungeon_status_trap"
 	data.battle_once = false
@@ -344,8 +344,8 @@ static func create_status_trap_npc_data() -> MTNPCData:
 
 static func create_merchant_cache_npc_data() -> MTNPCData:
 	var data := NPCDataClass.new()
-	data.display_name = "Hidden Merchant Cache"
-	data.dialogue_before = "A small supply cache has been left behind by a passing merchant."
+	data.display_name = TranslationServer.translate("Hidden Merchant Cache")
+	data.dialogue_before = TranslationServer.translate("A small supply cache has been left behind by a passing merchant.")
 	data.dialogue_after = ""
 	data.interaction_id = "dungeon_merchant_cache"
 	data.battle_once = false
@@ -354,8 +354,8 @@ static func create_merchant_cache_npc_data() -> MTNPCData:
 
 static func create_monster_egg_npc_data() -> MTNPCData:
 	var data := NPCDataClass.new()
-	data.display_name = "Monster Egg"
-	data.dialogue_before = "A warm egg rests here. Something stirs inside..."
+	data.display_name = TranslationServer.translate("Monster Egg")
+	data.dialogue_before = TranslationServer.translate("A warm egg rests here. Something stirs inside...")
 	data.dialogue_after = ""
 	data.interaction_id = "dungeon_monster_egg"
 	data.battle_once = false
@@ -364,8 +364,8 @@ static func create_monster_egg_npc_data() -> MTNPCData:
 
 static func create_cursed_altar_npc_data() -> MTNPCData:
 	var data := NPCDataClass.new()
-	data.display_name = "Cursed Altar"
-	data.dialogue_before = "A dark altar radiates power. Risk your team's health for rewards?"
+	data.display_name = TranslationServer.translate("Cursed Altar")
+	data.dialogue_before = TranslationServer.translate("A dark altar radiates power. Risk your team's health for rewards?")
 	data.dialogue_after = ""
 	data.interaction_id = "dungeon_cursed_altar"
 	data.battle_once = false
@@ -376,7 +376,7 @@ static func create_loose_item_npc_data(item_id: String) -> MTNPCData:
 	var data := NPCDataClass.new()
 	var item_data = ITEM_DB_CLASS.new().get_item(item_id)
 	data.display_name = item_data.name if item_data != null else item_id
-	data.dialogue_before = "You find %s lying on the ground." % (item_data.name if item_data != null else item_id)
+	data.dialogue_before = TranslationServer.translate("You find %s lying on the ground.") % (item_data.name if item_data != null else item_id)
 	data.dialogue_after = ""
 	data.interaction_id = "dungeon_loose_item:" + item_id
 	data.battle_once = false
@@ -385,8 +385,8 @@ static func create_loose_item_npc_data(item_id: String) -> MTNPCData:
 
 static func create_secret_vault_npc_data() -> MTNPCData:
 	var data := NPCDataClass.new()
-	data.display_name = "Secret Vault"
-	data.dialogue_before = "A heavy iron vault. This requires a Secret Key to open."
+	data.display_name = TranslationServer.translate("Secret Vault")
+	data.dialogue_before = TranslationServer.translate("A heavy iron vault. This requires a Secret Key to open.")
 	data.dialogue_after = ""
 	data.interaction_id = "dungeon_secret_vault"
 	data.battle_once = false

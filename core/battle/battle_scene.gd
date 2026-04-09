@@ -21,6 +21,8 @@ var _evolution_decision_callback: Callable
 var _evolution_input_blocked := false
 var _evolution_prompt_token: int = 0
 var _resume_menu_after_message := false
+var _resume_after_forced_switch := false
+var _pending_forced_switch_team_index := -1
 var _release_layer: CanvasLayer
 var _release_panel: PanelContainer
 var _release_list: VBoxContainer
@@ -52,6 +54,8 @@ func _ready():
 	if menu == null:
 		push_error("Battle menu node not found. Expected 'BattleMenu' or 'MTBattleMenu'.")
 		return
+	if not menu.forced_switch_selected.is_connected(Callable(self, "_on_forced_switch_selected")):
+		menu.forced_switch_selected.connect(Callable(self, "_on_forced_switch_selected"))
 
 	# Erstelle HUD als CanvasLayer
 	var hud_layer = CanvasLayer.new()
@@ -180,6 +184,39 @@ func show_player_menu(monster: MTMonsterInstance):
 	
 	menu.show_main_menu(monster, player_team_instance, battle)
 
+func show_forced_switch_menu(team_index: int) -> void:
+	if menu == null or battle == null:
+		return
+	if team_index < 0 or team_index >= battle.teams.size():
+		return
+	var team: MTMonsterTeam = battle.teams[team_index]
+	if team == null:
+		return
+	_pending_forced_switch_team_index = team_index
+	menu.show_team(team, true, team_index)
+
+func _on_forced_switch_selected(monster_index: int) -> void:
+	if battle == null:
+		return
+	var team_index := _pending_forced_switch_team_index
+	if team_index < 0 or team_index >= battle.teams.size():
+		return
+	var team: MTMonsterTeam = battle.teams[team_index]
+	if team == null:
+		return
+	if not team.switch_to_monster(monster_index):
+		return
+	var new_monster := team.get_active_monster()
+	if new_monster == null:
+		return
+	var team_name := tr("Player") if team_index == 0 else tr("Enemy")
+	battle.log_message(tr("%s sent out %s!") % [team_name, new_monster.data.name])
+	flush_action_messages()
+	_pending_forced_switch_team_index = -1
+	_resume_after_forced_switch = true
+	menu.hide_menu()
+	show_battle_messages()
+
 func _on_menu_action_selected(attack: MTAttackData):
 	# Nutze das aktuell aktive Monster aus dem Menu
 	var active_monster = menu.current_monster
@@ -188,7 +225,7 @@ func _on_menu_action_selected(attack: MTAttackData):
 		return
 	if active_monster.energy < attack.energy_cost:
 		_resume_menu_after_message = true
-		_show_instant_battle_message("%s is too exhausted to use %s!" % [active_monster.data.name, attack.name])
+		_show_instant_battle_message(tr("%s is too exhausted to use %s!") % [active_monster.data.name, TranslationServer.translate(attack.name)])
 		return
 	
 	print("DEBUG: Angriff ausgewählt für %s: %s" % [active_monster.data.name, attack.name])
@@ -212,7 +249,7 @@ func _on_menu_escape_battle():
 		return
 	if not escape_allowed:
 		_resume_menu_after_message = true
-		_show_instant_battle_message("Escape is not possible here.")
+		_show_instant_battle_message(tr("Escape is not possible here."))
 		return
 	menu.hide_menu()
 	battle.submit_player_escape(active_monster)
@@ -226,11 +263,11 @@ func _on_menu_item_used(item: MTItemData, target: MTMonsterInstance):
 		actual_target = battle.get_opponent(active_monster)
 		if actual_target == null:
 			_resume_menu_after_message = true
-			_show_instant_battle_message("Couldn't use!")
+			_show_instant_battle_message(tr("Couldn't use!"))
 			return
 	if not _can_use_item_in_battle(item, actual_target):
 		_resume_menu_after_message = true
-		_show_instant_battle_message("Couldn't use!")
+		_show_instant_battle_message(tr("Couldn't use!"))
 		return
 	menu.hide_menu()
 	battle.submit_player_item(active_monster, item, actual_target)
@@ -373,6 +410,8 @@ func _on_messages_completed():
 	if _run_pending_message_steps_until_message():
 		show_battle_messages()
 		return
+	if _pending_forced_switch_team_index >= 0:
+		return
 
 	# Alle Messages wurden angezeigt, gehe zurück zum Battle Controller
 	message_box.clear_messages()  # Bereite MessageBox für nächste Action vor
@@ -383,6 +422,11 @@ func _on_messages_completed():
 			menu.set_input_locked(false)
 			if menu.current_menu == "inventory":
 				menu.focus_item_menu_first()
+		return
+	if _resume_after_forced_switch:
+		_resume_after_forced_switch = false
+		if battle != null:
+			battle.change_state(MTStartRoundState.new())
 		return
 	if _try_handle_pending_release():
 		return
@@ -409,12 +453,12 @@ func perform_capture_attempt(actor: MTMonsterInstance, target: MTMonsterInstance
 	rng.randomize()
 	var roll := rng.randf_range(0.0, 100.0)
 	var user_name := get_item_user_name(actor)
-	battle.log_message("%s uses %s!" % [user_name, item.name])
+	battle.log_message(tr("%s uses %s!") % [user_name, TranslationServer.translate(item.name)])
 	if roll <= chance:
-		battle.log_message("%s was successfully bound!" % target.data.name)
+		battle.log_message(tr("%s was successfully bound!") % target.data.name)
 		_handle_capture_success(target)
 	else:
-		battle.log_message("%s broke free!" % target.data.name)
+		battle.log_message(tr("%s broke free!") % target.data.name)
 
 func _calculate_capture_chance(target: MTMonsterInstance, item: MTItemData) -> float:
 	var base_rate := float(clamp(target.data.base_catch_rate, 1, 100))
@@ -507,7 +551,7 @@ func _try_handle_pending_release() -> bool:
 func _show_release_prompt() -> void:
 	_release_prompt_active = true
 	_release_layer.visible = true
-	_show_bottom_prompt("Team is full. Choose a monster to release.")
+	_show_bottom_prompt(tr("Team is full. Choose a monster to release."))
 	_clear_release_list()
 	var team := _pending_release_team
 	if team != null:
@@ -517,9 +561,9 @@ func _show_release_prompt() -> void:
 				continue
 			var suffix := ""
 			if monster == _pending_release_new_monster:
-				suffix = " (New)"
+				suffix = tr(" (New)")
 			var button := Button.new()
-			button.text = "%s Lv%d%s" % [monster.data.name, monster.level, suffix]
+			button.text = tr("%s Lv%d%s") % [monster.data.name, monster.level, suffix]
 			var index := i
 			button.pressed.connect(func():
 				_on_release_selected(index)
@@ -568,7 +612,7 @@ func get_item_user_name(actor: MTMonsterInstance) -> String:
 			return player_soulbinder_name
 		if actor.decision is MTAIDecision:
 			return enemy_soulbinder_name
-	return "Soulbinder"
+	return tr("Soulbinder")
 
 func _create_evolution_prompt_ui() -> void:
 	evolution_layer = CanvasLayer.new()
@@ -606,12 +650,12 @@ func _create_evolution_prompt_ui() -> void:
 	vbox.add_child(hbox)
 
 	evolution_yes_button = Button.new()
-	evolution_yes_button.text = "Yes"
+	evolution_yes_button.text = tr("Yes")
 	hbox.add_child(evolution_yes_button)
 	evolution_yes_button.pressed.connect(_on_evolution_yes_pressed)
 
 	evolution_no_button = Button.new()
-	evolution_no_button.text = "No"
+	evolution_no_button.text = tr("No")
 	hbox.add_child(evolution_no_button)
 	evolution_no_button.pressed.connect(_on_evolution_no_pressed)
 
@@ -623,7 +667,7 @@ func _show_evolution_prompt(monster: MTMonsterInstance, on_decision: Callable) -
 		var evolution_data := monster.data.evolution as MTEvolutionData
 		if evolution_data != null and evolution_data.evolved_monster != null:
 			evolved_name = evolution_data.evolved_monster.name
-	var text := "%s tries to evolve into %s.\nDo you want to evolve %s?" % [monster.data.name, evolved_name, monster.data.name]
+	var text := tr("%s tries to evolve into %s.\nDo you want to evolve %s?") % [monster.data.name, evolved_name, monster.data.name]
 	evolution_layer.visible = true
 	evolution_yes_button.grab_focus()
 	_evolution_decision_callback = on_decision
@@ -698,7 +742,7 @@ func _try_handle_pending_evolution() -> bool:
 		if accept:
 			monster.apply_evolution(Callable(battle, "log_message"))
 		else:
-			battle.log_message("%s did not evolve." % monster.data.name)
+			battle.log_message(tr("%s did not evolve.") % monster.data.name)
 
 		if message_box != null:
 			flush_action_messages()
