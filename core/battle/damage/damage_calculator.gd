@@ -29,7 +29,6 @@ static func calculate_damage(action: MTBattleAction) -> Dictionary:
 			"stab": 1.0,
 			"is_crit": false
 		}
-	print("Traits:", attacker.passive_traits)
 
 	# ----------------------------
 	# ATTACK / DEFENSE

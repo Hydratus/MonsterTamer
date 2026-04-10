@@ -23,5 +23,10 @@ func execute(controller = null) -> Variant:
 		var team = controller.teams[team_index]
 		var new_monster = team.get_active_monster()
 		var team_name = TranslationServer.translate("Player") if team_index == 0 else TranslationServer.translate("Enemy")
-		controller.log_message(TranslationServer.translate("%s switched to %s!") % [team_name, new_monster.data.name])
+		controller.log_message(TranslationServer.translate("%s switched to %s!") % [team_name, _monster_name(new_monster)])
 	return null
+
+func _monster_name(monster: MTMonsterInstance) -> String:
+	if monster == null or monster.data == null:
+		return TranslationServer.translate("Unknown")
+	return monster.data.name

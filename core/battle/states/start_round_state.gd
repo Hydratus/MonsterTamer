@@ -2,9 +2,7 @@ extends MTBattleState
 class_name MTStartRoundState
 
 func enter(battle):
-	print("--- Round Start ---")
-	if battle.scene != null and battle.scene.has_method("update_hud_with_active"):
-		battle.scene.update_hud_with_active()
+	battle.update_hud_with_active()
 	var logger := Callable(battle, "log_message")
 
 	var ordered_entries := _get_round_start_entries(battle)
@@ -13,20 +11,13 @@ func enter(battle):
 		for trait_effect in monster.passive_traits:
 			if trait_effect == null:
 				continue
-			var message_count_before := 0
-			if battle.scene != null and battle.scene.message_box != null:
-				message_count_before = battle.scene.message_box.current_action_messages.size()
-
 			_apply_round_start_trait(logger, monster, trait_effect)
+			if battle.has_pending_action_messages():
+				battle.flush_action_messages()
 
-			if battle.scene == null or battle.scene.message_box == null:
-				continue
-			if battle.scene.message_box.current_action_messages.size() > message_count_before:
-				battle.scene.flush_action_messages()
-
-	if battle.scene != null and battle.scene.message_box.current_action_messages.size() > 0:
-		battle.scene.flush_action_messages()
-		battle.scene.show_battle_messages()
+	if battle.has_pending_action_messages():
+		battle.flush_action_messages()
+		battle.show_battle_messages()
 		return
 
 	battle.change_state(MTCollectActionsState.new())

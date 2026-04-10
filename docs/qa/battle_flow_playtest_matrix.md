@@ -11,6 +11,75 @@ Schneller manueller Regression-Check fuer den kompletten Kampf-Flow nach den let
   - NPC-/Elite-/Boss-Kaempfen
   - Healing Spring Event im Dungeon
 
+## Phase-3 Quick Smoke (5-10 Minuten)
+
+### A) Action-Reihenfolge bleibt stabil (Sortierung)
+Schritte:
+1. Kampf mit zwei Monstern starten, die gleiche Prioritaet verwenden.
+2. Mehrere Runden hintereinander identische Aktionen auswaehlen.
+
+Soll:
+- Keine zufaelligen Reihenfolgespruenge bei gleicher Situation.
+- Bei unterschiedlichen Initiativen handelt das schnellere Monster zuerst.
+
+### B) Evolution/Level-Up ohne Datenkorruption
+Schritte:
+1. Monster bis zum Level-Up bringen (mit Lern- oder Evolutionschance).
+2. Nach Evolution/Learn erneut Kampf starten.
+
+Soll:
+- Name/Stats passen nach Evolution.
+- Attacken und Traits bleiben konsistent.
+- Kein Ueberschreiben anderer Monster derselben Spezies.
+
+### C) Encounter-Fallback und Sanitizing
+Schritte:
+1. In HUB und Dungeon mindestens je einen Wildkampf triggern.
+2. Mehrfach betreten/verlassen (Hub -> Dungeon -> Hub).
+
+Soll:
+- Immer gueltiges Encounter-Team erzeugt.
+- Keine leeren Wildkaempfe.
+- Keine Fehlermeldung wegen invalider Encounter-Eintraege.
+
+### D) Merchant/Item-ID Validierung
+Schritte:
+1. Merchant im Dungeon oeffnen und mindestens 1 Item kaufen.
+2. Item direkt danach im Menue verwenden.
+
+Soll:
+- Shop listet nur valide kaufbare Items.
+- Kauf reduziert Gold korrekt und erhoeht Inventar korrekt.
+- Keine silent fails bei unbekannten Item-IDs.
+
+### E) Messaging/Flow nach Entkopplung
+Schritte:
+1. Kampf mit mehreren Message-Bloecken spielen (Treffer, Crit, Level-Up, Learn).
+2. Auf Reihenfolge und Vollstaendigkeit der Meldungen achten.
+
+Soll:
+- Meldungen erscheinen in konsistenter Reihenfolge.
+- Keine ausgelassenen oder doppelt geflushten Message-Bloecke.
+
+### F) Adapter-Integration (Controller <-> Scene)
+Schritte:
+1. Kampf starten und sofort Menue oeffnen/schliessen.
+2. Mindestens je 1x Attack, Item, Rest, Forced Switch ausfuehren.
+3. Kampf bis Ende durchspielen.
+
+Soll:
+- Keine Runtime-Fehler wegen fehlender Scene-Methoden.
+- Menue/Message/HUD reagieren in jeder Phase normal.
+- Battle-Ende wird sauber an die Overworld zurueckgegeben.
+
+Automatisierte Abdeckung:
+- `adapter_message_bridge`
+- `adapter_ui_bridge`
+- `adapter_item_bridge`
+
+Diese beiden Checks laufen in:
+- `res://core/battle/tests/battle_smoke_tests.gd`
+
 ## Testfaelle
 
 ### 1) Wildkampf: Escape erlaubt

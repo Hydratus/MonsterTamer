@@ -229,6 +229,26 @@ func _ready() -> void:
 	_apply_all_settings()
 	_show_section("team")
 
+func _exit_tree() -> void:
+	# Cleanup signal connections to prevent memory leaks
+	if is_node_ready():
+		if _settings_tabs.tab_changed.is_connected(_on_settings_tab_changed):
+			_settings_tabs.tab_changed.disconnect(_on_settings_tab_changed)
+		if _team_button.pressed.is_connected(_on_team_pressed):
+			_team_button.pressed.disconnect(_on_team_pressed)
+		if _settings_button.pressed.is_connected(_on_settings_pressed):
+			_settings_button.pressed.disconnect(_on_settings_pressed)
+		if _inventory_button.pressed.is_connected(_on_inventory_pressed):
+			_inventory_button.pressed.disconnect(_on_inventory_pressed)
+		if _close_button.pressed.is_connected(_on_close_pressed):
+			_close_button.pressed.disconnect(_on_close_pressed)
+		if _end_game_button.pressed.is_connected(_on_end_game_pressed):
+			_end_game_button.pressed.disconnect(_on_end_game_pressed)
+		if _item_menu.item_used.is_connected(_on_item_used):
+			_item_menu.item_used.disconnect(_on_item_used)
+		if Input.joy_connection_changed.is_connected(_on_joy_connection_changed):
+			Input.joy_connection_changed.disconnect(_on_joy_connection_changed)
+
 func _enter_inventory() -> void:
 	_show_section("inventory")
 	_active_section = "inventory"
@@ -281,12 +301,25 @@ func _apply_item_overworld(item: ItemDataClass, target: MTMonsterInstance) -> vo
 		target.hp = min(target.hp + amount, target.get_max_hp())
 		var healed := target.hp - before
 		if healed > 0:
-			Game.remove_item(item.id, 1)
-			item_used_message.emit(tr("Used %s on %s, healed %d HP.") % [TranslationServer.translate(item.name), target.data.name, healed])
+			var game = _get_game()
+			if game != null:
+				game.remove_item(item.id, 1)
+			item_used_message.emit(tr("Used %s on %s, healed %d HP.") % [TranslationServer.translate(item.name), _monster_name(target), healed])
 		else:
 			item_used_message.emit(tr("Couldn't use!"))
 	else:
 		item_used_message.emit(tr("Couldn't use!"))
+
+func _get_game():
+	var loop := Engine.get_main_loop()
+	if loop == null or not loop is SceneTree:
+		return null
+	return (loop as SceneTree).root.get_node_or_null("Game")
+
+func _monster_name(monster: MTMonsterInstance) -> String:
+	if monster == null or monster.data == null:
+		return tr("Unknown")
+	return monster.data.name
 
 func open(team: Array) -> void:
 	visible = true
@@ -665,7 +698,7 @@ func _update_team_list(team: Array) -> void:
 		entry_button.focus_mode = Control.FOCUS_NONE
 		entry_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		entry_button.text = tr("%s | Lv. %d | HP %d/%d | EN %d/%d\nSTR %d | MAG %d | DEF %d | RES %d | SPD %d") % [
-			member.data.name,
+			_monster_name(member),
 			member.level,
 			member.hp,
 			member.get_max_hp(),
@@ -1900,15 +1933,16 @@ func _build_team_options_view(index: int) -> void:
 	_team_buttons.clear()
 	for child in _team_list.get_children():
 		child.queue_free()
+	# Validate index bounds safely
 	if index < 0 or index >= _last_team.size():
 		return
 	var monster: MTMonsterInstance = _last_team[index] as MTMonsterInstance
-	if monster == null:
+	if monster == null:  # Validate object not null
 		return
 
 	var title := Label.new()
 	title.text = tr("%s  Lv. %d  |  HP %d/%d  |  EN %d/%d") % [
-		monster.data.name, monster.level,
+		_monster_name(monster), monster.level,
 		monster.hp, monster.get_max_hp(),
 		monster.energy, monster.get_max_energy()
 	]
@@ -1947,14 +1981,15 @@ func _build_team_switch_view(source_index: int) -> void:
 	_team_buttons.clear()
 	for child in _team_list.get_children():
 		child.queue_free()
+	# Validate index bounds safely
 	if source_index < 0 or source_index >= _last_team.size():
 		return
 	var source: MTMonsterInstance = _last_team[source_index] as MTMonsterInstance
-	if source == null:
+	if source == null:  # Validate object not null
 		return
 
 	var header := Label.new()
-	header.text = tr("Swap %s with ...") % source.data.name
+	header.text = tr("Swap %s with ...") % _monster_name(source)
 	_team_list.add_child(header)
 	_team_list.add_child(HSeparator.new())
 
@@ -1965,11 +2000,11 @@ func _build_team_switch_view(source_index: int) -> void:
 		var btn := Button.new()
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		if i == source_index:
-			btn.text = tr("► %s  Lv. %d  [current position]") % [m.data.name, m.level]
+			btn.text = tr("► %s  Lv. %d  [current position]") % [_monster_name(m), m.level]
 			btn.disabled = true
 			btn.focus_mode = Control.FOCUS_NONE
 		else:
-			btn.text = tr("%s  Lv. %d  |  HP %d/%d") % [m.data.name, m.level, m.hp, m.get_max_hp()]
+			btn.text = tr("%s  Lv. %d  |  HP %d/%d") % [_monster_name(m), m.level, m.hp, m.get_max_hp()]
 			btn.focus_mode = Control.FOCUS_ALL
 			var captured_i := i
 			btn.pressed.connect(func(): _team_finish_switch(captured_i))
@@ -1986,7 +2021,10 @@ func _team_finish_switch(target_index: int) -> void:
 		return
 	if target_index < 0 or target_index >= _last_team.size():
 		return
-	if not Game.swap_party_positions(source_index, target_index):
+	var game = _get_game()
+	if game == null:
+		return
+	if not game.swap_party_positions(source_index, target_index):
 		return
 	_team_sub_level = "list"
 	_team_selected_index = -1

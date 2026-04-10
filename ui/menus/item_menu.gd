@@ -241,10 +241,13 @@ func has_items_in_current_tab() -> bool:
 	return _tab_has_items(_tabs.current_tab)
 
 func _tab_has_items(tab_index: int) -> bool:
+	var game = _get_game()
+	if game == null:
+		return false
 	var items := ITEM_DB.new().get_all_items()
 	for item in items:
 		if item.category == tab_index:
-			var count: int = Game.get_item_count(item.id)
+			var count: int = game.get_item_count(item.id)
 			if count > 0:
 				return true
 	return false
@@ -255,12 +258,15 @@ func _show_items_for_tab(tab_index: int) -> void:
 	var list := _get_list_for_tab(tab_index)
 	_clear_list(list)
 	_buttons.clear()
+	var game = _get_game()
+	if game == null:
+		return
 
 	var items := ITEM_DB.new().get_all_items()
 	var filtered: Array[MTItemData] = []
 	for item in items:
 		if item.category == tab_index:
-			var count: int = Game.get_item_count(item.id)
+			var count: int = game.get_item_count(item.id)
 			if count > 0:
 				filtered.append(item)
 
@@ -279,7 +285,7 @@ func _show_items_for_tab(tab_index: int) -> void:
 		return
 
 	for item in filtered:
-		var count: int = Game.get_item_count(item.id)
+		var count: int = game.get_item_count(item.id)
 		var button := Button.new()
 		button.focus_mode = Control.FOCUS_ALL if _focus_enabled else Control.FOCUS_NONE
 		button.text = tr("%s x%d") % [TranslationServer.translate(item.name), count]
@@ -294,6 +300,12 @@ func _show_items_for_tab(tab_index: int) -> void:
 
 	if _auto_focus_content:
 		grab_first_focus()
+
+func _get_game():
+	var loop := Engine.get_main_loop()
+	if loop == null or not loop is SceneTree:
+		return null
+	return (loop as SceneTree).root.get_node_or_null("Game")
 
 func _on_item_pressed(item: MTItemData) -> void:
 	if item == null:
@@ -319,7 +331,7 @@ func _show_targets(item: MTItemData) -> void:
 			continue
 		var button := Button.new()
 		button.focus_mode = Control.FOCUS_ALL if _focus_enabled else Control.FOCUS_NONE
-		button.text = tr("%s %d/%d HP") % [monster.data.name, monster.hp, monster.get_max_hp()]
+		button.text = tr("%s %d/%d HP") % [_monster_name(monster), monster.hp, monster.get_max_hp()]
 		button.focus_entered.connect(func():
 			_ensure_scroll_visible(_get_scroll_for_tab(_tabs.current_tab), button)
 		)
@@ -330,6 +342,11 @@ func _show_targets(item: MTItemData) -> void:
 		_buttons.append(button)
 
 	grab_first_focus()
+
+func _monster_name(monster: MTMonsterInstance) -> String:
+	if monster == null or monster.data == null:
+		return tr("Unknown")
+	return monster.data.name
 
 func _get_list_for_tab(tab_index: int) -> VBoxContainer:
 	match tab_index:

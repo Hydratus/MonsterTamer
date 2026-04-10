@@ -22,6 +22,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 Game="*res://globals/game.gd"
+GameBalanceConstants="*res://core/systems/game_balance_constants.gd"
 
 [display]
 

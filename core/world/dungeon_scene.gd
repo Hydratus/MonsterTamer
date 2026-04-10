@@ -155,10 +155,22 @@ var _last_essence_display: int = -1
 func _log_dungeon(message: String) -> void:
 	_log_debug(message)
 
+func _has_game() -> bool:
+	return _get_game() != null
+
+func _get_game():
+	var loop := Engine.get_main_loop()
+	if loop == null or not loop is SceneTree:
+		return null
+	return (loop as SceneTree).root.get_node_or_null("Game")
+
+func _has_npc_data(npc) -> bool:
+	return npc != null and npc.npc_data != null
+
 func _touch_split_state_keepalive() -> void:
 	# Keep strict diagnostics aware of fields that are now manipulated by helpers.
 	if false:
-		print(
+		var _keepalive_refs := [
 			_dynamic_npcs,
 			_room_cells_lookup,
 			_corridor_cells_lookup,
@@ -178,12 +190,14 @@ func _touch_split_state_keepalive() -> void:
 			_currency_hud_label,
 			_last_gold_display,
 			_last_essence_display
-		)
+		]
+		_keepalive_refs.clear()
 
 func _ready() -> void:
 	_log_dungeon("[Dungeon] _ready() floor=%d  seed=%d" % [current_floor, generation_seed])
 	_touch_split_state_keepalive()
 	super._ready()
+	_validate_dungeon_item_pools()
 	_create_merchant_shop_ui()
 	_create_currency_hud()
 	_update_currency_hud(true)
@@ -265,7 +279,7 @@ func _is_grass_cell(cell: Vector2i) -> bool:
 #  NPC interaction hooks 
 
 func _handle_custom_npc_interaction(npc) -> bool:
-	if npc == null or npc.npc_data == null:
+	if not _has_npc_data(npc):
 		return false
 	var interaction: String = str(npc.npc_data.interaction_id)
 	if interaction == "dungeon_stairs" and current_floor < floor_count:
@@ -360,8 +374,9 @@ func _on_battle_finished(winner_team_index: int) -> void:
 	if winner_team_index == 0 and finished_interaction == "elite_pack":
 		_elite_cleared_this_floor = true
 		_enqueue_message(tr("Elite pack defeated. The path to the stairs is now open."))
-		if Game != null:
-			Game.add_soul_essence(elite_battle_soul_essence)
+		if _has_game():
+			var game = _get_game()
+			game.add_soul_essence(elite_battle_soul_essence)
 			_enqueue_message(tr("Soul Essence +%d") % elite_battle_soul_essence)
 	
 	if winner_team_index == 0 and finished_interaction == "dungeon_quest_thief":
@@ -391,8 +406,9 @@ func _on_battle_finished(winner_team_index: int) -> void:
 	if _boss_battle_active and winner_team_index == 0:
 		_boss_battle_active = false
 		_pending_return_to_hub = true
-		if Game != null:
-			Game.add_soul_essence(boss_battle_soul_essence)
+		if _has_game():
+			var game = _get_game()
+			game.add_soul_essence(boss_battle_soul_essence)
 			_enqueue_message(tr("Soul Essence +%d") % boss_battle_soul_essence)
 		_enqueue_message(tr("Boss defeated! Returning to the city."))
 
@@ -439,7 +455,7 @@ func _start_random_battle() -> void:
 	super._start_random_battle()
 
 func _start_npc_battle(npc) -> void:
-	if npc == null or npc.npc_data == null:
+	if not _has_npc_data(npc):
 		super._start_npc_battle(npc)
 		return
 	var interaction := str(npc.npc_data.interaction_id)
@@ -477,6 +493,40 @@ func _build_floor_encounters() -> void:
 			e.max_level = e.min_level + 2
 			e.weight = 10
 			encounter_table.append(e)
+	_sanitize_encounter_entries()
+
+func _validate_dungeon_item_pools() -> void:
+	var db := ITEM_DB_CLASS.new()
+	var valid_reward_pool: Array[String] = db.filter_valid_item_ids(item_reward_pool)
+	if valid_reward_pool.size() != item_reward_pool.size():
+		_log_dungeon("[Dungeon] filtered invalid item ids from reward pool")
+	item_reward_pool = valid_reward_pool
+
+	var valid_shop_items: Array[String] = db.filter_valid_item_ids(merchant_shop_items)
+	if valid_shop_items.size() != merchant_shop_items.size():
+		_log_dungeon("[Dungeon] filtered invalid item ids from merchant shop")
+	merchant_shop_items = valid_shop_items
+
+	if merchant_shop_prices.size() > merchant_shop_items.size():
+		merchant_shop_prices.resize(merchant_shop_items.size())
+
+	_sanitize_encounter_entries()
+
+func _sanitize_encounter_entries() -> void:
+	var valid: Array[MTEncounterEntry] = []
+	for entry in encounter_table:
+		if entry == null:
+			continue
+		if entry.monster == null:
+			continue
+		if entry.weight <= 0:
+			continue
+		if entry.min_level < 1:
+			entry.min_level = 1
+		if entry.max_level < entry.min_level:
+			entry.max_level = entry.min_level
+		valid.append(entry)
+	encounter_table = valid
 
 #  NPC caching 
 
@@ -495,7 +545,7 @@ func _cache_special_npcs() -> void:
 			npc.npc_data = BOSS_NPC_DATA
 
 	for npc in _npcs:
-		if npc == null or npc.npc_data == null:
+		if not _has_npc_data(npc):
 			continue
 		_npc_spawn_positions[npc] = npc.global_position
 		var interaction: String = str(npc.npc_data.interaction_id)
@@ -801,15 +851,16 @@ func _handle_room_entry_trigger() -> bool:
 	return false
 
 func _handle_loose_item(npc) -> bool:
-	if npc == null or npc.npc_data == null:
+	if not _has_npc_data(npc):
 		return true
 	var interaction: String = str(npc.npc_data.interaction_id)
 	var parts := interaction.split(":")
 	var item_id := "lesser_healing_potion"
 	if parts.size() >= 2:
 		item_id = parts[1]
-	if Game != null:
-		Game.add_item(item_id, 1)
+	if _has_game():
+		var game = _get_game()
+		game.add_item(item_id, 1)
 	var item_data: MTItemData = ITEM_DB_CLASS.new().get_item(item_id)
 	var item_name := item_data.name if item_data != null else item_id
 	_set_npc_active(npc, false, Vector2i.ZERO)
@@ -827,8 +878,9 @@ func _handle_healing_spring(npc) -> bool:
 func _handle_gold_stash(npc) -> bool:
 	var amount := 10 + current_floor * 3
 	_set_npc_active(npc, false, Vector2i.ZERO)
-	if Game != null:
-		Game.add_run_gold(amount)
+	if _has_game():
+		var game = _get_game()
+		game.add_run_gold(amount)
 	_enqueue_message(tr("You found a gold stash! Gold +%d") % amount)
 	_log_dungeon("[Dungeon] gold stash amount=%d" % amount)
 	return true
@@ -836,23 +888,20 @@ func _handle_gold_stash(npc) -> bool:
 func _handle_essence_cache(npc) -> bool:
 	var amount := 1 + int(current_floor / 10.0)
 	_set_npc_active(npc, false, Vector2i.ZERO)
-	if Game != null:
-		Game.add_soul_essence(amount)
+	if _has_game():
+		var game = _get_game()
+		game.add_soul_essence(amount)
 	_enqueue_message(tr("Soul Essence Cache: You absorb the power. Soul Essence +%d") % amount)
 	_log_dungeon("[Dungeon] essence cache amount=%d" % amount)
 	return true
 
 func _handle_status_trap(npc) -> bool:
 	_set_npc_active(npc, false, Vector2i.ZERO)
-	if Game == null or Game.party.is_empty():
+	var living_party := _get_party_monster_instances(true)
+	if living_party.is_empty():
 		_enqueue_message(tr("A trap springs! But there is nothing to harm."))
 		return true
-	for monster in Game.party:
-		if monster == null:
-			continue
-		var m := monster as MTMonsterInstance
-		if m == null or m.hp <= 0:
-			continue
+	for m in living_party:
 		var damage := int(ceil(m.get_max_hp() * 0.25))
 		m.hp = max(1, m.hp - damage)
 		var mname := m.data.name if m.data != null else tr("Monster")
@@ -863,59 +912,61 @@ func _handle_status_trap(npc) -> bool:
 
 func _handle_monster_egg(npc) -> bool:
 	_set_npc_active(npc, false, Vector2i.ZERO)
-	if Game != null:
-		Game.add_item("monster_egg", 1)
+	if _has_game():
+		var game = _get_game()
+		game.add_item("monster_egg", 1)
 	_enqueue_message(tr("You found a Monster Egg! It will hatch on the next floor."))
 	_log_dungeon("[Dungeon] monster egg picked up")
 	return true
 
 func _handle_cursed_altar(npc) -> bool:
 	_set_npc_active(npc, false, Vector2i.ZERO)
-	if Game == null:
+	if not _has_game():
 		_enqueue_message(tr("The altar pulses with dark energy, but nothing happens."))
 		return true
+	var game = _get_game()
 	var total_lost := 0
-	for monster in Game.party:
-		if monster == null:
-			continue
-		var m := monster as MTMonsterInstance
-		if m == null or m.hp <= 0:
-			continue
+	for m in _get_party_monster_instances(true):
 		var damage := int(ceil(m.get_max_hp() * 0.30))
 		m.hp = max(1, m.hp - damage)
 		total_lost += damage
 	var gold_gain := 10 + current_floor * 2
-	Game.add_soul_essence(1)
-	Game.add_run_gold(gold_gain)
+	game.add_soul_essence(1)
+	game.add_run_gold(gold_gain)
 	_enqueue_message(tr("Cursed Altar: Your team suffers %d total damage... Soul Essence +1, Gold +%d.") % [total_lost, gold_gain])
 	_log_dungeon("[Dungeon] cursed altar used hp_lost=%d gold=%d" % [total_lost, gold_gain])
 	return true
 
 func _handle_secret_vault(npc) -> bool:
-	if Game == null or Game.get_item_count("secret_key") <= 0:
+	if not _has_game():
 		_enqueue_message(tr("Locked. You need a Secret Key to open this vault."))
 		return true
-	Game.remove_item("secret_key", 1)
+	var game = _get_game()
+	if game.get_item_count("secret_key") <= 0:
+		_enqueue_message(tr("Locked. You need a Secret Key to open this vault."))
+		return true
+	game.remove_item("secret_key", 1)
 	_set_npc_active(npc, false, Vector2i.ZERO)
 	# Vault rewards: 1 random item + gold + soul essence
 	var item_id := _pick_or_create_random_item()
-	if Game != null:
-		Game.add_item(item_id, 1)
+	game.add_item(item_id, 1)
 	var gold := 20 + current_floor * 4
-	if Game != null:
-		Game.add_run_gold(gold)
-		Game.add_soul_essence(2)
+	game.add_run_gold(gold)
+	game.add_soul_essence(2)
 	_enqueue_message(tr("Secret Vault opened! Found items, Gold +%d, and Soul Essence +2!") % gold)
 	_log_dungeon("[Dungeon] secret vault opened gold=%d" % gold)
 	return true
 
 func _check_monster_egg_hatch() -> void:
-	if Game == null or Game.get_item_count("monster_egg") <= 0:
+	if not _has_game():
 		return
-	if Game.party.size() >= 6:
+	var game = _get_game()
+	if game.get_item_count("monster_egg") <= 0:
+		return
+	if game.is_party_full():
 		_enqueue_message(tr("Your egg is ready to hatch, but your team is full!"))
 		return
-	Game.remove_item("monster_egg", 1)
+	game.remove_item("monster_egg", 1)
 	var monster_data := _pick_monster_for_habitat()
 	if monster_data == null:
 		return
@@ -923,7 +974,9 @@ func _check_monster_egg_hatch() -> void:
 	new_monster.level = max(1, current_floor - 1)
 	new_monster._recalculate_stats()
 	new_monster.hp = new_monster.get_max_hp()
-	Game.party.append(new_monster)
+	if not game.add_to_party(new_monster):
+		_enqueue_message(tr("Your egg is ready to hatch, but your team is full!"))
+		return
 	_enqueue_message(tr("Your Monster Egg hatched! %s joined your team!") % monster_data.name)
 	_log_dungeon("[Dungeon] monster egg hatched monster=%s level=%d" % [monster_data.name, new_monster.level])
 
@@ -1065,12 +1118,7 @@ func _handle_key_interaction(npc) -> bool:
 
 func _heal_party_percent(ratio: float) -> int:
 	var healed := 0
-	for monster in Game.party:
-		if monster == null:
-			continue
-		if not (monster is MTMonsterInstance):
-			continue
-		var m := monster as MTMonsterInstance
+	for m in _get_party_monster_instances():
 		var max_hp := m.get_max_hp()
 		if max_hp <= 0:
 			continue
@@ -1085,14 +1133,7 @@ func _heal_party_percent(ratio: float) -> int:
 
 func _restore_party_energy_percent(ratio: float) -> int:
 	var restored := 0
-	for monster in Game.party:
-		if monster == null:
-			continue
-		if not (monster is MTMonsterInstance):
-			continue
-		var m := monster as MTMonsterInstance
-		if not m.is_alive():
-			continue
+	for m in _get_party_monster_instances(true):
 		var max_energy := m.get_max_energy()
 		if max_energy <= 0:
 			continue
@@ -1104,6 +1145,22 @@ func _restore_party_energy_percent(ratio: float) -> int:
 		if m.energy > before:
 			restored += 1
 	return restored
+
+func _get_party_monster_instances(only_alive: bool = false) -> Array[MTMonsterInstance]:
+	var result: Array[MTMonsterInstance] = []
+	if not _has_game():
+		return result
+	var game = _get_game()
+	for monster in game.party:
+		if monster == null:
+			continue
+		if not (monster is MTMonsterInstance):
+			continue
+		var m := monster as MTMonsterInstance
+		if only_alive and not m.is_alive():
+			continue
+		result.append(m)
+	return result
 
 func _get_farthest_room(origin: Vector2i) -> Rect2i:
 	if _room_rects.is_empty():

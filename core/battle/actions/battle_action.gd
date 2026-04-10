@@ -1,6 +1,8 @@
 extends RefCounted
 class_name MTBattleAction
 
+const DEBUG_LOG = preload("res://core/systems/debug_log.gd")
+
 var battle: MTBattleController
 var actor: MTMonsterInstance
 var target: MTMonsterInstance
@@ -17,8 +19,8 @@ func execute(_controller = null) -> Variant:
 	return null
 
 # Helper-Funktion um Messages zu loggen
-func battle_log(text: String):
-	if battle != null and battle.has_method("log_message"):
+func battle_log(text: String) -> void:
+	if battle != null:
 		battle.log_message(text)
 	else:
-		print(text)  # Fallback
+		DEBUG_LOG.warning("BattleAction", text)

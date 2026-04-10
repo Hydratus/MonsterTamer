@@ -6,26 +6,13 @@ var current_action_index: int = 0
 func enter(battle):
 	battle.escape_resolved = false
 	battle.forced_battle_result = -2
-	# Sortiere die Actions nach Priorität
-	battle.action_queue.sort_custom(func(a, b):
-		# Priority vergleichen (höher = früher)
-		if a.priority > b.priority:
-			return true
-		elif a.priority < b.priority:
-			return false
-		# Bei gleicher Priorität: Initiative vergleichen
-		if a.initiative > b.initiative:
-			return true
-		else:
-			return false
-	)
+	battle.sort_action_queue()
 	
 	current_action_index = 0
-	battle.scene.message_box.clear_messages()
+	battle.clear_all_messages()
 	
 	# Starte die erste Action
 	_execute_next_action(battle)
-
 func _execute_next_action(battle):
 	# Überprüfe ob alle Actions abgearbeitet wurden
 	if current_action_index >= battle.action_queue.size():
@@ -38,13 +25,13 @@ func _execute_next_action(battle):
 	current_action_index += 1
 	
 	# Leere die Message-Queue für diese Action
-	battle.scene.message_box.current_action_messages.clear()
+	battle.clear_current_action_messages()
 	
 	# Überprüfe ob der Akteur noch lebt (nur für Actions mit actor Property)
 	if "actor" in action and action.actor != null and not action.actor.is_alive():
 		battle.log_message(TranslationServer.translate("%s cannot act because it has already been defeated!") % action.actor.data.name)
-		battle.scene.flush_action_messages()
-		battle.scene.show_battle_messages()
+		battle.flush_action_messages()
+		battle.show_battle_messages()
 		return
 	
 	# Führe die Action aus
@@ -55,10 +42,10 @@ func _execute_next_action(battle):
 		action.execute(battle)
 	
 	# Kombiniere alle Messages dieser Action zu einer
-	battle.scene.flush_action_messages()
+	battle.flush_action_messages()
 	
 	# Zeige die Messages für diese Action
-	battle.scene.show_battle_messages()
+	battle.show_battle_messages()
 
 func on_messages_completed(battle):
 	# Wird aufgerufen wenn die Messages dieser Action fertig sind

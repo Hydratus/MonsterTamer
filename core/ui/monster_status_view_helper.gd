@@ -14,7 +14,7 @@ static func add_title(container: VBoxContainer, monster: MTMonsterInstance) -> v
 		return
 	var title := Label.new()
 	title.text = TranslationServer.translate("%s  Lv. %d  |  HP %d/%d  |  EN %d/%d") % [
-		monster.data.name,
+		_monster_name(monster),
 		monster.level,
 		monster.hp,
 		monster.get_max_hp(),
@@ -130,3 +130,8 @@ static func _localize_attack_description(text: String) -> String:
 		localized = localized.replace("enemy", "Gegner")
 
 	return localized
+
+static func _monster_name(monster: MTMonsterInstance) -> String:
+	if monster == null or monster.data == null:
+		return TranslationServer.translate("Unknown")
+	return monster.data.name

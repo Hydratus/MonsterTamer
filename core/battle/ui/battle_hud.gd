@@ -141,12 +141,7 @@ func _ready():
 func update_monsters(player_mon: MTMonsterInstance, enemy_mon: MTMonsterInstance):
 	player_monster = player_mon
 	enemy_monster = enemy_mon
-	
-	print("DEBUG HUD update: player=%s, enemy=%s" % [
-		player_mon.data.name if player_mon else "null",
-		enemy_mon.data.name if enemy_mon else "null"
-	])
-	
+
 	_apply_live_display_state()
 
 func apply_snapshot(snapshot: Dictionary) -> void:
@@ -161,7 +156,7 @@ func _build_monster_state(monster: MTMonsterInstance) -> Dictionary:
 	if monster == null:
 		return {}
 	return {
-		"name": monster.data.name,
+		"name": _monster_name(monster),
 		"level": monster.level,
 		"hp": monster.hp,
 		"max_hp": monster.get_max_hp(),
@@ -288,3 +283,8 @@ func _format_resource_label(current: int, max_value: int) -> String:
 	var percent: int = int(round((float(current) / float(max_value)) * 100.0))
 	percent = clamp(percent, 0, 100)
 	return "%d/%d (%d%%)" % [current, max_value, percent]
+
+func _monster_name(monster: MTMonsterInstance) -> String:
+	if monster == null or monster.data == null:
+		return tr("Unknown")
+	return monster.data.name

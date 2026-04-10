@@ -1,6 +1,7 @@
 extends MTBattleAction
 class_name MTAttackAction
 
+# See GameBalanceConstants for the centralized versions
 const TEAM_EXP_BONUS_PER_EXTRA_MEMBER := 0.375
 const TEAM_EXP_MAX_MULTIPLIER := 2.5
 const TEAM_EXP_CATCHUP_LEVEL_SPAN := 10.0
@@ -30,8 +31,8 @@ var lifesteal: float = 0.0
 # CRIT SYSTEM
 # --------------------------------------------------
 @export_range(0.0, 1.0)
-var crit_rate: float = 0.10
-var crit_multiplier: float = 1.5
+var crit_rate: float = 0.10  # See GameBalanceConstants.CRIT_RATE_DEFAULT
+var crit_multiplier: float = 1.5  # See GameBalanceConstants.CRIT_DAMAGE_MULTIPLIER_DEFAULT
 
 # --------------------------------------------------
 # STAT CHANGES (BUFFS / DEBUFFS)
@@ -70,7 +71,7 @@ func execute(_controller = null) -> Variant:
 	if not actor.spend_energy(energy_cost):
 		battle_log(
 			TranslationServer.translate("%s tried to use %s, but doesn't have enough energy!")
-			% [actor.data.name, localized_action_name]
+			% [_monster_name(actor), localized_action_name]
 		)
 		return null
 
@@ -78,14 +79,14 @@ func execute(_controller = null) -> Variant:
 	if not _roll_hit():
 		battle_log(
 			TranslationServer.translate("%s uses %s on %s, but it misses!")
-			% [actor.data.name, localized_action_name, target.data.name]
+			% [_monster_name(actor), localized_action_name, _monster_name(target)]
 		)
 		return null
 
 	# --------------------------------------------------
 	# 🗣️ ATTACK HEADER
 	# --------------------------------------------------
-	battle_log(TranslationServer.translate("%s uses %s!") % [actor.data.name, localized_action_name])
+	battle_log(TranslationServer.translate("%s uses %s!") % [_monster_name(actor), localized_action_name])
 
 	# --------------------------------------------------
 	# 💥 STEP 1: DAMAGE
@@ -101,17 +102,18 @@ func execute(_controller = null) -> Variant:
 	return null
 
 func _queue_next_step(step: Callable) -> void:
-	if battle != null and battle.scene != null and battle.scene.has_method("queue_message_step"):
-		battle.scene.queue_message_step(step)
+	if _has_battle():
+		battle.queue_message_step(step)
 		return
 	if step.is_valid():
 		step.call()
 
 func _flush_step_messages() -> void:
-	if battle == null or battle.scene == null:
-		return
-	if battle.scene.message_box != null and battle.scene.message_box.current_action_messages.size() > 0:
-		battle.scene.flush_action_messages()
+	if _has_battle() and battle.has_pending_action_messages():
+		battle.flush_action_messages()
+
+func _has_battle() -> bool:
+	return battle != null
 
 func _execute_damage_step() -> void:
 	if power > 0 and damage_type != MTDamageType.Type.STATUS:
@@ -131,7 +133,7 @@ func _execute_damage_step() -> void:
 			_phase_dealt_damage = max(0, hp_before - target.hp)
 
 			var line := TranslationServer.translate("%s takes %d damage.") % [
-				target.data.name,
+				_monster_name(target),
 				_phase_dealt_damage
 			]
 
@@ -185,7 +187,7 @@ func _execute_lifesteal_step() -> void:
 				if healed > 0:
 					battle_log(
 						TranslationServer.translate("%s steals %d HP through lifesteal!")
-						% [actor.data.name, healed]
+						% [_monster_name(actor), healed]
 					)
 
 	_flush_step_messages()
@@ -211,12 +213,12 @@ func _execute_final_step() -> void:
 		if delta == 0:
 			if change.stages > 0:
 				battle_log(TranslationServer.translate("%s's %s won't go any higher!") % [
-					receiver.data.name,
+					_monster_name(receiver),
 					stat_name
 				])
 			else:
 				battle_log(TranslationServer.translate("%s's %s won't go any lower!") % [
-					receiver.data.name,
+					_monster_name(receiver),
 					stat_name
 				])
 		else:
@@ -224,7 +226,7 @@ func _execute_final_step() -> void:
 			battle_log(
 				TranslationServer.translate("%s's %s changed by %s%d!")
 				% [
-					receiver.data.name,
+					_monster_name(receiver),
 					stat_name,
 					sign_prefix,
 					delta
@@ -297,7 +299,7 @@ func _distribute_exp_with_flush(defeated_monster: MTMonsterInstance):
 		return
 	var exp_receiver_team_index := 1 if defeated_team_index == 0 else 0
 	var exp_receiver_team: MTMonsterTeam = null
-	if battle != null and battle.teams.size() > exp_receiver_team_index:
+	if _has_battle() and battle.teams.size() > exp_receiver_team_index:
 		exp_receiver_team = battle.teams[exp_receiver_team_index]
 	if exp_receiver_team == null:
 		return
@@ -343,13 +345,12 @@ func _distribute_exp_with_flush(defeated_monster: MTMonsterInstance):
 		var raw_share: float = float(total_exp) * (receiver_weight / total_weight)
 		exp_by_monster[receiver] = int(ceil(raw_share))
 
-	if battle != null and battle.scene != null:
+	if _has_battle():
 		for opponent in ordered_opponents:
 			if not exp_by_monster.has(opponent):
 				continue
-			battle.scene.queue_exp_step(
-				Callable(self, "_process_exp_gain_with_flush"),
-				[opponent, int(exp_by_monster[opponent])]
+			battle.queue_exp_step(
+				Callable(self, "_process_exp_gain_with_flush").bind(opponent, int(exp_by_monster[opponent]))
 			)
 	else:
 		for opponent in ordered_opponents:
@@ -358,7 +359,7 @@ func _distribute_exp_with_flush(defeated_monster: MTMonsterInstance):
 			_process_exp_gain_with_flush(opponent, int(exp_by_monster[opponent]))
 
 func _find_team_index_for_monster(monster: MTMonsterInstance) -> int:
-	if battle == null or monster == null:
+	if not _has_battle() or monster == null:
 		return -1
 	for i in range(battle.teams.size()):
 		var team: MTMonsterTeam = battle.teams[i]
@@ -403,8 +404,8 @@ func _level_up_with_flush(monster: MTMonsterInstance):
 	# HP und Energy nur um Zugewinn erhöhen (nicht vollheilen)
 	monster.hp = clamp(monster.hp + hp_gain, 0, monster.get_max_hp())
 	monster.energy = clamp(monster.energy + energy_gain, 0, monster.get_max_energy())
-	if battle != null and battle.scene != null and battle.scene.has_method("update_hud_with_active"):
-		battle.scene.update_hud_with_active()
+	if _has_battle():
+		battle.update_hud_with_active()
 	
 	# Level-Up Nachricht mit allen Stat-Erhöhungen (auch +0)
 	var levelup_stat_changes: Array[String] = []
@@ -418,20 +419,20 @@ func _level_up_with_flush(monster: MTMonsterInstance):
 	
 	var stat_text = " | ".join(levelup_stat_changes)
 	
-	battle_log(TranslationServer.translate("%s leveled up to level %d!") % [monster.data.name, monster.level])
+	battle_log(TranslationServer.translate("%s leveled up to level %d!") % [_monster_name(monster), monster.level])
 	battle_log(stat_text)
 
 	var queued_evolution := false
 	if monster.can_evolve():
-		if battle != null:
+		if _has_battle():
 			battle.queue_evolution(monster, Callable(self, "_check_learning_with_flush"))
 			queued_evolution = true
 		else:
 			monster.apply_evolution(Callable(self, "battle_log"))
 	
 	# Flush Level-Up Block BEVOR Lern-Messages kommen
-	if battle != null and battle.scene != null:
-		battle.scene.flush_action_messages()
+	if _has_battle():
+		battle.flush_action_messages()
 
 	if queued_evolution:
 		return
@@ -450,25 +451,24 @@ func _process_exp_gain_with_flush(monster: MTMonsterInstance, exp_remaining: int
 	monster.current_exp += gain
 
 	battle_log(TranslationServer.translate("%s gained %d EXP! (Total: %d/%d)") % [
-		monster.data.name, gain,
+		_monster_name(monster), gain,
 		monster.current_exp, monster.exp_to_next_level
 	])
-	if battle != null and battle.scene != null:
-		battle.scene.flush_action_messages()
+	if _has_battle():
+		battle.flush_action_messages()
 
 	var remaining = exp_remaining - gain
 	if monster.current_exp >= monster.exp_to_next_level:
 		monster.current_exp -= monster.exp_to_next_level
 		_level_up_with_flush(monster)
 		monster.exp_to_next_level = monster._get_required_exp_for_level(monster.level + 1)
-		if remaining > 0 and battle != null and battle.scene != null:
-			battle.scene.queue_exp_step_front(
-				Callable(self, "_process_exp_gain_with_flush"),
-				[monster, remaining]
+		if remaining > 0 and _has_battle():
+			battle.queue_exp_step_front(
+				Callable(self, "_process_exp_gain_with_flush").bind(monster, remaining)
 			)
 
 func _order_exp_recipients(opponents: Array[MTMonsterInstance]) -> Array[MTMonsterInstance]:
-	if battle == null or opponents.is_empty():
+	if not _has_battle() or opponents.is_empty():
 		return opponents
 
 	var active_first: Array[MTMonsterInstance] = []
@@ -494,10 +494,10 @@ func _check_learning_with_flush(monster: MTMonsterInstance):
 	for learn_data in available_attacks:
 		if learn_data.attack != null and not monster.attacks.has(learn_data.attack):
 			monster.attacks.append(learn_data.attack)
-			battle_log(TranslationServer.translate("%s learned %s!") % [monster.data.name, TranslationServer.translate(learn_data.attack.name)])
+			battle_log(TranslationServer.translate("%s learned %s!") % [_monster_name(monster), TranslationServer.translate(learn_data.attack.name)])
 			# Flush nach jeder erlernten Attacke für separaten Block
-			if battle != null and battle.scene != null:
-				battle.scene.flush_action_messages()
+			if _has_battle():
+				battle.flush_action_messages()
 	
 	# Check traits
 	var available_traits = monster.get_available_traits_to_learn()
@@ -508,10 +508,15 @@ func _check_learning_with_flush(monster: MTMonsterInstance):
 			trait_name = str(learn_data.trait_data.get_localized_name())
 		elif learn_data.trait_data != null:
 			trait_name = TranslationServer.translate(learn_data.trait_data.name)
-		battle_log(TranslationServer.translate("%s learned trait %s!") % [monster.data.name, trait_name])
+		battle_log(TranslationServer.translate("%s learned trait %s!") % [_monster_name(monster), trait_name])
 		# Flush nach jedem erlernten Trait für separaten Block
-		if battle != null and battle.scene != null:
-			battle.scene.flush_action_messages()
+		if _has_battle():
+			battle.flush_action_messages()
+
+func _monster_name(monster: MTMonsterInstance) -> String:
+	if monster == null or monster.data == null:
+		return TranslationServer.translate("Unknown")
+	return monster.data.name
 
 
 # --------------------------------------------------

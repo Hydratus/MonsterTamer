@@ -4,9 +4,11 @@ class_name MTBattleController
 const EscapeActionClass = preload("res://core/battle/actions/escape_action.gd")
 const RestActionClass = preload("res://core/battle/actions/rest_action.gd")
 const AttackActionClass = preload("res://core/battle/actions/attack_action.gd")
+const SceneAdapterClass = preload("res://core/battle/ui/battle_scene_adapter.gd")
+const DEBUG_LOG = preload("res://core/systems/debug_log.gd")
 
 
-var scene
+var _scene_adapter = null
 var teams: Array = []  # Array von MTMonsterTeam
 var action_queue: Array = []  # Gemischte Actions: MTBattleAction, MTSwitchAction, etc.
 var pending_player_actions := {}
@@ -16,6 +18,8 @@ var pending_evolutions: Array = []
 var escape_resolved := false
 var forced_battle_result: int = -2
 
+signal message_logged(text: String)
+
 # Prioritäten-Konstanten (höher = früher ausgeführt)
 const PRIORITY_ESCAPE := 300
 const PRIORITY_ITEM := 200
@@ -24,10 +28,101 @@ const PRIORITY_ATTACK := 0
 
 # Helper-Funktion um Messages zur UI hinzuzufügen
 func log_message(text: String):
-	if scene != null and scene.has_method("add_battle_message"):
-		scene.add_battle_message(text)
-	else:
-		print(text)  # Fallback für Debug
+	var has_subscribers := message_logged.get_connections().size() > 0
+	message_logged.emit(text)
+	if not has_subscribers:
+		var scene_adapter = _get_scene_adapter()
+		if scene_adapter != null:
+			scene_adapter.add_battle_message(text)
+		else:
+			DEBUG_LOG.warning("BattleController", text)
+
+func bind_scene(scene_ref) -> void:
+	_scene_adapter = SceneAdapterClass.new(scene_ref) if scene_ref != null else null
+
+func _get_scene_adapter():
+	return _scene_adapter
+
+func clear_all_messages() -> void:
+	var scene_adapter = _get_scene_adapter()
+	if scene_adapter != null:
+		scene_adapter.clear_all_messages()
+
+func clear_current_action_messages() -> void:
+	var scene_adapter = _get_scene_adapter()
+	if scene_adapter != null:
+		scene_adapter.clear_current_action_messages()
+
+func flush_action_messages() -> void:
+	var scene_adapter = _get_scene_adapter()
+	if scene_adapter != null:
+		scene_adapter.flush_action_messages()
+
+func show_battle_messages() -> void:
+	var scene_adapter = _get_scene_adapter()
+	if scene_adapter != null:
+		scene_adapter.show_battle_messages()
+
+func queue_message_step(step: Callable) -> void:
+	var scene_adapter = _get_scene_adapter()
+	if scene_adapter != null:
+		scene_adapter.queue_message_step(step)
+
+func queue_exp_step(step: Callable) -> void:
+	var scene_adapter = _get_scene_adapter()
+	if scene_adapter != null:
+		scene_adapter.queue_exp_step(step)
+
+func queue_exp_step_front(step: Callable) -> void:
+	var scene_adapter = _get_scene_adapter()
+	if scene_adapter != null:
+		scene_adapter.queue_exp_step_front(step)
+
+func update_hud_with_active() -> void:
+	var scene_adapter = _get_scene_adapter()
+	if scene_adapter != null:
+		scene_adapter.update_hud_with_active()
+
+func has_pending_action_messages() -> bool:
+	var scene_adapter = _get_scene_adapter()
+	return scene_adapter != null and scene_adapter.has_pending_action_messages()
+
+func has_queued_messages() -> bool:
+	var scene_adapter = _get_scene_adapter()
+	return scene_adapter != null and scene_adapter.has_queued_messages()
+
+func show_player_menu(monster: MTMonsterInstance) -> void:
+	var scene_adapter = _get_scene_adapter()
+	if scene_adapter != null:
+		scene_adapter.show_player_menu(monster)
+
+func show_forced_switch_menu(team_index: int) -> void:
+	var scene_adapter = _get_scene_adapter()
+	if scene_adapter != null:
+		scene_adapter.show_forced_switch_menu(team_index)
+
+func hide_ui() -> void:
+	var scene_adapter = _get_scene_adapter()
+	if scene_adapter != null:
+		scene_adapter.hide_ui()
+
+func finish_battle(winner_team_index: int) -> void:
+	var scene_adapter = _get_scene_adapter()
+	if scene_adapter != null:
+		scene_adapter.finish_battle(winner_team_index)
+
+func perform_capture_attempt(actor: MTMonsterInstance, target: MTMonsterInstance, item: MTItemData) -> void:
+	var scene_adapter = _get_scene_adapter()
+	if scene_adapter != null:
+		scene_adapter.perform_capture_attempt(actor, target, item)
+
+func get_item_user_name(actor: MTMonsterInstance) -> String:
+	var scene_adapter = _get_scene_adapter()
+	if scene_adapter != null:
+		return scene_adapter.get_item_user_name(actor)
+	if actor != null and actor.data != null:
+		return actor.data.name
+	return TranslationServer.translate("Player")
 
 func queue_evolution(monster: MTMonsterInstance, learning_cb: Callable) -> void:
 	if monster == null:
@@ -199,20 +294,7 @@ func submit_action(action) -> void:
 
 # Führe alle Aktionen mit Prioritäts-Sortierung aus
 func resolve_actions() -> void:
-	# Sortiere nach priority desc, dann initiative desc
-	action_queue.sort_custom(func(a, b):
-		# Priority vergleichen (höher = früher)
-		if a.priority > b.priority:
-			return true  # a kommt zuerst
-		elif a.priority < b.priority:
-			return false  # b kommt zuerst
-		
-		# Bei gleicher Priorität: Initiative vergleichen (höher = früher)
-		if a.initiative > b.initiative:
-			return true
-		else:
-			return false
-	)
+	sort_action_queue()
 	
 	# Führe alle Aktionen aus
 	for action in action_queue:
@@ -243,12 +325,25 @@ func perform_switch(team_index: int, monster_index: int, _initiator: MTMonsterIn
 	var success = team.switch_to(monster_index)
 	if success:
 		var team_name = "Player" if team_index == 0 else "Enemy"
-		print("--- %s sent out %s! ---" % [team_name, team.get_active_monster().data.name])
+		log_message("--- %s sent out %s! ---" % [team_name, team.get_active_monster().data.name])
 	
 	return success
 
 func sort_actions():
-	action_queue.sort_custom(func(a, b):
-		if a.has_method("get_initiative"):
-			return a.get_initiative() > b.get_initiative()
-		return false)
+	sort_action_queue()
+
+func sort_action_queue() -> void:
+	action_queue.sort_custom(Callable(self, "_is_action_before"))
+
+func _is_action_before(a, b) -> bool:
+	if a == null:
+		return false
+	if b == null:
+		return true
+	if a.priority != b.priority:
+		return a.priority > b.priority
+	if a.initiative != b.initiative:
+		return a.initiative > b.initiative
+	if a.has_method("get_instance_id") and b.has_method("get_instance_id"):
+		return a.get_instance_id() < b.get_instance_id()
+	return false

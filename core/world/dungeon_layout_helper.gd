@@ -1,6 +1,12 @@
 extends RefCounted
 class_name MTDungeonLayoutHelper
 
+static func _room_count(owner) -> int:
+	return owner._room_rects.size()
+
+static func _is_valid_room_index(owner, index: int) -> bool:
+	return index >= 0 and index < _room_count(owner)
+
 static func generate_floor_layout(owner) -> void:
 	if owner.generation_seed > 0:
 		owner._rng.seed = int(owner.generation_seed + owner.current_floor * 104729)
@@ -29,7 +35,7 @@ static func generate_floor_layout(owner) -> void:
 	var attempts: int = target_rooms * 24
 
 	for _i in range(attempts):
-		if owner._room_rects.size() >= target_rooms:
+		if _room_count(owner) >= target_rooms:
 			break
 		var room_w: int = owner._rng.randi_range(owner.min_room_size, owner.max_room_size)
 		var room_h: int = owner._rng.randi_range(owner.min_room_size, owner.max_room_size)
@@ -41,21 +47,21 @@ static func generate_floor_layout(owner) -> void:
 		owner._room_rects.append(room)
 		carve_room(owner, room, carved)
 
-	if owner._room_rects.is_empty():
+	if _room_count(owner) == 0:
 		var fx: int = max(2, int(owner.map_width / 2.0) - 3)
 		var fy: int = max(2, int(owner.map_height / 2.0) - 3)
 		var fallback := Rect2i(fx, fy, 6, 6)
 		owner._room_rects.append(fallback)
 		carve_room(owner, fallback, carved)
 
-	for i in range(1, owner._room_rects.size()):
+	for i in range(1, _room_count(owner)):
 		carve_corridor(owner, room_center(owner._room_rects[i - 1]), room_center(owner._room_rects[i]), carved)
 	build_room_index_lookup(owner)
 
 	owner._floor_cells.clear()
 	for cell_key in carved.keys():
 		owner._floor_cells.append(cell_key)
-	owner._log_dungeon("[Dungeon] %d rooms  %d floor cells" % [owner._room_rects.size(), owner._floor_cells.size()])
+	owner._log_dungeon("[Dungeon] %d rooms  %d floor cells" % [_room_count(owner), owner._floor_cells.size()])
 
 static func room_intersects_existing(owner, candidate: Rect2i) -> bool:
 	for room in owner._room_rects:
@@ -75,19 +81,21 @@ static func carve_room(owner, room: Rect2i, carved: Dictionary) -> void:
 
 static func carve_corridor(owner, start: Vector2i, target: Vector2i, carved: Dictionary) -> void:
 	var current := start
+	var room_lookup: Dictionary = owner._room_cells_lookup
+	var corridor_lookup: Dictionary = owner._corridor_cells_lookup
 	while current.x != target.x:
 		carved[current] = true
-		if not owner._room_cells_lookup.has(current):
-			owner._corridor_cells_lookup[current] = true
+		if not room_lookup.has(current):
+			corridor_lookup[current] = true
 		current.x += 1 if target.x > current.x else -1
 	while current.y != target.y:
 		carved[current] = true
-		if not owner._room_cells_lookup.has(current):
-			owner._corridor_cells_lookup[current] = true
+		if not room_lookup.has(current):
+			corridor_lookup[current] = true
 		current.y += 1 if target.y > current.y else -1
 	carved[target] = true
-	if not owner._room_cells_lookup.has(target):
-		owner._corridor_cells_lookup[target] = true
+	if not room_lookup.has(target):
+		corridor_lookup[target] = true
 
 static func room_center(room: Rect2i) -> Vector2i:
 	return Vector2i(
@@ -97,7 +105,7 @@ static func room_center(room: Rect2i) -> Vector2i:
 
 static func build_room_index_lookup(owner) -> void:
 	owner._room_index_by_cell.clear()
-	for i in range(owner._room_rects.size()):
+	for i in range(_room_count(owner)):
 		var room: Rect2i = owner._room_rects[i]
 		for y in range(room.position.y, room.position.y + room.size.y):
 			for x in range(room.position.x, room.position.x + room.size.x):
@@ -105,9 +113,9 @@ static func build_room_index_lookup(owner) -> void:
 
 static func assign_room_roles(owner) -> void:
 	owner._room_type_by_index.clear()
-	if owner._room_rects.is_empty():
+	if _room_count(owner) == 0:
 		return
-	for i in range(owner._room_rects.size()):
+	for i in range(_room_count(owner)):
 		owner._room_type_by_index[i] = owner.ROOM_TYPE_NORMAL
 
 	var start_index := 0
@@ -116,7 +124,7 @@ static func assign_room_roles(owner) -> void:
 	owner._room_type_by_index[exit_index] = owner.ROOM_TYPE_EXIT
 
 	var candidates: Array[int] = []
-	for i in range(owner._room_rects.size()):
+	for i in range(_room_count(owner)):
 		if i == start_index or i == exit_index:
 			continue
 		candidates.append(i)
@@ -124,8 +132,11 @@ static func assign_room_roles(owner) -> void:
 		owner._log_dungeon("[Dungeon] room roles: only start/exit available")
 		return
 
+	var candidate_distances: Dictionary = {}
+	for idx in candidates:
+		candidate_distances[idx] = room_distance(owner, start_index, idx)
 	candidates.sort_custom(func(a: int, b: int):
-		return room_distance(owner, start_index, a) > room_distance(owner, start_index, b)
+		return int(candidate_distances.get(a, 0)) > int(candidate_distances.get(b, 0))
 	)
 
 	owner._elite_room_index = -1
@@ -177,13 +188,13 @@ static func assign_floor_goals(owner) -> void:
 	owner._log_dungeon("[Dungeon] floor goal=PUZZLE switches_total=3")
 
 static func get_farthest_room_index(owner, origin_index: int) -> int:
-	if owner._room_rects.is_empty():
+	if _room_count(owner) == 0:
 		return 0
-	var oi: int = clampi(origin_index, 0, owner._room_rects.size() - 1)
+	var oi: int = clampi(origin_index, 0, _room_count(owner) - 1)
 	var origin: Vector2i = room_center(owner._room_rects[oi])
 	var best_index: int = oi
 	var best_dist: int = -1
-	for i in range(owner._room_rects.size()):
+	for i in range(_room_count(owner)):
 		var center := room_center(owner._room_rects[i])
 		var dist: int = abs(center.x - origin.x) + abs(center.y - origin.y)
 		if dist > best_dist:
@@ -192,9 +203,9 @@ static func get_farthest_room_index(owner, origin_index: int) -> int:
 	return best_index
 
 static func room_distance(owner, a_index: int, b_index: int) -> int:
-	if a_index < 0 or a_index >= owner._room_rects.size():
+	if not _is_valid_room_index(owner, a_index):
 		return 0
-	if b_index < 0 or b_index >= owner._room_rects.size():
+	if not _is_valid_room_index(owner, b_index):
 		return 0
 	var a := room_center(owner._room_rects[a_index])
 	var b := room_center(owner._room_rects[b_index])

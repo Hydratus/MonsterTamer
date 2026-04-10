@@ -1,6 +1,8 @@
 extends MTBattleState
 class_name MTCollectActionsState
 
+const DEBUG_LOG = preload("res://core/systems/debug_log.gd")
+
 func enter(battle: MTBattleController):
 	battle.action_queue.clear()
 	battle.pending_player_actions.clear()
@@ -8,18 +10,20 @@ func enter(battle: MTBattleController):
 
 	# Sammle Aktionen von den aktiven Monstern beider Teams
 	for team in battle.teams:
+		if team == null:
+			continue
 		var monster = team.get_active_monster()
 		if monster == null or not monster.is_alive():
 			continue
 
 		# Null-Check für decision
 		if monster.decision == null:
-			push_error("Monster %s hat keine Decision zugewiesen!" % monster.data.name)
+			DEBUG_LOG.error("CollectActionsState", "Monster %s hat keine Decision zugewiesen!" % monster.data.name)
 			continue
 
 		if monster.decision is MTPlayerDecision:
 			battle.waiting_for_player = true
-			battle.scene.show_player_menu(monster)
+			battle.show_player_menu(monster)
 		else:
 			var action = monster.decision.decide(monster, battle)
 			if action:

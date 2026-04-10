@@ -285,6 +285,9 @@ msgstr "Player"
 msgid "Enemy"
 msgstr "Enemy"
 
+msgid "Unknown"
+msgstr "Unknown"
+
 msgid "%s sent out %s!"
 msgstr "%s sent out %s!"
 

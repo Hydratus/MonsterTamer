@@ -3,6 +3,24 @@ class_name MTDungeonQuestHelper
 
 const NPCDataClass = preload("res://core/world/npc_data.gd")
 const NPCMonsterEntryClass = preload("res://core/world/npc_monster_entry.gd")
+const INVALID_CELL := Vector2i(-1, -1)
+
+static func _has_game() -> bool:
+	return _get_game() != null
+
+static func _get_game():
+	var loop := Engine.get_main_loop()
+	if loop == null or not loop is SceneTree:
+		return null
+	return (loop as SceneTree).root.get_node_or_null("Game")
+
+static func _is_invalid_cell(cell: Vector2i) -> bool:
+	return cell == INVALID_CELL
+
+static func _get_last_dynamic_npc(owner):
+	if owner._dynamic_npcs.is_empty():
+		return null
+	return owner._dynamic_npcs[owner._dynamic_npcs.size() - 1]
 
 static func maybe_spawn_quest_npc(owner) -> void:
 	if owner._has_quest_this_floor:
@@ -23,7 +41,7 @@ static func maybe_spawn_quest_npc(owner) -> void:
 		reserved[owner._world_to_cell(owner._stairs_npc.global_position)] = true
 
 	var cell: Vector2i = owner._pick_cell_in_room(room_index, reserved)
-	if cell == Vector2i(-1, -1):
+	if _is_invalid_cell(cell):
 		return
 
 	var quest_type: int = owner._rng.randi_range(0, 2)
@@ -41,7 +59,7 @@ static func maybe_spawn_quest_npc(owner) -> void:
 
 	var quest_npc_data: MTNPCData = create_quest_npc_data(owner, quest_type)
 	owner._spawn_dynamic_npc(cell, quest_npc_data)
-	owner._quest_npc = owner._dynamic_npcs[-1] if owner._dynamic_npcs.size() > 0 else null
+	owner._quest_npc = _get_last_dynamic_npc(owner)
 	if quest_type == owner.QUEST_TYPE.ITEM_DELIVERY:
 		spawn_delivery_quest_item(owner, cell)
 
@@ -109,13 +127,13 @@ static func spawn_delivery_quest_item(owner, quest_cell: Vector2i) -> void:
 	if room_index < 0:
 		return
 	var cell: Vector2i = owner._pick_cell_in_room(room_index, reserved)
-	if cell == Vector2i(-1, -1):
+	if _is_invalid_cell(cell):
 		return
 
 	var delivery_item_id: String = "quest_delivery_satchel_floor_%d" % owner.current_floor
 	owner._active_quest["delivery_item_id"] = delivery_item_id
 	owner._spawn_dynamic_npc(cell, create_delivery_quest_item_npc_data())
-	owner._quest_item_npc = owner._dynamic_npcs[-1] if owner._dynamic_npcs.size() > 0 else null
+	owner._quest_item_npc = _get_last_dynamic_npc(owner)
 	owner._log_dungeon("[Dungeon] delivery item spawned id=%s cell=%s" % [delivery_item_id, str(cell)])
 
 static func create_delivery_quest_item_npc_data() -> MTNPCData:
@@ -129,6 +147,9 @@ static func create_delivery_quest_item_npc_data() -> MTNPCData:
 	return data
 
 static func handle_quest_delivery(owner, npc) -> bool:
+	if not _has_game():
+		return true
+	var game = _get_game()
 	if owner._active_quest.get("completed", false) and owner._active_quest.get("shop_unlocked", false):
 		return owner._handle_merchant_shop(npc)
 	var delivery_item_id: String = str(owner._active_quest.get("delivery_item_id", ""))
@@ -139,10 +160,10 @@ static func handle_quest_delivery(owner, npc) -> bool:
 		owner._active_quest["accepted"] = true
 		owner._enqueue_message(TranslationServer.translate("Merchant Quest: Find the lost satchel somewhere on this floor."))
 		return true
-	if Game.get_item_count(delivery_item_id) <= 0:
+	if game.get_item_count(delivery_item_id) <= 0:
 		owner._enqueue_message(TranslationServer.translate("Merchant Quest: Please find my lost satchel and bring it back."))
 		return true
-	Game.remove_item(delivery_item_id, 1)
+	game.remove_item(delivery_item_id, 1)
 	owner._active_quest["completed"] = true
 	owner._active_quest["ready_to_turn_in"] = false
 	owner._active_quest["shop_unlocked"] = true
@@ -175,10 +196,13 @@ static func handle_quest_hunt(owner, _npc) -> bool:
 	return true
 
 static func handle_quest_delivery_item(owner, npc) -> bool:
+	if not _has_game():
+		return true
+	var game = _get_game()
 	var delivery_item_id: String = str(owner._active_quest.get("delivery_item_id", ""))
 	if delivery_item_id == "":
 		return true
-	Game.add_item(delivery_item_id, 1)
+	game.add_item(delivery_item_id, 1)
 	if npc != null:
 		owner._set_npc_active(npc, false, Vector2i.ZERO)
 	owner._active_quest["ready_to_turn_in"] = true
@@ -191,9 +215,10 @@ static func handle_quest_thief(owner, _npc) -> bool:
 	return false
 
 static func award_quest_rewards(owner) -> void:
-	if Game != null:
-		Game.add_run_gold(owner.quest_reward_gold)
-		Game.add_soul_essence(owner.quest_reward_soul_essence)
+	if _has_game():
+		var game = _get_game()
+		game.add_run_gold(owner.quest_reward_gold)
+		game.add_soul_essence(owner.quest_reward_soul_essence)
 		owner._enqueue_message(TranslationServer.translate("Received %d gold and %d Soul Essence!") % [owner.quest_reward_gold, owner.quest_reward_soul_essence])
 		owner._log_dungeon("[Dungeon] quest reward gold=%d essence=%d" % [owner.quest_reward_gold, owner.quest_reward_soul_essence])
 	else:
@@ -202,8 +227,9 @@ static func award_quest_rewards(owner) -> void:
 
 static func reset_floor_quest_state(owner) -> void:
 	var old_delivery_item_id: String = str(owner._active_quest.get("delivery_item_id", ""))
-	if old_delivery_item_id != "" and Game != null:
-		Game.remove_item(old_delivery_item_id, Game.get_item_count(old_delivery_item_id))
+	if old_delivery_item_id != "" and _has_game():
+		var game = _get_game()
+		game.remove_item(old_delivery_item_id, game.get_item_count(old_delivery_item_id))
 	owner._active_quest.clear()
 	owner._has_quest_this_floor = false
 	owner._quest_npc = null

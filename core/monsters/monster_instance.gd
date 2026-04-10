@@ -1,6 +1,18 @@
 extends RefCounted
 class_name MTMonsterInstance
 
+# See GameBalanceConstants for centralized versions
+const STAT_SCALE_MULTIPLIER := 2.0
+const STAT_SCALE_DIVISOR := 100.0
+const HP_LEVEL_BONUS := 5
+const ENERGY_BASE_BONUS := 3
+const STAT_BASE_BONUS := 5
+
+# Cache for effective stats (includes stat stages + trait modifiers)
+# Only recalculated when stat stages change or traits change
+var _cached_effective_stats: Dictionary = {}
+var _stat_cache_valid := false
+
 # ------------------------
 # ENUMS
 # ------------------------
@@ -84,10 +96,9 @@ var opponents_fought: Array[MTMonsterInstance] = []
 # INIT
 # ------------------------
 func _init(monster_data: MTMonsterData):
-	# Dupliziere MTMonsterData, damit jede Instanz ihre eigene Kopie hat
-	# Dies verhindert, dass Änderungen in einer Instanz andere Instanzen beeinflussen
-	data = monster_data.duplicate()
-	level = data.level  # Kopiere das Start-Level von MTMonsterData
+	# Keep shared monster data resource and only store instance-specific runtime state.
+	data = monster_data
+	level = data.level  # Start with the configured base level from data
 	attacks = data.attacks.duplicate()
 	_apply_learnable_attacks_up_to_level()
 
@@ -110,22 +121,23 @@ func _recalculate_stats():
 	reset_stat_stages()
 	clear_effects()
 	clamp_resources()
+	_invalidate_stat_cache()  # Invalidate after recalculation
 
 # Calculate actual stats based on base stats and level
 func _apply_level_scaling():
 	# Nutze das instanz-spezifische Level
-	# HP: ((2 × base_max_hp × level) / 100) + level + 5
-	max_hp = int(ceil((2 * data.base_max_hp * level) / 100.0)) + level + 5
+	# HP: ((STAT_SCALE_MULTIPLIER × base_max_hp × level) / STAT_SCALE_DIVISOR) + level + HP_LEVEL_BONUS
+	max_hp = int(ceil((STAT_SCALE_MULTIPLIER * data.base_max_hp * level) / STAT_SCALE_DIVISOR)) + level + HP_LEVEL_BONUS
 	
-	# Energy: ((2 × base_max_energy × level) / 100) + 3
-	max_energy = int(ceil((2 * data.base_max_energy * level) / 100.0)) + 3
+	# Energy: ((STAT_SCALE_MULTIPLIER × base_max_energy × level) / STAT_SCALE_DIVISOR) + ENERGY_BASE_BONUS
+	max_energy = int(ceil((STAT_SCALE_MULTIPLIER * data.base_max_energy * level) / STAT_SCALE_DIVISOR)) + ENERGY_BASE_BONUS
 	
-	# Stats: ((2 × base_stat × level) / 100) + 5
-	strength = int(ceil((2 * data.base_strength * level) / 100.0)) + 5
-	magic = int(ceil((2 * data.base_magic * level) / 100.0)) + 5
-	defense = int(ceil((2 * data.base_defense * level) / 100.0)) + 5
-	resistance = int(ceil((2 * data.base_resistance * level) / 100.0)) + 5
-	speed = int(ceil((2 * data.base_speed * level) / 100.0)) + 5
+	# Stats: ((STAT_SCALE_MULTIPLIER × base_stat × level) / STAT_SCALE_DIVISOR) + STAT_BASE_BONUS
+	strength = int(ceil((STAT_SCALE_MULTIPLIER * data.base_strength * level) / STAT_SCALE_DIVISOR)) + STAT_BASE_BONUS
+	magic = int(ceil((STAT_SCALE_MULTIPLIER * data.base_magic * level) / STAT_SCALE_DIVISOR)) + STAT_BASE_BONUS
+	defense = int(ceil((STAT_SCALE_MULTIPLIER * data.base_defense * level) / STAT_SCALE_DIVISOR)) + STAT_BASE_BONUS
+	resistance = int(ceil((STAT_SCALE_MULTIPLIER * data.base_resistance * level) / STAT_SCALE_DIVISOR)) + STAT_BASE_BONUS
+	speed = int(ceil((STAT_SCALE_MULTIPLIER * data.base_speed * level) / STAT_SCALE_DIVISOR)) + STAT_BASE_BONUS
 
 
 # ------------------------
@@ -134,12 +146,45 @@ func _apply_level_scaling():
 func reset_stat_stages():
 	for key in stat_stages.keys():
 		stat_stages[key] = 0
+	_invalidate_stat_cache()
 
 func modify_stat_stage(stat: int, amount: int) -> int:
 	var before: int = stat_stages[stat]
 	var after: int = MTStatStage.clamp_stage(before + amount)
 	stat_stages[stat] = after
+	_invalidate_stat_cache()  # Cache invalidated when stages change
 	return after - before
+
+## Invalidate stat cache - call when traits change or stat stages change
+func _invalidate_stat_cache() -> void:
+	_stat_cache_valid = false
+	_cached_effective_stats.clear()
+
+## Recalculate and cache all effective stats at once
+func _rebuild_stat_cache() -> void:
+	if _stat_cache_valid:
+		return  # Cache is still valid
+	
+	_cached_effective_stats[StatType.MAX_HP] = _apply_trait_stat(StatType.MAX_HP, 
+		int(ceil(max_hp * MTStatStage.get_multiplier(stat_stages[StatType.MAX_HP]))))
+	_cached_effective_stats[StatType.MAX_ENERGY] = _apply_trait_stat(StatType.MAX_ENERGY,
+		int(ceil(max_energy * MTStatStage.get_multiplier(stat_stages[StatType.MAX_ENERGY]))))
+	_cached_effective_stats[StatType.STRENGTH] = _apply_trait_stat(StatType.STRENGTH,
+		int(ceil(strength * MTStatStage.get_multiplier(stat_stages[StatType.STRENGTH]))))
+	_cached_effective_stats[StatType.MAGIC] = _apply_trait_stat(StatType.MAGIC,
+		int(ceil(magic * MTStatStage.get_multiplier(stat_stages[StatType.MAGIC]))))
+	_cached_effective_stats[StatType.DEFENSE] = _apply_trait_stat(StatType.DEFENSE,
+		int(ceil(defense * MTStatStage.get_multiplier(stat_stages[StatType.DEFENSE]))))
+	_cached_effective_stats[StatType.RESISTANCE] = _apply_trait_stat(StatType.RESISTANCE,
+		int(ceil(resistance * MTStatStage.get_multiplier(stat_stages[StatType.RESISTANCE]))))
+	_cached_effective_stats[StatType.SPEED] = _apply_trait_stat(StatType.SPEED,
+		int(ceil(speed * MTStatStage.get_multiplier(stat_stages[StatType.SPEED]))))
+	
+	_stat_cache_valid = true
+
+func _emit_log(logger: Callable, message: String) -> void:
+	if logger.is_valid():
+		logger.call(message)
 
 # ------------------------
 # EFFECTIVE STATS (STAT STAGES + TRAITS)
@@ -164,32 +209,32 @@ func _apply_trait_stat(stat: int, value: int) -> int:
 	return result
 
 func get_max_hp() -> int:
-	var v := int(ceil(max_hp * MTStatStage.get_multiplier(stat_stages[StatType.MAX_HP])))
-	return _apply_trait_stat(StatType.MAX_HP, v)
+	_rebuild_stat_cache()
+	return _cached_effective_stats.get(StatType.MAX_HP, max_hp)
 	
 func get_max_energy() -> int:
-	var v := int(ceil(max_energy * MTStatStage.get_multiplier(stat_stages[StatType.MAX_ENERGY])))
-	return _apply_trait_stat(StatType.MAX_ENERGY, v)
+	_rebuild_stat_cache()
+	return _cached_effective_stats.get(StatType.MAX_ENERGY, max_energy)
 
 func get_strength() -> int:
-	var v := int(ceil(strength * MTStatStage.get_multiplier(stat_stages[StatType.STRENGTH])))
-	return _apply_trait_stat(StatType.STRENGTH, v)
+	_rebuild_stat_cache()
+	return _cached_effective_stats.get(StatType.STRENGTH, strength)
 
 func get_magic() -> int:
-	var v := int(ceil(magic * MTStatStage.get_multiplier(stat_stages[StatType.MAGIC])))
-	return _apply_trait_stat(StatType.MAGIC, v)
+	_rebuild_stat_cache()
+	return _cached_effective_stats.get(StatType.MAGIC, magic)
 
 func get_defense() -> int:
-	var v := int(ceil(defense * MTStatStage.get_multiplier(stat_stages[StatType.DEFENSE])))
-	return _apply_trait_stat(StatType.DEFENSE, v)
+	_rebuild_stat_cache()
+	return _cached_effective_stats.get(StatType.DEFENSE, defense)
 
 func get_resistance() -> int:
-	var v := int(ceil(resistance * MTStatStage.get_multiplier(stat_stages[StatType.RESISTANCE])))
-	return _apply_trait_stat(StatType.RESISTANCE, v)
+	_rebuild_stat_cache()
+	return _cached_effective_stats.get(StatType.RESISTANCE, resistance)
 
 func get_speed() -> int:
-	var v := int(ceil(speed * MTStatStage.get_multiplier(stat_stages[StatType.SPEED])))
-	return _apply_trait_stat(StatType.SPEED, v)
+	_rebuild_stat_cache()
+	return _cached_effective_stats.get(StatType.SPEED, speed)
 
 # ------------------------
 # RESOURCE SAFETY
@@ -231,6 +276,7 @@ func add_trait(trait_effect: MTTraitData):
 	if passive_traits.has(trait_effect):
 		return
 	passive_traits.append(trait_effect)
+	_invalidate_stat_cache()  # Traits affect stat calculation
 
 # ------------------------
 # EFFECT HANDLING
@@ -244,6 +290,7 @@ func clear_effects():
 	for effect in active_effects:
 		effect.on_remove()
 	active_effects.clear()
+	_invalidate_stat_cache()  # Effects cleared, may affect stats
 
 # ------------------------
 # COMBAT
@@ -298,10 +345,7 @@ func on_round_end(logger: Callable = Callable()):
 				" and ".join(parts),
 				trait_effect.name
 			]
-			if logger.is_valid():
-				logger.call(msg)
-			else:
-				print(msg)
+			_emit_log(logger, msg)
 
 # ------------------------
 # LEVELING UP
@@ -309,10 +353,7 @@ func on_round_end(logger: Callable = Callable()):
 func level_up(logger: Callable = Callable()) -> void:
 	if level >= 100:
 		var max_level_msg: String = "%s is already at max level!" % data.name
-		if logger.is_valid():
-			logger.call(max_level_msg)
-		else:
-			print(max_level_msg)
+		_emit_log(logger, max_level_msg)
 		return
 	
 	level += 1
@@ -323,10 +364,7 @@ func level_up(logger: Callable = Callable()) -> void:
 	var level_up_msg: String = "🎉 %s leveled up to level %d! (HP: %d | EN: %d)" % [
 		data.name, level, hp, energy
 	]
-	if logger.is_valid():
-		logger.call(level_up_msg)
-	else:
-		print(level_up_msg)
+	_emit_log(logger, level_up_msg)
 	
 	# Check for evolution
 	evolve_if_ready(logger)
@@ -368,7 +406,7 @@ func apply_evolution(logger: Callable = Callable()) -> bool:
 	var prev_energy := energy
 	var prev_max_hp := get_max_hp()
 	var prev_max_energy := get_max_energy()
-	data = evolved_data.duplicate()
+	data = evolved_data
 	_recalculate_stats()
 	var hp_gain := get_max_hp() - prev_max_hp
 	var energy_gain := get_max_energy() - prev_max_energy
@@ -376,10 +414,7 @@ func apply_evolution(logger: Callable = Callable()) -> bool:
 	energy = clamp(prev_energy + energy_gain, 0, get_max_energy())
 	
 	var msg := "✨ %s evolved into %s!" % [old_name, data.name]
-	if logger.is_valid():
-		logger.call(msg)
-	else:
-		print(msg)
+	_emit_log(logger, msg)
 	return true
 
 # Get all attacks the monster can learn at current level
@@ -415,10 +450,7 @@ func _check_attack_learning(logger: Callable = Callable()) -> void:
 		if learn_data.attack != null and not attacks.has(learn_data.attack):
 			attacks.append(learn_data.attack)
 			var msg = TranslationServer.translate("%s learned %s!") % [data.name, TranslationServer.translate(learn_data.attack.name)]
-			if logger.is_valid():
-				logger.call(msg)
-			else:
-				print(msg)
+			_emit_log(logger, msg)
 # Get all traits the monster can learn at current level
 func get_available_traits_to_learn() -> Array[Resource]:
 	var available: Array[Resource] = []
@@ -446,10 +478,7 @@ func _check_trait_learning(logger: Callable = Callable()) -> void:
 		elif learn_data.trait_data != null:
 			trait_name = TranslationServer.translate(learn_data.trait_data.name)
 		var msg = TranslationServer.translate("%s learned trait %s!") % [data.name, trait_name]
-		if logger.is_valid():
-			logger.call(msg)
-		else:
-			print(msg)
+		_emit_log(logger, msg)
 # ------------------------
 # EXPERIENCE SYSTEM
 # ------------------------
@@ -474,10 +503,6 @@ func gain_exp(defeated_monster: MTMonsterInstance, contributing_monsters: Array[
 	for monster in alive_contributors:
 		if monster.is_alive():
 			monster.current_exp += exp_per_monster
-			print(
-				"%s gained %d EXP! (Total: %d/%d)"
-				% [monster.data.name, exp_per_monster, monster.current_exp, monster.exp_to_next_level]
-			)
 			monster._check_level_up()
 
 # Tracking: Markiere ein Monster als Gegner in diesem Kampf

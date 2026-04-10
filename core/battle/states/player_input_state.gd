@@ -8,5 +8,4 @@ func _init(_monster: MTMonsterInstance):
 
 
 func enter(battle: MTBattleController):
-	print("Waiting for player input...")
-	battle.scene.show_player_menu(monster)
+	battle.show_player_menu(monster)

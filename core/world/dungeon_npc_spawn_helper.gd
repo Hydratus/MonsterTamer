@@ -5,6 +5,11 @@ const NPCDataClass = preload("res://core/world/npc_data.gd")
 const NPCMonsterEntryClass = preload("res://core/world/npc_monster_entry.gd")
 const ITEM_DB_CLASS = preload("res://core/items/item_db.gd")
 
+const INVALID_CELL := Vector2i(-1, -1)
+
+static func _is_invalid_cell(cell: Vector2i) -> bool:
+	return cell == INVALID_CELL
+
 static func spawn_floor_npcs(owner) -> void:
 	clear_dynamic_npcs(owner)
 	if owner._floor_cells.size() < 8:
@@ -40,7 +45,7 @@ static func spawn_event_object(owner, reserved: Dictionary) -> void:
 	if room_index < 0:
 		return
 	var cell: Vector2i = pick_cell_in_room(owner, room_index, reserved)
-	if cell == Vector2i(-1, -1):
+	if _is_invalid_cell(cell):
 		return
 	reserved[cell] = true
 	var event_type: int = owner._rng.randi_range(0, 6)
@@ -70,7 +75,7 @@ static func spawn_loose_items(owner, reserved: Dictionary) -> void:
 		if room_index < 0:
 			break
 		var cell: Vector2i = pick_cell_in_room(owner, room_index, reserved)
-		if cell == Vector2i(-1, -1):
+		if _is_invalid_cell(cell):
 			continue
 		reserved[cell] = true
 		var item_id: String = owner._pick_or_create_random_item()
@@ -87,7 +92,7 @@ static func spawn_secret_vault(owner, reserved: Dictionary) -> void:
 	if room_index < 0:
 		return
 	var cell: Vector2i = pick_cell_in_room(owner, room_index, reserved)
-	if cell == Vector2i(-1, -1):
+	if _is_invalid_cell(cell):
 		return
 	reserved[cell] = true
 	spawn_dynamic_npc(owner, cell, create_secret_vault_npc_data())
@@ -105,7 +110,7 @@ static func spawn_elite_room_npc(owner, reserved: Dictionary) -> void:
 		owner._elite_cleared_this_floor = true
 		return
 	var cell: Vector2i = pick_cell_in_room(owner, owner._elite_room_index, reserved)
-	if cell == Vector2i(-1, -1):
+	if _is_invalid_cell(cell):
 		owner._elite_cleared_this_floor = true
 		owner._log_dungeon("[Dungeon] elite room has no valid spawn cell; unlocking stairs")
 		return
@@ -122,7 +127,7 @@ static func spawn_mimic_npc(owner, reserved: Dictionary) -> void:
 	if room_index < 0:
 		return
 	var cell: Vector2i = pick_cell_in_room(owner, room_index, reserved)
-	if cell == Vector2i(-1, -1):
+	if _is_invalid_cell(cell):
 		return
 	reserved[cell] = true
 	spawn_dynamic_npc(owner, cell, create_mimic_npc_data(owner))
@@ -139,7 +144,7 @@ static func spawn_puzzle_switches(owner, reserved: Dictionary) -> void:
 			owner._log_dungeon("[Dungeon] puzzle: no valid room for switch %d" % (i + 1))
 			continue
 		var cell: Vector2i = pick_cell_in_room(owner, room_index, reserved)
-		if cell == Vector2i(-1, -1):
+		if _is_invalid_cell(cell):
 			owner._log_dungeon("[Dungeon] puzzle: no valid cell in room %d for switch %d" % [room_index, i + 1])
 			continue
 		reserved[cell] = true
@@ -155,7 +160,7 @@ static func spawn_key_npc(owner, reserved: Dictionary) -> void:
 		owner._log_dungeon("[Dungeon] key: no valid room found")
 		return
 	var cell: Vector2i = pick_cell_in_room(owner, room_index, reserved)
-	if cell == Vector2i(-1, -1):
+	if _is_invalid_cell(cell):
 		owner._log_dungeon("[Dungeon] key: no valid cell in room %d" % room_index)
 		return
 	reserved[cell] = true
@@ -175,7 +180,7 @@ static func pick_normal_room_index(owner) -> int:
 
 static func pick_cell_in_room(owner, room_index: int, reserved: Dictionary) -> Vector2i:
 	if room_index < 0 or room_index >= owner._room_rects.size():
-		return Vector2i(-1, -1)
+		return INVALID_CELL
 	var room: Rect2i = owner._room_rects[room_index]
 	var candidates: Array[Vector2i] = []
 	for y in range(room.position.y, room.position.y + room.size.y):
@@ -189,7 +194,7 @@ static func pick_cell_in_room(owner, room_index: int, reserved: Dictionary) -> V
 				continue
 			candidates.append(cell)
 	if candidates.is_empty():
-		return Vector2i(-1, -1)
+		return INVALID_CELL
 	return candidates[owner._rng.randi_range(0, candidates.size() - 1)]
 
 static func spawn_dynamic_npc(owner, cell: Vector2i, npc_data: MTNPCData) -> void:
@@ -246,8 +251,11 @@ static func create_item_npc_data(owner, index: int) -> MTNPCData:
 	data.battle_once = true
 	data.walk_enabled = false
 	if not owner.item_reward_pool.is_empty():
-		var item_id: String = owner.item_reward_pool[owner._rng.randi_range(0, owner.item_reward_pool.size() - 1)]
-		data.give_item_ids = [item_id]
+		var item_db = owner.ITEM_DB_CLASS.new()
+		var valid_ids: Array[String] = item_db.filter_valid_item_ids(owner.item_reward_pool)
+		if not valid_ids.is_empty():
+			var item_id: String = valid_ids[owner._rng.randi_range(0, valid_ids.size() - 1)]
+			data.give_item_ids = [item_id]
 	return data
 
 static func create_elite_npc_data(owner) -> MTNPCData:
@@ -405,7 +413,7 @@ static func pick_monster_for_habitat(owner) -> MTMonsterData:
 
 static func pick_free_floor_cell(owner, reserved: Dictionary) -> Vector2i:
 	if owner._floor_cells.is_empty():
-		return Vector2i(-1, -1)
+		return INVALID_CELL
 	for _i in range(200):
 		var cell: Vector2i = owner._floor_cells[owner._rng.randi_range(0, owner._floor_cells.size() - 1)]
 		if reserved.has(cell):
@@ -415,7 +423,7 @@ static func pick_free_floor_cell(owner, reserved: Dictionary) -> Vector2i:
 		if is_chokepoint_cell(owner, cell):
 			continue
 		return cell
-	return Vector2i(-1, -1)
+	return INVALID_CELL
 
 static func is_safe_npc_spawn_cell(owner, cell: Vector2i) -> bool:
 	if not owner._room_cells_lookup.has(cell):

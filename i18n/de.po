@@ -331,10 +331,10 @@ msgid "A battle begins!"
 msgstr "Ein Kampf beginnt!"
 
 msgid "Player uses %s"
-msgstr "Spieler nutzt %s"
+msgstr "Spieler benutzt %s"
 
 msgid "Enemy uses %s"
-msgstr "Gegner nutzt %s"
+msgstr "Gegner benutzt %s"
 
 msgid "%s was defeated!"
 msgstr "%s wurde besiegt!"
@@ -344,6 +344,9 @@ msgstr "Spieler"
 
 msgid "Enemy"
 msgstr "Gegner"
+
+msgid "Unknown"
+msgstr "Unbekannt"
 
 msgid "%s sent out %s!"
 msgstr "%s schickt %s in den Kampf!"
@@ -370,7 +373,7 @@ msgid "Escape failed!"
 msgstr "Flucht fehlgeschlagen!"
 
 msgid "%s is too exhausted to use %s!"
-msgstr "%s ist zu erschoepft, um %s zu nutzen!"
+msgstr "%s ist zu erschoepft, um %s zu benutzen!"
 
 msgid "Escape is not possible here."
 msgstr "Flucht ist hier nicht moeglich."
@@ -580,7 +583,7 @@ msgid "%s x%d"
 msgstr "%s x%d"
 
 msgid "%s uses Rest!"
-msgstr "%s nutzt Ausruhen!"
+msgstr "%s benutzt Ausruhen!"
 
 msgid "%s restores %d Energy. (%d/%d EN)"
 msgstr "%s stellt %d Energie wieder her. (%d/%d EN)"
@@ -604,7 +607,7 @@ msgid "%s is hurt by %s's %s for %d contact damage!"
 msgstr "%s wird durch %s' %s fuer %d Kontaktschaden verletzt!"
 
 msgid "%s's %s changed by %s%d due to %s's %s!"
-msgstr "%s' %s hat sich durch %s' %s um %s%d geaendert!"
+msgstr "%s' %s hat sich um %s%d veraendert (durch %s' %s)!"
 
 msgid " (%d/%d HP | %d/%d EN)"
 msgstr " (%d/%d HP | %d/%d EN)"

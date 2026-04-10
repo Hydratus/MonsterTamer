@@ -1,8 +1,14 @@
 extends Node
 
 @export var starter_team: Array[MTMonsterData] = []
+@export var debug_world_logs := false
+
+const DEBUG_LOG = preload("res://core/systems/debug_log.gd")
 
 var _current_world
+
+func _log_world(message: String) -> void:
+	DEBUG_LOG.debug(debug_world_logs, "World", message)
 
 func _ready():
 	add_to_group("world_manager")
@@ -12,7 +18,9 @@ func _ready():
 				continue
 			var instance := MTMonsterInstance.new(monster_data)
 			instance.decision = MTPlayerDecision.new()
-			Game.party.append(instance)
+			if not Game.add_to_party(instance):
+				DEBUG_LOG.error("World", "Failed to add starter monster to party")
+				break
 	if Game.get_item_count("lesser_healing_potion") == 0:
 		Game.add_item("lesser_healing_potion", 3)
 	if Game.get_item_count("lesser_binding_rune") == 0:
@@ -28,7 +36,7 @@ func change_world(scene_path: String, payload: Dictionary = {}) -> void:
 		_current_world = null
 	var packed := load(scene_path)
 	if packed == null:
-		push_error("Failed to load scene: %s" % scene_path)
+		DEBUG_LOG.error("World", "Failed to load scene: %s" % scene_path)
 		return
 	var world: Node = packed.instantiate()
 
@@ -45,9 +53,9 @@ func change_world(scene_path: String, payload: Dictionary = {}) -> void:
 			world_script = world.get_script()
 			if world_script != null and world_script is Script:
 				script_path = (world_script as Script).resource_path
-			print("[World] forced dungeon script=%s" % [script_path])
+			_log_world("forced dungeon script=%s" % [script_path])
 		else:
-			push_error("Failed to load forced dungeon script")
+			DEBUG_LOG.error("World", "Failed to load forced dungeon script")
 
 	add_child(world)
 	_current_world = world
@@ -55,16 +63,16 @@ func change_world(scene_path: String, payload: Dictionary = {}) -> void:
 	script_path = "<none>"
 	if world_script != null and world_script is Script:
 		script_path = (world_script as Script).resource_path
-	print("[World] change_world path=%s node=%s script=%s" % [scene_path, world.name, script_path])
+	_log_world("change_world path=%s node=%s script=%s" % [scene_path, world.name, script_path])
 	for prop in world.get_property_list():
 		if str(prop.name) == "starter_team":
 			world.set("starter_team", starter_team)
 			break
 	if world.has_method("apply_world_payload"):
-		print("[World] apply_world_payload payload=%s" % [str(payload)])
+		_log_world("apply_world_payload payload=%s" % [str(payload)])
 		world.apply_world_payload(payload)
 	else:
-		print("[World] apply_world_payload missing on node=%s" % [world.name])
+		_log_world("apply_world_payload missing on node=%s" % [world.name])
 
 func _center_window_on_primary_screen() -> void:
 	var mode := DisplayServer.window_get_mode()

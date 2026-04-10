@@ -26,6 +26,15 @@ var _locked_facing: Vector2i = Vector2i(0, 1)
 var _reserved_cell: Vector2i = Vector2i.ZERO
 var _has_reserved_cell := false
 
+func _has_npc_data() -> bool:
+	return npc_data != null
+
+func _get_game():
+	var loop := Engine.get_main_loop()
+	if loop == null or not loop is SceneTree:
+		return null
+	return (loop as SceneTree).root.get_node_or_null("Game")
+
 func _ready() -> void:
 	_tile_layer = get_node_or_null(tile_layer_path) as TileMapLayer
 	_sprite = _find_first_animated_sprite(self)
@@ -54,7 +63,7 @@ func _schedule_next_step() -> void:
 func _move_next_step() -> void:
 	if _walk_paused:
 		return
-	if npc_data == null or npc_data.walk_path.is_empty():
+	if not _has_npc_data() or npc_data.walk_path.is_empty():
 		return
 	_is_moving = true
 	var cell: Vector2i = Vector2i(npc_data.walk_path[_walk_index])
@@ -101,7 +110,7 @@ func resume_walk() -> void:
 	_walk_paused = false
 	_pause_after_step = false
 	_facing_locked = false
-	if npc_data != null and npc_data.walk_enabled and npc_data.walk_path.size() > 0:
+	if _has_npc_data() and npc_data.walk_enabled and npc_data.walk_path.size() > 0:
 		_schedule_next_step()
 
 func is_cell_reserved(cell: Vector2i) -> bool:
@@ -110,12 +119,12 @@ func is_cell_reserved(cell: Vector2i) -> bool:
 func get_next_target_cell() -> Vector2i:
 	if _walk_paused:
 		return Vector2i.ZERO
-	if npc_data == null or not npc_data.walk_enabled or npc_data.walk_path.is_empty():
+	if not _has_npc_data() or not npc_data.walk_enabled or npc_data.walk_path.is_empty():
 		return Vector2i.ZERO
 	return Vector2i(npc_data.walk_path[_walk_index])
 
 func _resolve_walk_path() -> void:
-	if npc_data == null:
+	if not _has_npc_data():
 		return
 	if not npc_data.walk_path_relative:
 		return
@@ -198,7 +207,7 @@ func _play_anim(prefix: String, direction: Vector2i) -> void:
 			_sprite.play(anim_name)
 
 func can_battle() -> bool:
-	if npc_data == null:
+	if not _has_npc_data():
 		return false
 	if npc_data.team_entries.is_empty():
 		return false
@@ -207,7 +216,7 @@ func can_battle() -> bool:
 	return true
 
 func can_give_items() -> bool:
-	if npc_data == null:
+	if not _has_npc_data():
 		return false
 	if not npc_data.gives_items:
 		return false
@@ -218,21 +227,24 @@ func can_give_items() -> bool:
 	return true
 
 func give_items() -> void:
-	if npc_data == null:
+	if not _has_npc_data():
 		return
 	if not npc_data.gives_items:
+		return
+	var game = _get_game()
+	if game == null:
 		return
 	var amount: int = int(max(npc_data.give_item_amount, 1))
 	for item_id in npc_data.give_item_ids:
 		if item_id == "":
 			continue
-		Game.add_item(item_id, amount)
+		game.add_item(item_id, amount)
 	if npc_data.battle_once:
 		_has_given_items = true
 		_has_battled = true
 
 func get_dialogue() -> String:
-	if npc_data == null:
+	if not _has_npc_data():
 		return ""
 	if _has_battled and npc_data.dialogue_after != "":
 		return TranslationServer.translate(npc_data.dialogue_after)
@@ -240,7 +252,7 @@ func get_dialogue() -> String:
 
 func build_team() -> Array:
 	var team: Array = []
-	if npc_data == null:
+	if not _has_npc_data():
 		return team
 	var entries = npc_data.get("team_entries")
 	if entries == null:

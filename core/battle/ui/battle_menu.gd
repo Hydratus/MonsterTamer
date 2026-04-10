@@ -15,6 +15,7 @@ const MENU_OFFSET_TOP_DEFAULT := -80.0
 const MENU_OFFSET_TOP_ATTACKS := -140.0
 const ITEM_MENU_SCENE := preload("res://ui/menus/item_menu.tscn")
 const MonsterStatusViewHelper = preload("res://core/ui/monster_status_view_helper.gd")
+const DEBUG_LOG = preload("res://core/systems/debug_log.gd")
 const DEBUG_MENU_LOGS := false
 
 var current_monster: MTMonsterInstance
@@ -90,7 +91,7 @@ func show_main_menu(monster: MTMonsterInstance, team: MTMonsterTeam = null, cont
 	_apply_menu_offsets(_menu_offsets_default)
 	vbox.offset_top = MENU_OFFSET_TOP_DEFAULT
 	
-	_log_debug("show_main_menu monster=%s team=%s controller=%s" % [monster.data.name, "null" if team == null else "set", "null" if controller == null else "set"])
+	_log_debug("show_main_menu monster=%s team=%s controller=%s" % [_monster_name(monster), "null" if team == null else "set", "null" if controller == null else "set"])
 	
 	# Stelle sicher, dass die VBox wirklich leer ist
 	_clear_menu()
@@ -258,9 +259,9 @@ func show_team(team: MTMonsterTeam, forced_switch: bool = false, forced_team_ind
 		var button := Button.new()
 		var status = "[KO]" if not monster.is_alive() else "[ACTIVE]" if is_active else "[OK]"
 		button.text = tr("%s %s | Lv. %d | %d/%d HP | %d/%d EN") % [
-			monster.data.name,
+			_monster_name(monster),
 			status,
-			monster.data.level,
+			_monster_level(monster),
 			monster.hp,
 			monster.get_max_hp(),
 			monster.energy,
@@ -380,15 +381,15 @@ func _show_monster_options(team: MTMonsterTeam, index: int, monster: MTMonsterIn
 	_menu_columns = 1
 	
 	_log_debug("monster options %s index=%d active=%s" % [
-		monster.data.name,
+		_monster_name(monster),
 		index,
 		"ja" if monster == team.get_active_monster() else "nein"
 	])
 	
 	var label := Label.new()
 	label.text = tr("%s - Level %d\n\nHP: %d/%d\nEN: %d/%d\nSTR: %d | MAG: %d\nDEF: %d | RES: %d\nSPD: %d") % [
-		monster.data.name,
-		monster.data.level,
+		_monster_name(monster),
+		_monster_level(monster),
 		monster.hp,
 		monster.get_max_hp(),
 		monster.energy,
@@ -412,21 +413,18 @@ func _show_monster_options(team: MTMonsterTeam, index: int, monster: MTMonsterIn
 	
 	# Switch-Button (nur wenn Monster lebt und nicht bereits aktiv)
 	if monster.is_alive() and monster != team.get_active_monster():
-		_log_debug("show switch button for %s" % monster.data.name)
+		_log_debug("show switch button for %s" % _monster_name(monster))
 		var switch_button := Button.new()
 		switch_button.text = tr("Switch")
 		switch_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		switch_button.pressed.connect(func():
-			_log_debug("switch clicked for %s index=%d" % [monster.data.name, index])
+			_log_debug("switch clicked for %s index=%d" % [_monster_name(monster), index])
 			if battle_controller == null:
 				_log_error("battle_controller is null")
 				return
 			
 			# Bestimme Team-Index (0 = Player, 1 = Enemy)
-			var team_index = 0
-			if battle_controller.teams.size() > 1:
-				if battle_controller.teams[1] == team:
-					team_index = 1
+			var team_index := _resolve_team_index(team)
 			
 			# Erstelle MTSwitchAction
 			var switch_action = MTSwitchAction.new(team_index, index, current_monster)
@@ -513,6 +511,23 @@ func _clear_menu() -> void:
 	_menu_columns = 1
 	_item_menu = null
 
+func _monster_name(monster: MTMonsterInstance) -> String:
+	if monster == null or monster.data == null:
+		return tr("Unknown")
+	return monster.data.name
+
+func _monster_level(monster: MTMonsterInstance) -> int:
+	if monster == null or monster.data == null:
+		return 0
+	return monster.data.level
+
+func _resolve_team_index(team: MTMonsterTeam) -> int:
+	if battle_controller == null:
+		return 0
+	if battle_controller.teams.size() > 1 and battle_controller.teams[1] == team:
+		return 1
+	return 0
+
 func _add_attacks_footer_row(attacks_box: VBoxContainer, attack_button_width: int) -> void:
 	var back_row := HBoxContainer.new()
 	back_row.add_theme_constant_override("separation", 8)
@@ -552,11 +567,10 @@ func _add_attacks_footer_row(attacks_box: VBoxContainer, attack_button_width: in
 	_back_button.focus_neighbor_left = _rest_button.get_path()
 
 func _log_debug(message: String) -> void:
-	if DEBUG_MENU_LOGS:
-		print("[BattleMenu] %s" % message)
+	DEBUG_LOG.debug(DEBUG_MENU_LOGS, "BattleMenu", message)
 
 func _log_error(message: String) -> void:
-	push_warning("[BattleMenu] %s" % message)
+	DEBUG_LOG.error("BattleMenu", message)
 
 func _show_item_menu() -> void:
 	_apply_menu_offsets(_menu_offsets_item)

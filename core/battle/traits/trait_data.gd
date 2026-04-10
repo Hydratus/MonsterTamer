@@ -1,6 +1,8 @@
 extends Resource
 class_name MTTraitData
 
+const DEBUG_LOG = preload("res://core/systems/debug_log.gd")
+
 @export var name: String
 @export var description: String
 @export var unlock_level: int = 1
@@ -200,7 +202,7 @@ func _localize_stat_name(stat_key: String) -> String:
 func _log_contact(action: MTBattleAction, text: String) -> void:
 	if action != null and action.has_method("battle_log"):
 		action.battle_log(text)
-		if action.battle != null and action.battle.scene != null:
-			action.battle.scene.flush_action_messages()
+		if action.battle != null:
+			action.battle.flush_action_messages()
 	else:
-		print(text)
+		DEBUG_LOG.warning("TraitData", text)

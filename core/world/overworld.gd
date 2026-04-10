@@ -1,6 +1,8 @@
 extends Node2D
+class_name MTOverworld
 
 const ITEM_DB = preload("res://core/items/item_db.gd")
+const DEBUG_LOG = preload("res://core/systems/debug_log.gd")
 
 const META_UNLOCK_OPTIONS: Array[Dictionary] = [
 	{"id": "starting_gold", "name": "Start Gold +25", "cost": 20, "max_level": 3},
@@ -99,8 +101,7 @@ var _dungeon_menu_open := false
 var _dungeon_menu_buttons: Array[Button] = []
 
 func _log_debug(message: String) -> void:
-	if debug_logs:
-		print("[World] %s" % message)
+	DEBUG_LOG.debug(debug_logs, "World", message)
 
 func _ready() -> void:
 	_rng.randomize()
@@ -339,7 +340,8 @@ func _rebuild_dungeon_buttons() -> void:
 	for child in _dungeon_menu_container.get_children():
 		child.queue_free()
 
-	var essence_text := tr("Soul Essence: %d") % int(Game.soul_essence if Game != null else 0)
+	var game = _get_game()
+	var essence_text := tr("Soul Essence: %d") % int(game.soul_essence if game != null else 0)
 	var essence_label := Label.new()
 	essence_label.text = essence_text
 	essence_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -350,8 +352,8 @@ func _rebuild_dungeon_buttons() -> void:
 		var unlock_id := str(unlock_def.get("id", ""))
 		var max_level: int = int(unlock_def.get("max_level", 1))
 		var current_level: int = 0
-		if Game != null:
-			current_level = Game.get_meta_unlock_level(unlock_id)
+		if game != null:
+			current_level = game.get_meta_unlock_level(unlock_id)
 		var unlock_button := Button.new()
 		if current_level >= max_level:
 			unlock_button.text = tr("%s [MAX]") % str(unlock_def.get("name", unlock_id))
@@ -397,16 +399,17 @@ func _rebuild_dungeon_buttons() -> void:
 	_dungeon_menu_buttons.append(cancel_button)
 
 func _on_meta_unlock_button_pressed(unlock_id: String, cost: int, max_level: int) -> void:
-	if Game == null:
+	var game = _get_game()
+	if game == null:
 		_enqueue_message(tr("Meta unlock failed: Game singleton missing."))
 		return
-	if Game.buy_meta_unlock(unlock_id, cost, max_level):
-		_enqueue_message(tr("Unlocked %s. Soul Essence left: %d") % [unlock_id, Game.soul_essence])
+	if game.buy_meta_unlock(unlock_id, cost, max_level):
+		_enqueue_message(tr("Unlocked %s. Soul Essence left: %d") % [unlock_id, game.soul_essence])
 		_rebuild_dungeon_buttons()
 		if _dungeon_menu_buttons.size() > 0:
 			_dungeon_menu_buttons[0].grab_focus()
 		return
-	var current_level: int = Game.get_meta_unlock_level(unlock_id)
+	var current_level: int = game.get_meta_unlock_level(unlock_id)
 	if current_level >= max_level:
 		_enqueue_message(tr("%s is already at max level.") % unlock_id)
 	else:
@@ -448,8 +451,9 @@ func _on_dungeon_button_pressed(index: int) -> void:
 		payload = option["payload"]
 	_log_debug("[DungeonMenu] selected=%s scene=%s payload=%s" % [
 		str(option.get("name", "Dungeon")), scene_path, str(payload)])
-	if Game != null:
-		Game.flags["dungeon_run_active"] = false
+	var game = _get_game()
+	if game != null:
+		game.flags["dungeon_run_active"] = false
 	_close_dungeon_menu()
 	_request_world_change(scene_path, payload)
 
@@ -666,8 +670,11 @@ func _create_pause_menu() -> void:
 func _open_pause_menu() -> void:
 	if _pause_menu == null:
 		return
+	var game = _get_game()
+	if game == null:
+		return
 	_pause_menu_open = true
-	_pause_menu.open(Game.party)
+	_pause_menu.open(game.party)
 
 func _close_pause_menu() -> void:
 	if _pause_menu == null:
@@ -678,6 +685,43 @@ func _close_pause_menu() -> void:
 func _on_pause_menu_closed() -> void:
 	_pause_menu_open = false
 
+func _set_pause_overlay_message_active(active: bool) -> void:
+	if not _pause_menu_open or _pause_menu == null:
+		return
+	if _pause_menu.has_method("set_overlay_message_active"):
+		_pause_menu.set_overlay_message_active(active)
+
+func _build_player_team_from_party() -> Array[MTMonsterInstance]:
+	var player_team: Array[MTMonsterInstance] = []
+	var game = _get_game()
+	if game == null:
+		return player_team
+	for monster in game.party:
+		if monster == null:
+			continue
+		player_team.append(monster)
+	return player_team
+
+func _get_game():
+	var loop := Engine.get_main_loop()
+	if loop == null or not loop is SceneTree:
+		return null
+	return (loop as SceneTree).root.get_node_or_null("Game")
+
+func _player_name() -> String:
+	var game = _get_game()
+	if game == null:
+		return ""
+	return str(game.player_name)
+
+func _try_change_world_on(node: Node, scene_path: String, payload: Dictionary) -> bool:
+	if node == null:
+		return false
+	if not node.has_method("change_world"):
+		return false
+	node.change_world(scene_path, payload)
+	return true
+
 func _try_interact() -> void:
 	if _message_visible:
 		_message_panel.visible = false
@@ -687,9 +731,7 @@ func _try_interact() -> void:
 			return
 		if _handle_custom_message_closed():
 			return
-		if _pause_menu_open and _pause_menu != null:
-			if _pause_menu.has_method("set_overlay_message_active"):
-				_pause_menu.set_overlay_message_active(false)
+		_set_pause_overlay_message_active(false)
 		if _pending_npc_battle != null:
 			var pending_npc = _pending_npc_battle
 			_pending_npc_battle = null
@@ -754,30 +796,34 @@ func _request_world_change(scene_path: String, payload: Dictionary = {}) -> void
 	var manager := get_tree().get_first_node_in_group("world_manager")
 	if manager == null:
 		manager = get_tree().current_scene
-	if manager != null and manager.has_method("change_world"):
-		manager.change_world(scene_path, payload)
+	if _try_change_world_on(manager, scene_path, payload):
 		return
 	var parent := get_parent()
 	while parent != null:
-		if parent.has_method("change_world"):
-			parent.change_world(scene_path, payload)
+		if _try_change_world_on(parent, scene_path, payload):
 			return
 		parent = parent.get_parent()
 	var result := get_tree().change_scene_to_file(scene_path)
 	if result != OK:
-		push_error("World change failed: %s" % scene_path)
+		DEBUG_LOG.error("World", "World change failed: %s" % scene_path)
 
 func _ensure_party() -> void:
-	if Game.party.size() > 0:
+	var game = _get_game()
+	if game == null:
+		return
+	if game.get_party_size() > 0:
 		return
 	for monster_data in starter_team:
 		if monster_data == null:
 			continue
 		var instance := MTMonsterInstance.new(monster_data)
 		instance.decision = MTPlayerDecision.new()
-		Game.party.append(instance)
+		if not game.add_to_party(instance):
+			DEBUG_LOG.error("World", "Failed to add starter monster to party in overworld")
+			break
 
 func _ensure_encounters() -> void:
+	_sanitize_encounter_table()
 	if not encounter_table.is_empty():
 		return
 	var slime := load("res://data/monsters/slime/slime.tres") as MTMonsterData
@@ -796,6 +842,23 @@ func _ensure_encounters() -> void:
 		wolf_entry.max_level = 8
 		wolf_entry.weight = 5
 		encounter_table.append(wolf_entry)
+	_sanitize_encounter_table()
+
+func _sanitize_encounter_table() -> void:
+	var valid_entries: Array[MTEncounterEntry] = []
+	for entry in encounter_table:
+		if entry == null:
+			continue
+		if entry.monster == null:
+			continue
+		if entry.weight <= 0:
+			continue
+		if entry.max_level < entry.min_level:
+			entry.max_level = entry.min_level
+		if entry.min_level < 1:
+			entry.min_level = 1
+		valid_entries.append(entry)
+	encounter_table = valid_entries
 
 func _start_random_battle() -> void:
 	var enemy_team: Array[MTMonsterInstance] = _build_enemy_team()
@@ -810,16 +873,13 @@ func _start_random_battle() -> void:
 	_battle_scene.battle_finished.connect(_on_battle_finished)
 	_battle_scene.capture_allowed = true
 	_battle_scene.escape_allowed = true
-	_battle_scene.player_soulbinder_name = Game.player_name
+	_battle_scene.player_soulbinder_name = _player_name()
 	_battle_scene.enemy_soulbinder_name = "Wild"
-	var player_team: Array[MTMonsterInstance] = []
-	for monster in Game.party:
-		if monster == null:
-			continue
-		player_team.append(monster)
+	var player_team: Array[MTMonsterInstance] = _build_player_team_from_party()
 	_battle_scene.start_battle(player_team, enemy_team)
 
 func _build_enemy_team() -> Array[MTMonsterInstance]:
+	_sanitize_encounter_table()
 	var entries := encounter_table.filter(func(e): return e != null and e.weight > 0 and e.monster != null)
 	if entries.is_empty():
 		return []
@@ -876,16 +936,12 @@ func _start_npc_battle(npc) -> void:
 	_battle_scene.battle_finished.connect(_on_battle_finished)
 	_battle_scene.capture_allowed = false
 	_battle_scene.escape_allowed = false
-	_battle_scene.player_soulbinder_name = Game.player_name
+	_battle_scene.player_soulbinder_name = _player_name()
 	var npc_name: String = "NPC"
 	if npc.npc_data != null and npc.npc_data.display_name != "":
 		npc_name = TranslationServer.translate(npc.npc_data.display_name)
 	_battle_scene.enemy_soulbinder_name = npc_name
-	var player_team: Array[MTMonsterInstance] = []
-	for monster in Game.party:
-		if monster == null:
-			continue
-		player_team.append(monster)
+	var player_team: Array[MTMonsterInstance] = _build_player_team_from_party()
 	_battle_scene.start_battle(player_team, enemy_team)
 
 func _show_message(text: String) -> void:
@@ -906,9 +962,7 @@ func _show_next_message() -> void:
 	_message_panel.visible = true
 	_message_visible = true
 	_pause_npc_walks()
-	if _pause_menu_open and _pause_menu != null:
-		if _pause_menu.has_method("set_overlay_message_active"):
-			_pause_menu.set_overlay_message_active(true)
+	_set_pause_overlay_message_active(true)
 
 func _pause_npc_walks() -> void:
 	for npc in _npcs:
