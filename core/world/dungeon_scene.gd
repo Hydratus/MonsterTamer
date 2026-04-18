@@ -9,6 +9,7 @@ const DungeonShopUIHelperClass = preload("res://core/world/dungeon_shop_ui_helpe
 const DungeonRunHelperClass = preload("res://core/world/dungeon_run_helper.gd")
 const DungeonNPCSpawnHelperClass = preload("res://core/world/dungeon_npc_spawn_helper.gd")
 const DungeonQuestHelperClass = preload("res://core/world/dungeon_quest_helper.gd")
+const BalanceConstants = preload("res://core/systems/game_balance_constants.gd")
 const STAIRS_NPC_DATA = preload("res://data/npc/NPCDungeonStairs.tres")
 const BOSS_NPC_DATA = preload("res://data/npc/NPCDungeonBoss.tres")
 
@@ -149,6 +150,8 @@ var _currency_hud_layer: CanvasLayer
 var _currency_hud_label: Label
 var _last_gold_display: int = -1
 var _last_essence_display: int = -1
+var _encounter_segments: Array[Dictionary] = []
+var _active_encounter_segment_start: int = -1
 
 #  Life-cycle 
 
@@ -425,6 +428,9 @@ func _advance_floor() -> void:
 func _apply_floor_rules(reset_player: bool) -> void:
 	current_floor = clamp(current_floor, 1, max(floor_count, 1))
 	floor_count = max(floor_count, 1)
+	if current_floor == 1:
+		_encounter_segments.clear()
+		_active_encounter_segment_start = -1
 	_start_dungeon_run_if_needed()
 	if base_encounter_chance <= 0.0:
 		# Explicitly allow encounter-free dungeons via payload/inspector.
@@ -471,17 +477,18 @@ func _start_npc_battle(npc) -> void:
 
 func _build_floor_encounters() -> void:
 	encounter_table.clear()
-	var monster_paths := _get_habitat_monster_paths()
-	var weights := _get_habitat_weights()
-	for i in range(monster_paths.size()):
-		var monster := load(monster_paths[i]) as MTMonsterData
+	var segment := _get_active_encounter_segment()
+	var candidates: Array = segment.get("candidates", [])
+	for i in range(candidates.size()):
+		var candidate: Dictionary = candidates[i]
+		var monster: MTMonsterData = candidate.get("monster", null)
 		if monster == null:
 			continue
 		var entry := EncounterEntryClass.new()
 		entry.monster = monster
 		entry.min_level = max(1, current_floor * 2 - 1 + i)
 		entry.max_level = entry.min_level + 2 + int(current_floor / 2.0)
-		entry.weight = int(weights[i]) if i < weights.size() else 5
+		entry.weight = max(1, int(candidate.get("roll_weight", 1)))
 		encounter_table.append(entry)
 
 	if encounter_table.is_empty():
@@ -494,6 +501,180 @@ func _build_floor_encounters() -> void:
 			e.weight = 10
 			encounter_table.append(e)
 	_sanitize_encounter_entries()
+
+func _get_dungeon_encounter_config() -> Dictionary:
+	var base_config: Dictionary = BalanceConstants.DUNGEON_ENCOUNTER_CONFIG.get("default", {})
+	var habitat_key: String = habitat.to_lower()
+	var habitat_config: Dictionary = BalanceConstants.DUNGEON_ENCOUNTER_CONFIG.get(habitat_key, {})
+	if habitat_config.is_empty():
+		return base_config
+	var merged := base_config.duplicate(true)
+	for key in habitat_config.keys():
+		merged[key] = habitat_config[key]
+	return merged
+
+func _get_rarity_weights_for_start_floor(start_floor: int) -> Dictionary:
+	var config: Dictionary = _get_dungeon_encounter_config()
+	var habitat_rules: Array = config.get("rarity_weight_rules", [])
+	var rules: Array = habitat_rules if not habitat_rules.is_empty() else BalanceConstants.ENCOUNTER_RARITY_WEIGHT_RULES
+	for raw_rule in rules:
+		var rule: Dictionary = raw_rule if raw_rule is Dictionary else {}
+		var min_floor: int = int(rule.get("start_min", 1))
+		var max_floor: int = int(rule.get("start_max", 999))
+		if start_floor >= min_floor and start_floor <= max_floor:
+			return rule.get("weights", {})
+	return {"common": 100}
+
+func _get_elite_budget_rule_for_start_floor(start_floor: int) -> Dictionary:
+	var config: Dictionary = _get_dungeon_encounter_config()
+	var habitat_rules: Array = config.get("elite_budget_rules", [])
+	var rules: Array = habitat_rules if not habitat_rules.is_empty() else BalanceConstants.ELITE_BUDGET_RULES
+	for raw_rule in rules:
+		var rule: Dictionary = raw_rule if raw_rule is Dictionary else {}
+		var min_floor: int = int(rule.get("start_min", 1))
+		var max_floor: int = int(rule.get("start_max", 999))
+		if start_floor >= min_floor and start_floor <= max_floor:
+			return rule
+	return {
+		"budget_min": 45,
+		"budget_max": 65,
+		"team_min": 2,
+		"team_max": 3
+	}
+
+func _get_active_encounter_segment() -> Dictionary:
+	_ensure_encounter_segments()
+	for segment in _encounter_segments:
+		var start_floor: int = int(segment.get("start_floor", 1))
+		var end_floor_exclusive: int = int(segment.get("end_floor_exclusive", 2))
+		if current_floor >= start_floor and current_floor < end_floor_exclusive:
+			if _active_encounter_segment_start != start_floor:
+				_active_encounter_segment_start = start_floor
+				_log_dungeon("[Dungeon] encounter segment active start=%d end=%d pool=%d" % [
+					start_floor,
+					end_floor_exclusive,
+					segment.get("candidates", []).size()
+				])
+			return segment
+	return {}
+
+func _ensure_encounter_segments() -> void:
+	if not _encounter_segments.is_empty():
+		return
+	var config: Dictionary = _get_dungeon_encounter_config()
+	var segment_rules: Dictionary = BalanceConstants.ENCOUNTER_SEGMENT_RULES
+	var min_len: int = max(1, int(segment_rules.get("min_len", 3)))
+	var max_len: int = max(min_len, int(segment_rules.get("max_len", 7)))
+	var candidate_min: int = max(1, int(segment_rules.get("candidate_min", 4)))
+	var candidate_max: int = max(candidate_min, int(segment_rules.get("candidate_max", 7)))
+
+	var start_floor: int = 1
+	while start_floor <= floor_count:
+		var seg_len: int = _rng.randi_range(min_len, max_len)
+		var end_floor_exclusive: int = min(start_floor + seg_len, floor_count + 1)
+		var candidate_count: int = _rng.randi_range(candidate_min, candidate_max)
+		var candidates: Array[Dictionary] = _build_segment_candidates(config, start_floor, candidate_count)
+		_encounter_segments.append({
+			"start_floor": start_floor,
+			"end_floor_exclusive": end_floor_exclusive,
+			"candidates": candidates
+		})
+		start_floor = end_floor_exclusive
+
+func _build_segment_candidates(config: Dictionary, start_floor: int, target_count: int) -> Array[Dictionary]:
+	var pools: Dictionary = config.get("rarity_pools", {})
+	var costs: Dictionary = config.get("monster_costs", {})
+	var weights: Dictionary = _get_rarity_weights_for_start_floor(start_floor)
+	var used_paths: Dictionary = {}
+	var candidates: Array[Dictionary] = []
+
+	for _attempt in range(200):
+		if candidates.size() >= target_count:
+			break
+		var rarity: String = _roll_rarity_from_weights(weights)
+		if rarity == "":
+			break
+		var path: String = _pick_unique_path_from_rarity_pool(pools, rarity, used_paths)
+		if path == "":
+			continue
+		var monster := load(path) as MTMonsterData
+		if monster == null:
+			continue
+		used_paths[path] = true
+		var roll_weight: int = max(1, int(weights.get(rarity, 1)))
+		var fallback_cost := _default_cost_for_rarity(rarity)
+		candidates.append({
+			"path": path,
+			"monster": monster,
+			"rarity": rarity,
+			"roll_weight": roll_weight,
+			"cost": int(costs.get(path, fallback_cost))
+		})
+
+	if candidates.is_empty():
+		var fallback := load("res://data/monsters/slime/slime.tres") as MTMonsterData
+		if fallback != null:
+			candidates.append({
+				"path": "res://data/monsters/slime/slime.tres",
+				"monster": fallback,
+				"rarity": "common",
+				"roll_weight": 10,
+				"cost": 10
+			})
+	return candidates
+
+func _roll_rarity_from_weights(weights: Dictionary) -> String:
+	var total := 0
+	for rarity in BalanceConstants.ENCOUNTER_RARITY_ORDER:
+		total += max(0, int(weights.get(rarity, 0)))
+	if total <= 0:
+		return ""
+	var roll := _rng.randi_range(1, total)
+	var running := 0
+	for rarity in BalanceConstants.ENCOUNTER_RARITY_ORDER:
+		running += max(0, int(weights.get(rarity, 0)))
+		if roll <= running:
+			return rarity
+	return ""
+
+func _pick_unique_path_from_rarity_pool(pools: Dictionary, rarity: String, used_paths: Dictionary) -> String:
+	var selected := _pick_unique_path_from_list(pools.get(rarity, []), used_paths)
+	if selected != "":
+		return selected
+	for fallback_rarity in BalanceConstants.ENCOUNTER_RARITY_ORDER:
+		selected = _pick_unique_path_from_list(pools.get(fallback_rarity, []), used_paths)
+		if selected != "":
+			return selected
+	return ""
+
+func _pick_unique_path_from_list(list_value, used_paths: Dictionary) -> String:
+	var entries: Array = list_value if list_value is Array else []
+	if entries.is_empty():
+		return ""
+	var available: Array[String] = []
+	for raw in entries:
+		var path := str(raw)
+		if path == "" or used_paths.has(path):
+			continue
+		available.append(path)
+	if available.is_empty():
+		return ""
+	return available[_rng.randi_range(0, available.size() - 1)]
+
+func _default_cost_for_rarity(rarity: String) -> int:
+	match rarity:
+		"common":
+			return 10
+		"uncommon":
+			return 16
+		"rare":
+			return 22
+		"very_rare":
+			return 30
+		"legendary":
+			return 40
+		_:
+			return 12
 
 func _validate_dungeon_item_pools() -> void:
 	var db := ITEM_DB_CLASS.new()
@@ -622,27 +803,8 @@ func _prepare_boss_npc() -> void:
 	if boss_data == null:
 		return
 	boss_data.battle_once = true
-	var upgraded_entries: Array[MTNPCMonsterEntry] = []
-	for entry in boss_data.team_entries:
-		if entry == null:
-			continue
-		var upgraded_entry: MTNPCMonsterEntry = entry.duplicate(true) as MTNPCMonsterEntry
-		if upgraded_entry == null:
-			continue
-		upgraded_entry.level = max(int(upgraded_entry.level), 6 + current_floor * 2)
-		if upgraded_entry.monster_data == null:
-			upgraded_entry.monster_data = _pick_monster_for_habitat()
-		upgraded_entries.append(upgraded_entry)
-
 	var target_team_size: int = max(1, boss_team_size)
-	while upgraded_entries.size() < target_team_size:
-		var extra := NPCMonsterEntryClass.new()
-		extra.monster_data = _pick_monster_for_habitat()
-		extra.level = max(8, current_floor * 2 + 4 + _rng.randi_range(0, 2))
-		upgraded_entries.append(extra)
-
-	if upgraded_entries.size() > target_team_size:
-		upgraded_entries = upgraded_entries.slice(0, target_team_size)
+	var upgraded_entries := _build_boss_team_entries(target_team_size)
 	boss_data.team_entries = upgraded_entries
 	_log_dungeon("[Dungeon] boss team prepared size=%d" % boss_data.team_entries.size())
 	_boss_npc.npc_data = boss_data
@@ -733,7 +895,96 @@ func _create_secret_vault_npc_data() -> MTNPCData:
 
 
 func _pick_monster_for_habitat() -> MTMonsterData:
+	var candidates: Array = _get_active_encounter_segment().get("candidates", [])
+	if not candidates.is_empty():
+		var candidate: Dictionary = candidates[_rng.randi_range(0, candidates.size() - 1)]
+		var data: MTMonsterData = candidate.get("monster", null)
+		if data != null:
+			return data
 	return DungeonNPCSpawnHelperClass.pick_monster_for_habitat(self)
+
+func _get_active_segment_start_floor() -> int:
+	var segment: Dictionary = _get_active_encounter_segment()
+	return int(segment.get("start_floor", current_floor))
+
+func _build_elite_team_entries() -> Array[MTNPCMonsterEntry]:
+	var entries: Array[MTNPCMonsterEntry] = []
+	var segment: Dictionary = _get_active_encounter_segment()
+	var candidates: Array = segment.get("candidates", [])
+	if candidates.is_empty():
+		var fallback: MTNPCMonsterEntry = NPCMonsterEntryClass.new()
+		fallback.monster_data = _pick_monster_for_habitat()
+		fallback.level = max(3, current_floor * 2 + 3)
+		entries.append(fallback)
+		return entries
+
+	var budget_rule: Dictionary = _get_elite_budget_rule_for_start_floor(_get_active_segment_start_floor())
+	var target_budget: int = _rng.randi_range(int(budget_rule.get("budget_min", 45)), int(budget_rule.get("budget_max", 65)))
+	var team_min: int = max(1, int(budget_rule.get("team_min", 2)))
+	var team_max: int = max(team_min, int(budget_rule.get("team_max", 3)))
+	var team_target: int = _rng.randi_range(team_min, team_max)
+
+	var budget_used: int = 0
+	var high_rarity_count: int = 0
+	var attempts: int = 0
+	while entries.size() < team_target and attempts < 80:
+		attempts += 1
+		var candidate: Dictionary = candidates[_rng.randi_range(0, candidates.size() - 1)]
+		var rarity: String = str(candidate.get("rarity", "common"))
+		if (rarity == "very_rare" or rarity == "legendary") and high_rarity_count >= 1:
+			continue
+		var cost: int = max(1, int(candidate.get("cost", 10)))
+		if entries.size() >= team_min and budget_used + cost > target_budget:
+			continue
+		var entry: MTNPCMonsterEntry = NPCMonsterEntryClass.new()
+		entry.monster_data = candidate.get("monster", null)
+		if entry.monster_data == null:
+			continue
+		entry.level = max(3, current_floor * 2 + 3 + _rng.randi_range(0, 2))
+		entries.append(entry)
+		budget_used += cost
+		if rarity == "very_rare" or rarity == "legendary":
+			high_rarity_count += 1
+
+	while entries.size() < team_min:
+		var fallback_entry: MTNPCMonsterEntry = NPCMonsterEntryClass.new()
+		fallback_entry.monster_data = _pick_monster_for_habitat()
+		fallback_entry.level = max(3, current_floor * 2 + 3 + _rng.randi_range(0, 1))
+		entries.append(fallback_entry)
+
+	return entries
+
+func _build_thief_team_entries() -> Array[MTNPCMonsterEntry]:
+	var size_hint: int = int(min(5, 1 + int(current_floor / 5.0)))
+	return _build_curated_template_team("thief_team_templates", size_hint)
+
+func _build_boss_team_entries(target_team_size: int) -> Array[MTNPCMonsterEntry]:
+	return _build_curated_template_team("boss_team_templates", max(1, target_team_size))
+
+func _build_curated_template_team(template_key: String, target_team_size: int) -> Array[MTNPCMonsterEntry]:
+	var config: Dictionary = _get_dungeon_encounter_config()
+	var templates: Array = config.get(template_key, [])
+	var chosen_template: Array = []
+	if not templates.is_empty():
+		chosen_template = templates[_rng.randi_range(0, templates.size() - 1)]
+	var entries: Array[MTNPCMonsterEntry] = []
+	for raw_path in chosen_template:
+		if entries.size() >= target_team_size:
+			break
+		var monster_data := load(str(raw_path)) as MTMonsterData
+		if monster_data == null:
+			continue
+		var entry := NPCMonsterEntryClass.new()
+		entry.monster_data = monster_data
+		entry.level = max(3, current_floor * 2 + 3 + _rng.randi_range(0, 2))
+		entries.append(entry)
+
+	while entries.size() < target_team_size:
+		var extra := NPCMonsterEntryClass.new()
+		extra.monster_data = _pick_monster_for_habitat()
+		extra.level = max(3, current_floor * 2 + 3 + _rng.randi_range(0, 2))
+		entries.append(extra)
+	return entries
 
 func _pick_free_floor_cell(reserved: Dictionary) -> Vector2i:
 	return DungeonNPCSpawnHelperClass.pick_free_floor_cell(self, reserved)

@@ -2,7 +2,6 @@ extends RefCounted
 class_name MTDungeonQuestHelper
 
 const NPCDataClass = preload("res://core/world/npc_data.gd")
-const NPCMonsterEntryClass = preload("res://core/world/npc_monster_entry.gd")
 const INVALID_CELL := Vector2i(-1, -1)
 
 static func _has_game() -> bool:
@@ -96,12 +95,9 @@ static func create_quest_npc_data(owner, quest_type: int) -> MTNPCData:
 	data.walk_enabled = false
 
 	if quest_type == owner.QUEST_TYPE.THIEF_AMBUSH:
-		var team_size: int = min(5, 1 + int(owner.current_floor / 5.0))
-		for _i in range(team_size):
-			var entry := NPCMonsterEntryClass.new()
-			entry.monster_data = owner._pick_monster_for_habitat()
-			entry.level = max(3, owner.current_floor * 2 + 3 + owner._rng.randi_range(0, 2))
-			data.team_entries.append(entry)
+		for entry in owner._build_thief_team_entries():
+			if entry != null:
+				data.team_entries.append(entry)
 
 	return data
 

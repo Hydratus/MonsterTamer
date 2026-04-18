@@ -266,12 +266,9 @@ static func create_elite_npc_data(owner) -> MTNPCData:
 	data.interaction_id = "elite_pack"
 	data.battle_once = true
 	data.walk_enabled = false
-	var team_size: int = min(5, 1 + int(owner.current_floor / 5.0))
-	for _i in range(team_size):
-		var entry := NPCMonsterEntryClass.new()
-		entry.monster_data = pick_monster_for_habitat(owner)
-		entry.level = max(3, owner.current_floor * 2 + 3 + owner._rng.randi_range(0, 2))
-		data.team_entries.append(entry)
+	for entry in owner._build_elite_team_entries():
+		if entry != null:
+			data.team_entries.append(entry)
 	return data
 
 static func create_mimic_npc_data(owner) -> MTNPCData:
