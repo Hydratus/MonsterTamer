@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="MTAttackData" format=3]
+
+[ext_resource type="Script" path="res://core/battle/attacks/attack_data.gd" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+name = "Beast Strike"
+description = "A quick elemental strike."
+power = 35
+energy_cost = 3
+accuracy = 100
+element = 13
+damage_type = 0
+makes_contact = true
+metadata/_custom_type_script = "uid://byip331ngwvgq"

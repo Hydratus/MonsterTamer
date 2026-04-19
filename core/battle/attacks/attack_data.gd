@@ -13,7 +13,7 @@ class_name MTAttackData
 @export_range(0.0, 1.0)
 var crit_rate: float = 0.10
 
-@export var element: MTElement.Type = MTElement.Type.NORMAL
+@export var element: MTElement.Type = MTElement.Type.FIRE
 @export var damage_type: MTDamageType.Type = MTDamageType.Type.PHYSICAL
 @export var makes_contact: bool = false
 @export var requires_contact_for_effect: bool = false

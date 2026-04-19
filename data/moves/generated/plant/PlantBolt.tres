@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="MTAttackData" format=3]
+
+[ext_resource type="Script" path="res://core/battle/attacks/attack_data.gd" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+name = "Plant Bolt"
+description = "Launches concentrated elemental energy."
+power = 40
+energy_cost = 4
+accuracy = 100
+element = 2
+damage_type = 1
+metadata/_custom_type_script = "uid://byip331ngwvgq"

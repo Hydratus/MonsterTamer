@@ -38,7 +38,24 @@ var base_exp: int = 100
 var base_catch_rate: int = 50
 
 # ELEMENTS
-@export var elements: Array[MTElement.Type] = []
+@export_enum(
+	"Fire:1",
+	"Plant:2",
+	"Water:3",
+	"Undead:4",
+	"Electric:5",
+	"Sound:6",
+	"Cosmic:7",
+	"Holy:8",
+	"Poison:9",
+	"Metal:10",
+	"Dragon:11",
+	"Air:12",
+	"Beast:13",
+	"Earth:14",
+	"Ice:15"
+)
+var elements: Array[int] = []
 
 # ATTACKS
 @export var attacks: Array[MTAttackData] = []

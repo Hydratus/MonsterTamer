@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="MTAttackData" format=3]
+
+[ext_resource type="Script" path="res://core/battle/attacks/attack_data.gd" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+name = "Electric Claw"
+description = "A sharp elemental claw attack."
+power = 50
+energy_cost = 5
+accuracy = 95
+element = 5
+damage_type = 0
+makes_contact = true
+metadata/_custom_type_script = "uid://byip331ngwvgq"

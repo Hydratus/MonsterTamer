@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="MTAttackData" format=3]
+
+[ext_resource type="Script" path="res://core/battle/attacks/attack_data.gd" id="1_attack"]
+[ext_resource type="Script" path="res://core/battle/stats/stat_change_data.gd" id="2_scscript"]
+[ext_resource type="Resource" uid="uid://bwocm12uoqw4c" path="res://data/statchanges/Strength-5other.tres" id="3_change"]
+
+[resource]
+script = ExtResource("1_attack")
+name = "Ice Hex"
+description = "Lowers enemy Strength by 5 stages."
+power = 0
+energy_cost = 3
+element = 15
+damage_type = 2
+stat_changes = Array[ExtResource("2_scscript")]([ExtResource("3_change")])
+metadata/_custom_type_script = "uid://byip331ngwvgq"

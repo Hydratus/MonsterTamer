@@ -635,7 +635,7 @@ func _update_attack_info(attack: MTAttackData) -> void:
 	attack_info_name.text = TranslationServer.translate(attack.name)
 	attack_info_description.text = _localize_attack_description(attack.description)
 	attack_info_power.text = tr("Power: %d") % attack.power
-	var element_key: String = MTElement.Type.keys()[attack.element]
+	var element_key: String = MTElement.type_to_key(attack.element)
 	attack_info_element.text = tr("Element: %s") % TranslationServer.translate(element_key)
 	attack_info_energy.text = tr("Energy Cost: %d") % attack.energy_cost
 	attack_info_accuracy.text = tr("Accuracy: %d%%") % attack.accuracy

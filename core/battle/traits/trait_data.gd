@@ -21,7 +21,7 @@ const DEBUG_LOG = preload("res://core/systems/debug_log.gd")
 @export var affected_damage_type: MTDamageType.Type = MTDamageType.Type.PHYSICAL
 
 @export var filter_element: bool = false
-@export var affected_element: MTElement.Type = MTElement.Type.NORMAL
+@export var affected_element: MTElement.Type = MTElement.Type.FIRE
 
 @export_range(0.0, 1.0, 0.01)
 var lifesteal_ratio: float = 0.0

@@ -1,9 +1,10 @@
 [gd_resource type="Resource" script_class="MTMonsterData" format=3 uid="uid://bfrnx3w2a3bde"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
-[ext_resource type="Resource" uid="uid://bw7nrfjda4m3y" path="res://data/moves/NormalAttack.tres" id="2_norm"]
-[ext_resource type="Resource" uid="uid://2q8610o31dqy" path="res://data/moves/GrassWhip.tres" id="3_grwh"]
-[ext_resource type="Resource" uid="uid://ben5tng1m7q6t" path="res://data/moves/Entangle.tres" id="4_engl"]
+[ext_resource type="Resource" path="res://data/moves/generated/plant/PlantStrike.tres" id="2_norm"]
+[ext_resource type="Resource" path="res://data/moves/generated/plant/PlantClaw.tres" id="3_pclw"]
+[ext_resource type="Resource" path="res://data/moves/generated/earth/EarthWave.tres" id="4_ewav"]
+[ext_resource type="Resource" path="res://data/moves/generated/plant/PlantHex.tres" id="5_phex"]
 [ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="5_trsc"]
 [ext_resource type="Resource" uid="uid://dox6h5tqnr2yj" path="res://data/traits/HPRegen.tres" id="6_hprg"]
 [ext_resource type="Resource" uid="uid://citlotilv0hbx" path="res://data/traits/StrongBody.tres" id="7_stbd"]
@@ -24,8 +25,8 @@ base_speed = 5
 base_exp = 90
 base_catch_rate = 80
 growth_rate = 1
-elements = Array[int]([2])
-attacks = Array[ExtResource("1_atsc")]([ExtResource("2_norm"), ExtResource("3_grwh"), ExtResource("4_engl")])
+elements = Array[int]([2, 14])
+attacks = Array[ExtResource("1_atsc")]([ExtResource("2_norm"), ExtResource("3_pclw"), ExtResource("4_ewav"), ExtResource("5_phex")])
 passive_traits = Array[ExtResource("5_trsc")]([ExtResource("6_hprg"), ExtResource("7_stbd")])
 learnable_attacks = Array[Resource]([ExtResource("9_lrn1"), ExtResource("10_lrn2")])
 learnable_traits = Array[Resource]([])

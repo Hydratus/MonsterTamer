@@ -1,0 +1,16 @@
+Element;Fire;Plant;Water;Electric;Sound;Cosmic;Undead;Holy;Poison;Metal;Dragon;Air;Beast;Earth;Ice
+Fire;x0,5;x2;x0,5;x1;x1;x0,5;x1;x1;x1;x2;x0,5;x1;x1;x0,5;x2
+Plant;x0,5;x0,5;x2;x1;x1;x0,5;x2;x1;x1;x1;x1;x0,5;x0,5;x2;x0,5
+Water;x2;x0,5;x0,5;x1;x1;x1;x1;x1;x1;x1;x0,5;x1;x1;x2;x1
+Electric;x1;x0,5;x2;x0,5;x1;x2;x1;x1;x1;x1;x0,5;x2;x0,5;x0;x1
+Sound;x1;x0;x1;x1;x0,5;x2;x0,5;x1;x0,5;x0,5;x1;x2;x2;x0,5;x1
+Cosmic;x1;x1;x1;x1;x0,5;x2;x0,5;x0,5;x2;x2;x2;x1;x0,5;x2;x1
+Undead;x0,5;x0,5;x1;x1;x1;x1;x1;x0,5;x0,5;x1;x1;x1;x2;x1;x1
+Holy;x1;x1;x1;x1;x0,5;x2;x2;x0,5;x0;x0,5;x0,5;x1;x1;x1;x1
+Poison;x1;x2;x2;x1;x1;x1;x0;x1;x0,5;x0,5;x1;x1;x1;x0,5;x1
+Metal;x0,5;x0,5;x0,5;x0,5;x2;x1;x1;x1;x1;x2;x1;x1;x2;x1;x2
+Dragon;x1;x0,5;x1;x1;x1;x0,5;x1;x2;x1;x1;x2;x0,5;x2;x1;x0,5
+Air;x2;x2;x1;x0,5;x1;x1;x1;x0,5;x2;x1;x1;x1;x0,5;x0,5;x1
+Beast;x1;x2;x1;x1;x1;x1;x0,5;x2;x0,5;x1;x1;x0,5;x1;x1;x2
+Earth;x2;x0,5;x0,5;x2;x1;x1;x1;x1;x1;x2;x1;x0;x1;x1;x0,5
+Ice;x0,5;x2;x0,5;x1;x0,5;x1;x1;x1;x1;x0,5;x2;x2;x1;x1;x0,5

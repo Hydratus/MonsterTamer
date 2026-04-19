@@ -17,7 +17,7 @@ var energy_cost: int = 0
 @export_range(0, 100)
 var accuracy: int = 100
 
-var attack_element: MTElement.Type = MTElement.Type.NORMAL
+var attack_element: MTElement.Type = MTElement.Type.FIRE
 var damage_type: MTDamageType.Type = MTDamageType.Type.PHYSICAL
 var makes_contact: bool = false
 var requires_contact_for_effect: bool = false

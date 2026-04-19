@@ -211,7 +211,7 @@ func _get_monster_elements(monster: MTMonsterInstance) -> Array:
 func _get_primary_element(monster: MTMonsterInstance) -> MTElement.Type:
 	var elements: Array = _get_monster_elements(monster)
 	if elements.is_empty():
-		return MTElement.Type.NORMAL
+		return MTElement.Type.FIRE
 	return elements[0]
 
 func _find_best_switch(monster: MTMonsterInstance, battle: MTBattleController, team_index: int, opponent: MTMonsterInstance) -> Dictionary:

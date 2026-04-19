@@ -1,8 +1,10 @@
 [gd_resource type="Resource" script_class="MTMonsterData" format=3 uid="uid://bghlng5s2v1xy"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
-[ext_resource type="Resource" uid="uid://bw7nrfjda4m3y" path="res://data/moves/NormalAttack.tres" id="2_norm"]
-[ext_resource type="Resource" uid="uid://bsh3dwstlap4r" path="res://data/moves/ShadowStrike.tres" id="3_shst"]
+[ext_resource type="Resource" path="res://data/moves/generated/undead/UndeadStrike.tres" id="2_norm"]
+[ext_resource type="Resource" path="res://data/moves/generated/undead/UndeadStrike.tres" id="3_ustr"]
+[ext_resource type="Resource" path="res://data/moves/generated/cosmic/CosmicBolt.tres" id="4_cblt"]
+[ext_resource type="Resource" path="res://data/moves/generated/undead/UndeadHex.tres" id="5_uhex"]
 [ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="4_trsc"]
 [ext_resource type="Resource" uid="uid://bqmcnv14kkmv7" path="res://data/traits/BloodDrinker.tres" id="5_bldr"]
 [ext_resource type="Script" uid="uid://dlkhfxldvfm2b" path="res://core/monsters/monster_data.gd" id="6_mdsc"]
@@ -21,8 +23,8 @@ base_resistance = 35
 base_speed = 18
 base_exp = 85
 base_catch_rate = 60
-elements = Array[int]([4])
-attacks = Array[ExtResource("1_atsc")]([ExtResource("2_norm"), ExtResource("3_shst")])
+elements = Array[int]([4, 7])
+attacks = Array[ExtResource("1_atsc")]([ExtResource("2_norm"), ExtResource("3_ustr"), ExtResource("4_cblt"), ExtResource("5_uhex")])
 passive_traits = Array[ExtResource("4_trsc")]([ExtResource("5_bldr"), ExtResource("8_wkhd")])
 learnable_attacks = Array[Resource]([ExtResource("7_lrn1")])
 metadata/_custom_type_script = "uid://dlkhfxldvfm2b"

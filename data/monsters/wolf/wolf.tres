@@ -1,11 +1,10 @@
 [gd_resource type="Resource" script_class="MTMonsterData" format=3 uid="uid://bn0botltdcede"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_h80kq"]
-[ext_resource type="Resource" uid="uid://c8ovgmpw0mkpy" path="res://data/moves/FireBite.tres" id="2_mqy4a"]
-[ext_resource type="Resource" uid="uid://dkrjb4yrweo1q" path="res://data/moves/QuickAttack.tres" id="3_3hg6l"]
-[ext_resource type="Resource" uid="uid://do68t1hn7g6gq" path="res://data/moves/BattleCry.tres" id="4_tbtce"]
-[ext_resource type="Resource" uid="uid://brlc7xaw4tj8c" path="res://data/moves/Howl.tres" id="5_bonu0"]
-[ext_resource type="Resource" uid="uid://by3ehbcb3vydg" path="res://data/moves/DrainBite.tres" id="6_mio7g"]
+[ext_resource type="Resource" path="res://data/moves/generated/beast/BeastStrike.tres" id="2_bclw"]
+[ext_resource type="Resource" path="res://data/moves/generated/fire/FireStrike.tres" id="3_fstr"]
+[ext_resource type="Resource" path="res://data/moves/generated/beast/BeastHex.tres" id="4_bhex"]
+[ext_resource type="Resource" path="res://data/moves/generated/beast/BeastStrike.tres" id="5_norm"]
 [ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="7_88xf6"]
 [ext_resource type="Resource" uid="uid://ctl7seudr3sa5" path="res://data/monsters/wolf/evolutions/Wolf_Wolfinator.tres" id="7_bonu0"]
 [ext_resource type="Resource" uid="uid://drxblie30tq18" path="res://data/monsters/wolf/moves/Wolf_FireBite_Lv10.tres" id="7_tbtce"]
@@ -30,8 +29,8 @@ base_speed = 13
 level = 9
 base_exp = 70
 base_catch_rate = 100
-elements = Array[int]([0, 1])
-attacks = Array[ExtResource("1_h80kq")]([ExtResource("2_mqy4a"), ExtResource("3_3hg6l"), ExtResource("4_tbtce"), ExtResource("5_bonu0"), ExtResource("6_mio7g")])
+elements = Array[int]([13, 1])
+attacks = Array[ExtResource("1_h80kq")]([ExtResource("5_norm"), ExtResource("2_bclw"), ExtResource("3_fstr"), ExtResource("4_bhex")])
 passive_traits = Array[ExtResource("7_88xf6")]([ExtResource("8_a7c6i"), ExtResource("9_v36ls"), ExtResource("10_pg5lq"), ExtResource("11_q6ow0")])
 evolution = ExtResource("7_bonu0")
 learnable_attacks = Array[Resource]([ExtResource("7_tbtce"), ExtResource("8_bonu0")])

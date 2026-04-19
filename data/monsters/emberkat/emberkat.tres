@@ -1,9 +1,10 @@
 [gd_resource type="Resource" script_class="MTMonsterData" format=3 uid="uid://bembk4x3b4cef"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
-[ext_resource type="Resource" uid="uid://bw7nrfjda4m3y" path="res://data/moves/NormalAttack.tres" id="2_norm"]
-[ext_resource type="Resource" uid="uid://bem7br5p2s8uv" path="res://data/moves/Ember.tres" id="3_embr"]
-[ext_resource type="Resource" uid="uid://c8ovgmpw0mkpy" path="res://data/moves/FireBite.tres" id="4_fbte"]
+[ext_resource type="Resource" path="res://data/moves/generated/fire/FireStrike.tres" id="2_norm"]
+[ext_resource type="Resource" path="res://data/moves/generated/fire/FireStrike.tres" id="3_fstr"]
+[ext_resource type="Resource" path="res://data/moves/generated/fire/FireBolt.tres" id="4_fblt"]
+[ext_resource type="Resource" path="res://data/moves/generated/fire/FireHex.tres" id="5_fhex"]
 [ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="5_trsc"]
 [ext_resource type="Resource" uid="uid://b6ryw0k1onli1" path="res://data/traits/StrongBeginning.tres" id="6_stbg"]
 [ext_resource type="Resource" uid="uid://bknd6250e5dlc" path="res://data/traits/BruteForce.tres" id="7_brfc"]
@@ -24,7 +25,7 @@ base_exp = 85
 base_catch_rate = 70
 growth_rate = 0
 elements = Array[int]([1])
-attacks = Array[ExtResource("1_atsc")]([ExtResource("2_norm"), ExtResource("3_embr"), ExtResource("4_fbte")])
+attacks = Array[ExtResource("1_atsc")]([ExtResource("2_norm"), ExtResource("3_fstr"), ExtResource("4_fblt"), ExtResource("5_fhex")])
 passive_traits = Array[ExtResource("5_trsc")]([ExtResource("6_stbg"), ExtResource("7_brfc")])
 learnable_attacks = Array[Resource]([ExtResource("9_lrn1")])
 learnable_traits = Array[Resource]([])

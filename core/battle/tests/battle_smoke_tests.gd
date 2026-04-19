@@ -297,7 +297,7 @@ static func _test_contact_thorns_reflects_damage() -> bool:
 	action.energy_cost = 0
 	action.accuracy = 100
 	action.damage_type = MTDamageType.Type.PHYSICAL
-	action.attack_element = MTElement.Type.NORMAL
+	action.attack_element = MTElement.Type.FIRE
 	action.makes_contact = true
 	action.crit_rate = 0.0
 	action.execute()
@@ -319,7 +319,7 @@ static func _test_contact_weakening_lowers_strength() -> bool:
 	action.energy_cost = 0
 	action.accuracy = 100
 	action.damage_type = MTDamageType.Type.PHYSICAL
-	action.attack_element = MTElement.Type.NORMAL
+	action.attack_element = MTElement.Type.FIRE
 	action.makes_contact = true
 	action.crit_rate = 0.0
 	action.execute()
@@ -342,7 +342,7 @@ static func _test_thorns_ko_stops_lifesteal() -> bool:
 	action.energy_cost = 0
 	action.accuracy = 100
 	action.damage_type = MTDamageType.Type.PHYSICAL
-	action.attack_element = MTElement.Type.NORMAL
+	action.attack_element = MTElement.Type.FIRE
 	action.makes_contact = true
 	action.lifesteal = 1.0
 	action.crit_rate = 0.0

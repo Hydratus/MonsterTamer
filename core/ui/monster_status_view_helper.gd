@@ -61,12 +61,10 @@ static func _add_attacks_tab(container: VBoxContainer, monster: MTMonsterInstanc
 		empty.text = TranslationServer.translate("No attacks learned.")
 		container.add_child(empty)
 		return
-	var elem_keys := MTElement.Type.keys()
 	for attack in monster.attacks:
 		if attack == null:
 			continue
-		var elem_idx: int = attack.element
-		var elem_key: String = elem_keys[elem_idx] if elem_idx >= 0 and elem_idx < elem_keys.size() else "?"
+		var elem_key: String = MTElement.type_to_key(attack.element)
 		var elem_name: String = TranslationServer.translate(elem_key)
 		var localized_attack_name: String = TranslationServer.translate(attack.name)
 		var localized_attack_description: String = ""
