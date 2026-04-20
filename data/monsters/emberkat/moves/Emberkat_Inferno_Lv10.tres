@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="AttackLearnData" format=3 uid="uid://blrn5emif0v5e"]
+[gd_resource type="Resource" script_class="MTAttackLearnData" format=3 uid="uid://blrn5emif0v5e"]
 
-[ext_resource type="Resource" uid="uid://bif8rno7q3t9v" path="res://data/moves/Inferno.tres" id="1_infr"]
+[ext_resource type="Resource" uid="uid://bif8rno7q3uav" path="res://data/moves/Inferno.tres" id="1_infr"]
 [ext_resource type="Script" uid="uid://b23dqagtptegd" path="res://core/monsters/attack_learn_data.gd" id="2_alsc"]
 
 [resource]

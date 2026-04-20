@@ -36,9 +36,18 @@ const TEAM_EXP_ACTIVE_FIGHTER_BONUS := 0.10     # 10% extra EXP for the monster 
 # ================================================================
 # DAMAGE CALCULATION
 # ================================================================
+const DAMAGE_DEFENSE_OFFSET := 30.0
+
 ## Critical Hit System
 const CRIT_DAMAGE_MULTIPLIER_DEFAULT := 1.5
 const CRIT_RATE_DEFAULT := 0.10
+
+# Escape chance: 45 + (speed_diff * coeff) + (level_diff * coeff)
+const ESCAPE_BASE_CHANCE := 45.0
+const ESCAPE_SPEED_DIFF_COEFFICIENT := 2.5 / 3.0
+const ESCAPE_LEVEL_DIFF_COEFFICIENT := 3.0
+const ESCAPE_MIN_CHANCE := 10.0
+const ESCAPE_MAX_CHANCE := 95.0
 
 ## Effectiveness Modifiers
 const SUPER_EFFECTIVE_MULTIPLIER := 2.0

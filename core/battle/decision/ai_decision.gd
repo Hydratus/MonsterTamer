@@ -4,6 +4,7 @@ class_name MTAIDecision
 const RestActionClass = preload("res://core/battle/actions/rest_action.gd")
 const SwitchActionClass = preload("res://core/battle/actions/switch_action.gd")
 const AttackActionClass = preload("res://core/battle/actions/attack_action.gd")
+const BalanceConstants = preload("res://core/systems/game_balance_constants.gd")
 
 const KO_SCORE_BONUS := 40.0
 const SWITCH_MIN_ADVANTAGE := 12.0
@@ -152,7 +153,7 @@ func _estimate_expected_damage(attacker: MTMonsterInstance, defender: MTMonsterI
 		attack_stat = attacker.get_magic()
 		defense_stat = defender.get_resistance()
 
-	var base_damage: float = (float(attack.power) * float(attack_stat)) / (float(defense_stat) + 10.0) + 1.0
+	var base_damage: float = (float(attack.power) * float(attack_stat)) / (float(defense_stat) + BalanceConstants.DAMAGE_DEFENSE_OFFSET) + 1.0
 	var simulated_action = AttackActionClass.new()
 	simulated_action.damage_type = attack.damage_type
 	simulated_action.attack_element = attack.element
@@ -191,7 +192,7 @@ func _estimate_incoming_threat(attacker: MTMonsterInstance, defender: MTMonsterI
 func _estimate_struggle_damage(attacker: MTMonsterInstance, defender: MTMonsterInstance) -> int:
 	if attacker == null or defender == null:
 		return 0
-	var base: float = (3.0 * float(attacker.get_strength())) / (float(defender.get_defense()) + 10.0) + 1.0
+	var base: float = (3.0 * float(attacker.get_strength())) / (float(defender.get_defense()) + BalanceConstants.DAMAGE_DEFENSE_OFFSET) + 1.0
 	var attack_element: MTElement.Type = _get_primary_element(attacker)
 	var defender_elements: Array = _get_monster_elements(defender)
 	var effectiveness: float = MTTypeChart.get_multiplier(attack_element, defender_elements)

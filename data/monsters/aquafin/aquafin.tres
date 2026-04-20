@@ -1,7 +1,6 @@
 [gd_resource type="Resource" script_class="MTMonsterData" format=3 uid="uid://baqfin1u0y20x"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
-[ext_resource type="Resource" path="res://data/moves/generated/water/WaterStrike.tres" id="2_norm"]
 [ext_resource type="Resource" path="res://data/moves/generated/water/WaterStrike.tres" id="3_wstr"]
 [ext_resource type="Resource" path="res://data/moves/generated/ice/IceBolt.tres" id="4_ibl"]
 [ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="5_trsc"]
@@ -15,15 +14,15 @@ script = ExtResource("7_mdsc")
 name = "Aquafin"
 base_max_hp = 40
 base_max_energy = 30
-base_strength = 25
-base_magic = 50
-base_defense = 25
-base_resistance = 45
-base_speed = 15
+base_strength = 18
+base_magic = 30
+base_defense = 21
+base_resistance = 27
+base_speed = 33
 base_exp = 80
 base_catch_rate = 75
 elements = Array[int]([3, 15])
-attacks = Array[ExtResource("1_atsc")]([ExtResource("2_norm"), ExtResource("3_wstr"), ExtResource("4_ibl")])
+attacks = Array[ExtResource("1_atsc")]([ExtResource("3_wstr"), ExtResource("3_wstr"), ExtResource("4_ibl")])
 passive_traits = Array[ExtResource("5_trsc")]([ExtResource("6_sreg")])
 learnable_attacks = Array[Resource]([ExtResource("8_lrn1")])
 learnable_traits = Array[Resource]([ExtResource("9_lrn2")])

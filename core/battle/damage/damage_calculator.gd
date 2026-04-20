@@ -1,6 +1,8 @@
 extends RefCounted
 class_name MTDamageCalculator
 
+const BalanceConstants = preload("res://core/systems/game_balance_constants.gd")
+
 static func calculate_damage(action: MTBattleAction) -> Dictionary:
 	if action == null or action.actor == null or action.target == null:
 		return {
@@ -45,7 +47,7 @@ static func calculate_damage(action: MTBattleAction) -> Dictionary:
 
 	var base_damage: float = (
 		(float(action.power) * float(attack_stat))
-		/ (float(defense_stat) + 10.0)
+		/ (float(defense_stat) + BalanceConstants.DAMAGE_DEFENSE_OFFSET)
 	) + 1.0
 
 	# ----------------------------

@@ -1,7 +1,6 @@
 [gd_resource type="Resource" script_class="MTMonsterData" format=3 uid="uid://bembk4x3b4cef"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
-[ext_resource type="Resource" path="res://data/moves/generated/fire/FireStrike.tres" id="2_norm"]
 [ext_resource type="Resource" path="res://data/moves/generated/fire/FireStrike.tres" id="3_fstr"]
 [ext_resource type="Resource" path="res://data/moves/generated/fire/FireBolt.tres" id="4_fblt"]
 [ext_resource type="Resource" path="res://data/moves/generated/fire/FireHex.tres" id="5_fhex"]
@@ -16,17 +15,16 @@ script = ExtResource("8_mdsc")
 name = "Emberkat"
 base_max_hp = 30
 base_max_energy = 40
-base_strength = 30
-base_magic = 60
-base_defense = 20
-base_resistance = 25
-base_speed = 14
+base_strength = 27
+base_magic = 33
+base_defense = 18
+base_resistance = 24
+base_speed = 36
 base_exp = 85
-base_catch_rate = 70
 growth_rate = 0
+base_catch_rate = 70
 elements = Array[int]([1])
-attacks = Array[ExtResource("1_atsc")]([ExtResource("2_norm"), ExtResource("3_fstr"), ExtResource("4_fblt"), ExtResource("5_fhex")])
+attacks = Array[ExtResource("1_atsc")]([ExtResource("3_fstr"), ExtResource("3_fstr"), ExtResource("4_fblt"), ExtResource("5_fhex")])
 passive_traits = Array[ExtResource("5_trsc")]([ExtResource("6_stbg"), ExtResource("7_brfc")])
 learnable_attacks = Array[Resource]([ExtResource("9_lrn1")])
-learnable_traits = Array[Resource]([])
 metadata/_custom_type_script = "uid://dlkhfxldvfm2b"

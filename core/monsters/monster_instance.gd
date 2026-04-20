@@ -1,12 +1,7 @@
 extends RefCounted
 class_name MTMonsterInstance
 
-# See GameBalanceConstants for centralized versions
-const STAT_SCALE_MULTIPLIER := 2.0
-const STAT_SCALE_DIVISOR := 100.0
-const HP_LEVEL_BONUS := 5
-const ENERGY_BASE_BONUS := 3
-const STAT_BASE_BONUS := 5
+const BalanceConstants = preload("res://core/systems/game_balance_constants.gd")
 
 # Cache for effective stats (includes stat stages + trait modifiers)
 # Only recalculated when stat stages change or traits change
@@ -127,17 +122,17 @@ func _recalculate_stats():
 func _apply_level_scaling():
 	# Nutze das instanz-spezifische Level
 	# HP: ((STAT_SCALE_MULTIPLIER × base_max_hp × level) / STAT_SCALE_DIVISOR) + level + HP_LEVEL_BONUS
-	max_hp = int(ceil((STAT_SCALE_MULTIPLIER * data.base_max_hp * level) / STAT_SCALE_DIVISOR)) + level + HP_LEVEL_BONUS
+	max_hp = int(ceil((BalanceConstants.STAT_SCALE_MULTIPLIER * data.base_max_hp * level) / BalanceConstants.STAT_SCALE_DIVISOR)) + level + BalanceConstants.HP_LEVEL_BONUS
 	
 	# Energy: ((STAT_SCALE_MULTIPLIER × base_max_energy × level) / STAT_SCALE_DIVISOR) + ENERGY_BASE_BONUS
-	max_energy = int(ceil((STAT_SCALE_MULTIPLIER * data.base_max_energy * level) / STAT_SCALE_DIVISOR)) + ENERGY_BASE_BONUS
+	max_energy = int(ceil((BalanceConstants.STAT_SCALE_MULTIPLIER * data.base_max_energy * level) / BalanceConstants.STAT_SCALE_DIVISOR)) + BalanceConstants.ENERGY_BASE_BONUS
 	
 	# Stats: ((STAT_SCALE_MULTIPLIER × base_stat × level) / STAT_SCALE_DIVISOR) + STAT_BASE_BONUS
-	strength = int(ceil((STAT_SCALE_MULTIPLIER * data.base_strength * level) / STAT_SCALE_DIVISOR)) + STAT_BASE_BONUS
-	magic = int(ceil((STAT_SCALE_MULTIPLIER * data.base_magic * level) / STAT_SCALE_DIVISOR)) + STAT_BASE_BONUS
-	defense = int(ceil((STAT_SCALE_MULTIPLIER * data.base_defense * level) / STAT_SCALE_DIVISOR)) + STAT_BASE_BONUS
-	resistance = int(ceil((STAT_SCALE_MULTIPLIER * data.base_resistance * level) / STAT_SCALE_DIVISOR)) + STAT_BASE_BONUS
-	speed = int(ceil((STAT_SCALE_MULTIPLIER * data.base_speed * level) / STAT_SCALE_DIVISOR)) + STAT_BASE_BONUS
+	strength = int(ceil((BalanceConstants.STAT_SCALE_MULTIPLIER * data.base_strength * level) / BalanceConstants.STAT_SCALE_DIVISOR)) + BalanceConstants.STAT_BASE_BONUS
+	magic = int(ceil((BalanceConstants.STAT_SCALE_MULTIPLIER * data.base_magic * level) / BalanceConstants.STAT_SCALE_DIVISOR)) + BalanceConstants.STAT_BASE_BONUS
+	defense = int(ceil((BalanceConstants.STAT_SCALE_MULTIPLIER * data.base_defense * level) / BalanceConstants.STAT_SCALE_DIVISOR)) + BalanceConstants.STAT_BASE_BONUS
+	resistance = int(ceil((BalanceConstants.STAT_SCALE_MULTIPLIER * data.base_resistance * level) / BalanceConstants.STAT_SCALE_DIVISOR)) + BalanceConstants.STAT_BASE_BONUS
+	speed = int(ceil((BalanceConstants.STAT_SCALE_MULTIPLIER * data.base_speed * level) / BalanceConstants.STAT_SCALE_DIVISOR)) + BalanceConstants.STAT_BASE_BONUS
 
 
 # ------------------------

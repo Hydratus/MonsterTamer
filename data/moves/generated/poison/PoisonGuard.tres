@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://core/battle/attacks/attack_data.gd" id="1_attack"]
 [ext_resource type="Script" path="res://core/battle/stats/stat_change_data.gd" id="2_scscript"]
-[ext_resource type="Resource" uid="uid://r0iqoc3l3ikh" path="res://data/statchanges/Speed-1self.tres" id="3_change"]
+[ext_resource type="Resource" path="res://data/statchanges/Speed-1self.tres" id="3_change"]
 
 [resource]
 script = ExtResource("1_attack")

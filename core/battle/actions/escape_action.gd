@@ -1,6 +1,8 @@
 extends MTBattleAction
 class_name MTEscapeAction
 
+const BalanceConstants = preload("res://core/systems/game_balance_constants.gd")
+
 var opponent: MTMonsterInstance
 
 func _resolve_battle_ref(controller = null) -> MTBattleController:
@@ -44,8 +46,8 @@ static func calculate_escape_chance(player_monster: MTMonsterInstance, wild_mons
 	var level_diff: float = player_level - enemy_level
 
 	# Base chance plus scaling from initiative and level differences.
-	var chance: float = 45.0 + initiative_diff * 2.5 + level_diff * 3.0
-	return clampf(chance, 10.0, 95.0)
+	var chance: float = BalanceConstants.ESCAPE_BASE_CHANCE + initiative_diff * BalanceConstants.ESCAPE_SPEED_DIFF_COEFFICIENT + level_diff * BalanceConstants.ESCAPE_LEVEL_DIFF_COEFFICIENT
+	return clampf(chance, BalanceConstants.ESCAPE_MIN_CHANCE, BalanceConstants.ESCAPE_MAX_CHANCE)
 
 func _monster_name(monster: MTMonsterInstance) -> String:
 	if monster == null or monster.data == null:

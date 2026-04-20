@@ -1,30 +1,30 @@
 [gd_resource type="Resource" script_class="MTMonsterData" format=3 uid="uid://dw2p17b0415xh"]
 
 [ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_4bctq"]
-[ext_resource type="Resource" path="res://data/moves/generated/poison/PoisonStrike.tres" id="2_0xhg0"]
 [ext_resource type="Resource" path="res://data/moves/generated/poison/PoisonStrike.tres" id="3_pstrk"]
 [ext_resource type="Resource" path="res://data/moves/generated/poison/PoisonWave.tres" id="4_pwav"]
-[ext_resource type="Resource" path="res://data/moves/generated/poison/PoisonHex.tres" id="11_phex"]
 [ext_resource type="Resource" uid="uid://c4ungoku4qbkf" path="res://data/monsters/slime/Slime_QuickAttack_Lv1.tres" id="5_kuu8c"]
 [ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="6_7sxdn"]
 [ext_resource type="Resource" uid="uid://citlotilv0hbx" path="res://data/traits/StrongBody.tres" id="7_pf4om"]
 [ext_resource type="Resource" uid="uid://dox6h5tqnr2yj" path="res://data/traits/HPRegen.tres" id="8_o57q6"]
 [ext_resource type="Resource" uid="uid://bqmcnv14kkmv7" path="res://data/traits/BloodDrinker.tres" id="9_sxoxs"]
 [ext_resource type="Script" uid="uid://dlkhfxldvfm2b" path="res://core/monsters/monster_data.gd" id="10_m3wq7"]
+[ext_resource type="Resource" path="res://data/moves/generated/poison/PoisonHex.tres" id="11_phex"]
 
 [resource]
 script = ExtResource("10_m3wq7")
 name = "Slime"
 base_max_hp = 60
-base_strength = 30
-base_magic = 20
-base_defense = 40
-base_resistance = 40
+base_strength = 18
+base_magic = 18
+base_defense = 33
+base_resistance = 30
+base_speed = 15
 level = 30
 base_exp = 70
 base_catch_rate = 100
 elements = Array[int]([9])
-attacks = Array[ExtResource("1_4bctq")]([ExtResource("2_0xhg0"), ExtResource("3_pstrk"), ExtResource("4_pwav"), ExtResource("11_phex")])
+attacks = Array[ExtResource("1_4bctq")]([ExtResource("3_pstrk"), ExtResource("3_pstrk"), ExtResource("4_pwav"), ExtResource("11_phex")])
 passive_traits = Array[ExtResource("6_7sxdn")]([ExtResource("7_pf4om"), ExtResource("8_o57q6"), ExtResource("9_sxoxs")])
 learnable_attacks = Array[Resource]([ExtResource("5_kuu8c")])
 metadata/_custom_type_script = "uid://dlkhfxldvfm2b"
