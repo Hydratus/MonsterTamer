@@ -492,25 +492,17 @@ func _check_learning_with_flush(monster: MTMonsterInstance):
 	# Check attacks
 	var available_attacks = monster.get_available_attacks_to_learn()
 	for learn_data in available_attacks:
-		if learn_data.attack != null and not monster.attacks.has(learn_data.attack):
-			monster.attacks.append(learn_data.attack)
-			battle_log(TranslationServer.translate("%s learned %s!") % [_monster_name(monster), TranslationServer.translate(learn_data.attack.name)])
-			# Flush nach jeder erlernten Attacke für separaten Block
-			if _has_battle():
-				battle.flush_action_messages()
+		var attack_learned := monster.learn_attack_with_limit(learn_data.attack as MTAttackData, Callable(self, "battle_log"))
+		if attack_learned and _has_battle():
+			# Flush nach jeder Lernentscheidung für separaten Block
+			battle.flush_action_messages()
 	
 	# Check traits
 	var available_traits = monster.get_available_traits_to_learn()
 	for learn_data in available_traits:
-		monster.add_trait(learn_data.trait_data as MTTraitData)
-		var trait_name: String = ""
-		if learn_data.trait_data != null and learn_data.trait_data.has_method("get_localized_name"):
-			trait_name = str(learn_data.trait_data.get_localized_name())
-		elif learn_data.trait_data != null:
-			trait_name = TranslationServer.translate(learn_data.trait_data.name)
-		battle_log(TranslationServer.translate("%s learned trait %s!") % [_monster_name(monster), trait_name])
-		# Flush nach jedem erlernten Trait für separaten Block
-		if _has_battle():
+		var trait_learned := monster.learn_trait_with_limit(learn_data.trait_data as MTTraitData, Callable(self, "battle_log"))
+		if trait_learned and _has_battle():
+			# Flush nach jeder Lernentscheidung für separaten Block
 			battle.flush_action_messages()
 
 func _monster_name(monster: MTMonsterInstance) -> String:

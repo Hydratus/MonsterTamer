@@ -4,6 +4,8 @@ extends Node
 # TEAM & PARTY
 # ================================================================
 const TEAM_SIZE_CAP := 5
+const MAX_LEARNED_ATTACKS := 6
+const MAX_LEARNED_TRAITS := 4
 
 # ================================================================
 # STAT CALCULATIONS (Monster Instance)

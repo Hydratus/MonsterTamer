@@ -86,6 +86,8 @@ var exp_to_next_level: int = 0
 
 # Tracking für Gegner, die dieses Monster bekämpft haben
 var opponents_fought: Array[MTMonsterInstance] = []
+var attack_forget_selector: Callable = Callable()
+var trait_forget_selector: Callable = Callable()
 
 # ------------------------
 # INIT
@@ -94,11 +96,13 @@ func _init(monster_data: MTMonsterData):
 	# Keep shared monster data resource and only store instance-specific runtime state.
 	data = monster_data
 	level = data.level  # Start with the configured base level from data
-	attacks = data.attacks.duplicate()
+	attacks = []
+	for base_attack in data.attacks:
+		_learn_attack_with_limit(base_attack, Callable(), false)
 	_apply_learnable_attacks_up_to_level()
 
 	for trait_effect in data.passive_traits:
-		add_trait(trait_effect)
+		_learn_trait_with_limit(trait_effect, Callable(), false)
 
 	_recalculate_stats()
 
@@ -268,10 +272,7 @@ func get_lifesteal() -> float:
 # TRAITS
 # ------------------------
 func add_trait(trait_effect: MTTraitData):
-	if passive_traits.has(trait_effect):
-		return
-	passive_traits.append(trait_effect)
-	_invalidate_stat_cache()  # Traits affect stat calculation
+	_learn_trait_with_limit(trait_effect, Callable(), false)
 
 # ------------------------
 # EFFECT HANDLING
@@ -431,8 +432,81 @@ func _apply_learnable_attacks_up_to_level() -> void:
 		if learn_data == null:
 			continue
 		if learn_data.learn_level <= level and learn_data.attack != null:
-			if not attacks.has(learn_data.attack):
-				attacks.append(learn_data.attack)
+			_learn_attack_with_limit(learn_data.attack as MTAttackData, Callable(), false)
+
+func learn_attack_with_limit(attack: MTAttackData, logger: Callable = Callable()) -> bool:
+	return _learn_attack_with_limit(attack, logger, true)
+
+func _learn_attack_with_limit(attack: MTAttackData, logger: Callable, emit_messages: bool) -> bool:
+	if attack == null:
+		return false
+	if attacks.has(attack):
+		return false
+
+	var attack_name := TranslationServer.translate(attack.name)
+	if attacks.size() < BalanceConstants.MAX_LEARNED_ATTACKS:
+		attacks.append(attack)
+		if emit_messages:
+			var learned_msg := TranslationServer.translate("%s learned %s!") % [data.name, attack_name]
+			_emit_log(logger, learned_msg)
+		return true
+
+	var candidates: Array[MTAttackData] = attacks.duplicate()
+	candidates.append(attack)
+	var forget_index := _choose_attack_forget_index(candidates)
+	if forget_index < 0 or forget_index >= candidates.size():
+		forget_index = candidates.size() - 1
+
+	if forget_index == candidates.size() - 1:
+		if emit_messages:
+			var skip_msg := TranslationServer.translate("%s could not learn %s.") % [data.name, attack_name]
+			_emit_log(logger, skip_msg)
+		return true
+
+	var forgotten_attack := attacks[forget_index]
+	attacks[forget_index] = attack
+	if emit_messages:
+		var forgot_msg := TranslationServer.translate("%s forgot %s and learned %s!") % [
+			data.name,
+			TranslationServer.translate(forgotten_attack.name),
+			attack_name
+		]
+		_emit_log(logger, forgot_msg)
+	return true
+
+func _choose_attack_forget_index(candidates: Array[MTAttackData]) -> int:
+	if candidates.is_empty():
+		return -1
+	if attack_forget_selector.is_valid():
+		return _resolve_forget_index(attack_forget_selector, candidates, candidates.size() - 1)
+
+	var weakest_index := 0
+	var weakest_score := _attack_keep_score(candidates[0])
+	for i in range(1, candidates.size()):
+		var score := _attack_keep_score(candidates[i])
+		if score < weakest_score:
+			weakest_score = score
+			weakest_index = i
+	return weakest_index
+
+func _attack_keep_score(attack: MTAttackData) -> float:
+	if attack == null:
+		return -1000000.0
+	var score := float(attack.power)
+	score += clamp(float(attack.accuracy), 0.0, 100.0) * 0.01
+	if attack.damage_type == MTDamageType.Type.STATUS:
+		score -= 10.0
+	return score
+
+func _resolve_forget_index(selector: Callable, candidates: Array, fallback_index: int) -> int:
+	if not selector.is_valid():
+		return fallback_index
+	var selected = selector.call(candidates, self)
+	if selected is int:
+		var selected_index := int(selected)
+		if selected_index >= 0 and selected_index < candidates.size():
+			return selected_index
+	return fallback_index
 
 # Check for new attacks to learn
 func _check_attack_learning(logger: Callable = Callable()) -> void:
@@ -442,10 +516,7 @@ func _check_attack_learning(logger: Callable = Callable()) -> void:
 		return
 	
 	for learn_data in available_attacks:
-		if learn_data.attack != null and not attacks.has(learn_data.attack):
-			attacks.append(learn_data.attack)
-			var msg = TranslationServer.translate("%s learned %s!") % [data.name, TranslationServer.translate(learn_data.attack.name)]
-			_emit_log(logger, msg)
+		learn_attack_with_limit(learn_data.attack as MTAttackData, logger)
 # Get all traits the monster can learn at current level
 func get_available_traits_to_learn() -> Array[Resource]:
 	var available: Array[Resource] = []
@@ -466,14 +537,62 @@ func _check_trait_learning(logger: Callable = Callable()) -> void:
 		return
 	
 	for learn_data in available_traits:
-		add_trait(learn_data.trait_data as MTTraitData)
-		var trait_name: String = ""
-		if learn_data.trait_data != null and learn_data.trait_data.has_method("get_localized_name"):
-			trait_name = str(learn_data.trait_data.get_localized_name())
-		elif learn_data.trait_data != null:
-			trait_name = TranslationServer.translate(learn_data.trait_data.name)
-		var msg = TranslationServer.translate("%s learned trait %s!") % [data.name, trait_name]
-		_emit_log(logger, msg)
+		learn_trait_with_limit(learn_data.trait_data as MTTraitData, logger)
+
+func learn_trait_with_limit(trait_effect: MTTraitData, logger: Callable = Callable()) -> bool:
+	return _learn_trait_with_limit(trait_effect, logger, true)
+
+func _learn_trait_with_limit(trait_effect: MTTraitData, logger: Callable, emit_messages: bool) -> bool:
+	if trait_effect == null:
+		return false
+	if passive_traits.has(trait_effect):
+		return false
+
+	var trait_name := _get_localized_trait_name(trait_effect)
+	if passive_traits.size() < BalanceConstants.MAX_LEARNED_TRAITS:
+		passive_traits.append(trait_effect)
+		_invalidate_stat_cache()  # Traits affect stat calculation
+		if emit_messages:
+			var learned_msg := TranslationServer.translate("%s learned trait %s!") % [data.name, trait_name]
+			_emit_log(logger, learned_msg)
+		return true
+
+	var candidates: Array[MTTraitData] = passive_traits.duplicate()
+	candidates.append(trait_effect)
+	var forget_index := _choose_trait_forget_index(candidates)
+	if forget_index < 0 or forget_index >= candidates.size():
+		forget_index = candidates.size() - 1
+
+	if forget_index == candidates.size() - 1:
+		if emit_messages:
+			var skip_msg := TranslationServer.translate("%s could not learn trait %s.") % [data.name, trait_name]
+			_emit_log(logger, skip_msg)
+		return true
+
+	var forgotten_trait := passive_traits[forget_index]
+	passive_traits[forget_index] = trait_effect
+	_invalidate_stat_cache()  # Traits affect stat calculation
+	if emit_messages:
+		var forgot_msg := TranslationServer.translate("%s forgot trait %s and learned trait %s!") % [
+			data.name,
+			_get_localized_trait_name(forgotten_trait),
+			trait_name
+		]
+		_emit_log(logger, forgot_msg)
+	return true
+
+func _choose_trait_forget_index(candidates: Array[MTTraitData]) -> int:
+	if candidates.is_empty():
+		return -1
+	var fallback_index := candidates.size() - 1
+	return _resolve_forget_index(trait_forget_selector, candidates, fallback_index)
+
+func _get_localized_trait_name(trait_data: MTTraitData) -> String:
+	if trait_data == null:
+		return TranslationServer.translate("Unknown")
+	if trait_data.has_method("get_localized_name"):
+		return str(trait_data.get_localized_name())
+	return TranslationServer.translate(trait_data.name)
 # ------------------------
 # EXPERIENCE SYSTEM
 # ------------------------
