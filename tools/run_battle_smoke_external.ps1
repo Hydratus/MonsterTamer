@@ -12,7 +12,7 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "battle_test_common.ps1")
 
 $ProjectPath = Resolve-BattleTestProjectPath -ProjectPath $ProjectPath -ScriptRoot $PSScriptRoot
-$LogDir = Ensure-BattleTestLogDir -ProjectPath $ProjectPath -LogDir $LogDir
+$LogDir = Initialize-BattleTestLogDir -ProjectPath $ProjectPath -LogDir $LogDir
 $GodotExe = Resolve-BattleTestGodotExe -GodotExe $GodotExe
 
 if ([string]::IsNullOrWhiteSpace($GodotExe)) {

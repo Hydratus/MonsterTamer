@@ -103,8 +103,10 @@ static func run_all() -> Dictionary:
 		"escape_chance_scales": _test_escape_chance_scales(),
 		"learn_attack_cap_rejects_weak_new_move": _test_learn_attack_cap_rejects_weak_new_move(),
 		"learn_attack_cap_replaces_weaker_move": _test_learn_attack_cap_replaces_weaker_move(),
+		"learn_attack_cap_never_exceeds_max": _test_learn_attack_cap_never_exceeds_max(),
 		"learn_trait_cap_rejects_new_trait_by_default": _test_learn_trait_cap_rejects_new_trait_by_default(),
 		"learn_trait_cap_supports_custom_forget_choice": _test_learn_trait_cap_supports_custom_forget_choice(),
+		"learn_trait_cap_never_exceeds_max": _test_learn_trait_cap_never_exceeds_max(),
 		"player_item_submit_heals_self": _test_player_item_submit_heals_self(),
 		"player_action_gating_requires_all_human_inputs": _test_player_action_gating_requires_all_human_inputs(),
 		"perform_switch_updates_active_monster": _test_perform_switch_updates_active_monster(),
@@ -185,7 +187,7 @@ static func _test_learn_attack_cap_rejects_weak_new_move() -> bool:
 		WATER_GUN_ATTACK
 	]
 
-	var changed := monster.learn_attack_with_limit(BATTLE_CRY_ATTACK)
+	var changed: bool = monster.learn_attack_with_limit(BATTLE_CRY_ATTACK)
 	var size_ok := monster.attacks.size() == BalanceConstants.MAX_LEARNED_ATTACKS
 	var skipped_new_ok := not monster.attacks.has(BATTLE_CRY_ATTACK)
 	return _expect(changed and size_ok and skipped_new_ok, "Learning a weak move at cap should keep max 6 and allow skipping the new move")
@@ -201,11 +203,38 @@ static func _test_learn_attack_cap_replaces_weaker_move() -> bool:
 		NORMAL_ATTACK
 	]
 
-	var changed := monster.learn_attack_with_limit(INFERNO_ATTACK)
+	var changed: bool = monster.learn_attack_with_limit(INFERNO_ATTACK)
 	var size_ok := monster.attacks.size() == BalanceConstants.MAX_LEARNED_ATTACKS
 	var learned_ok := monster.attacks.has(INFERNO_ATTACK)
 	var replaced_ok := not monster.attacks.has(BATTLE_CRY_ATTACK)
 	return _expect(changed and size_ok and learned_ok and replaced_ok, "Learning a stronger move at cap should replace a weaker move")
+
+static func _test_learn_attack_cap_never_exceeds_max() -> bool:
+	var monster := MTMonsterInstance.new(SLIME_DATA)
+	monster.attacks = [
+		INFERNO_ATTACK,
+		AQUA_BLAST_ATTACK,
+		EMBER_ATTACK,
+		FIRE_BITE_ATTACK,
+		QUICK_ATTACK,
+		WATER_GUN_ATTACK
+	]
+
+	var candidates: Array[MTAttackData] = [
+		BATTLE_CRY_ATTACK,
+		NORMAL_ATTACK,
+		INFERNO_ATTACK,
+		AQUA_BLAST_ATTACK,
+	]
+	var never_exceeded := true
+	for candidate in candidates:
+		monster.learn_attack_with_limit(candidate)
+		if monster.attacks.size() > BalanceConstants.MAX_LEARNED_ATTACKS:
+			never_exceeded = false
+			break
+
+	var exact_cap := monster.attacks.size() == BalanceConstants.MAX_LEARNED_ATTACKS
+	return _expect(never_exceeded and exact_cap, "Repeated attack learning must never exceed MAX_LEARNED_ATTACKS")
 
 static func _test_learn_trait_cap_rejects_new_trait_by_default() -> bool:
 	var monster := MTMonsterInstance.new(SLIME_DATA)
@@ -216,7 +245,7 @@ static func _test_learn_trait_cap_rejects_new_trait_by_default() -> bool:
 		HP_REGEN_TRAIT
 	]
 
-	var changed := monster.learn_trait_with_limit(STRONG_BODY_TRAIT)
+	var changed: bool = monster.learn_trait_with_limit(STRONG_BODY_TRAIT)
 	var size_ok := monster.passive_traits.size() == BalanceConstants.MAX_LEARNED_TRAITS
 	var skipped_new_ok := not monster.passive_traits.has(STRONG_BODY_TRAIT)
 	return _expect(changed and size_ok and skipped_new_ok, "Trait learning at cap should keep max 4 and include rejecting the new trait")
@@ -232,11 +261,35 @@ static func _test_learn_trait_cap_supports_custom_forget_choice() -> bool:
 	monster.trait_forget_selector = func(_candidates, _monster):
 		return 1
 
-	var changed := monster.learn_trait_with_limit(STRONG_BODY_TRAIT)
+	var changed: bool = monster.learn_trait_with_limit(STRONG_BODY_TRAIT)
 	var size_ok := monster.passive_traits.size() == BalanceConstants.MAX_LEARNED_TRAITS
 	var learned_ok := monster.passive_traits.has(STRONG_BODY_TRAIT)
 	var replaced_ok := not monster.passive_traits.has(WEAKENING_HIDE_TRAIT)
 	return _expect(changed and size_ok and learned_ok and replaced_ok, "Trait forget selector should control which trait is replaced at cap")
+
+static func _test_learn_trait_cap_never_exceeds_max() -> bool:
+	var monster := MTMonsterInstance.new(SLIME_DATA)
+	monster.passive_traits = [
+		THORN_HIDE_TRAIT,
+		WEAKENING_HIDE_TRAIT,
+		BRUTE_FORCE_TRAIT,
+		HP_REGEN_TRAIT
+	]
+
+	var candidates: Array[MTTraitData] = [
+		STRONG_BODY_TRAIT,
+		THORN_HIDE_TRAIT,
+		WEAKENING_HIDE_TRAIT,
+	]
+	var never_exceeded := true
+	for candidate in candidates:
+		monster.learn_trait_with_limit(candidate)
+		if monster.passive_traits.size() > BalanceConstants.MAX_LEARNED_TRAITS:
+			never_exceeded = false
+			break
+
+	var exact_cap := monster.passive_traits.size() == BalanceConstants.MAX_LEARNED_TRAITS
+	return _expect(never_exceeded and exact_cap, "Repeated trait learning must never exceed MAX_LEARNED_TRAITS")
 
 static func _test_player_item_submit_heals_self() -> bool:
 	var player := _create_monster(SLIME_DATA, MTPlayerDecision.new())

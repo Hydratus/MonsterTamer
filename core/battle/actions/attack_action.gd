@@ -492,7 +492,7 @@ func _check_learning_with_flush(monster: MTMonsterInstance):
 	# Check attacks
 	var available_attacks = monster.get_available_attacks_to_learn()
 	for learn_data in available_attacks:
-		var attack_learned := monster.learn_attack_with_limit(learn_data.attack as MTAttackData, Callable(self, "battle_log"))
+		var attack_learned: bool = monster.learn_attack_with_limit(learn_data.attack as MTAttackData, Callable(self, "battle_log"))
 		if attack_learned and _has_battle():
 			# Flush nach jeder Lernentscheidung für separaten Block
 			battle.flush_action_messages()
@@ -500,7 +500,7 @@ func _check_learning_with_flush(monster: MTMonsterInstance):
 	# Check traits
 	var available_traits = monster.get_available_traits_to_learn()
 	for learn_data in available_traits:
-		var trait_learned := monster.learn_trait_with_limit(learn_data.trait_data as MTTraitData, Callable(self, "battle_log"))
+		var trait_learned: bool = monster.learn_trait_with_limit(learn_data.trait_data as MTTraitData, Callable(self, "battle_log"))
 		if trait_learned and _has_battle():
 			# Flush nach jeder Lernentscheidung für separaten Block
 			battle.flush_action_messages()

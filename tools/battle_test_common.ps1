@@ -11,7 +11,7 @@ function Resolve-BattleTestProjectPath {
     return $ProjectPath
 }
 
-function Ensure-BattleTestLogDir {
+function Initialize-BattleTestLogDir {
     param(
         [string]$ProjectPath,
         [string]$LogDir
