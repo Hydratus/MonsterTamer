@@ -9,9 +9,9 @@ static func calculate_damage(action: MTBattleAction) -> Dictionary:
 			"damage": 0,
 			"effectiveness": 0.0,
 			"effectiveness_text": "",
-		"seab": 1.0,
-		"is_crit": false
-	}
+			"seab": 1.0,
+			"is_crit": false
+		}
 
 	var attacker: MTMonsterInstance = action.actor
 	var defender: MTMonsterInstance = action.target
@@ -29,6 +29,9 @@ static func calculate_damage(action: MTBattleAction) -> Dictionary:
 			"effectiveness": 1.0,
 			"effectiveness_text": "",
 			"seab": 1.0,
+			"is_crit": false
+		}
+
 	# ----------------------------
 	# ATTACK / DEFENSE
 	# ----------------------------
