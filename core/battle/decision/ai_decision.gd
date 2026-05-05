@@ -168,11 +168,11 @@ func _estimate_expected_damage(attacker: MTMonsterInstance, defender: MTMonsterI
 		return 0
 
 	var attacker_elements: Array = _get_monster_elements(attacker)
-	var stab: float = 1.5 if attacker_elements.has(attack.element) else 1.0
+	var seab: float = 1.5 if attacker_elements.has(attack.element) else 1.0
 	var crit_chance: float = clamp(attack.crit_rate + attacker.get_crit_rate_bonus(), 0.0, 1.0)
 	var expected_crit: float = 1.0 + crit_chance * (attacker.get_crit_damage_multiplier() - 1.0)
 
-	var final_damage: int = int(ceil(base_damage * effectiveness * stab * expected_crit))
+	var final_damage: int = int(ceil(base_damage * effectiveness * seab * expected_crit))
 	return max(1, final_damage)
 
 func _estimate_incoming_threat(attacker: MTMonsterInstance, defender: MTMonsterInstance) -> float:
@@ -199,8 +199,8 @@ func _estimate_struggle_damage(attacker: MTMonsterInstance, defender: MTMonsterI
 	if effectiveness == 0.0:
 		return 0
 	var attacker_elements: Array = _get_monster_elements(attacker)
-	var stab: float = 1.5 if attacker_elements.has(attack_element) else 1.0
-	return max(1, int(ceil(base * effectiveness * stab)))
+	var seab: float = 1.5 if attacker_elements.has(attack_element) else 1.0
+	return max(1, int(ceil(base * effectiveness * seab)))
 
 func _get_monster_elements(monster: MTMonsterInstance) -> Array:
 	if monster == null or monster.data == null:

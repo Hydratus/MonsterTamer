@@ -143,8 +143,8 @@ func _execute_damage_step() -> void:
 			if is_crit:
 				line += " " + TranslationServer.translate("A critical hit!")
 
-			if result.stab > 1.0:
-				line += TranslationServer.translate(" (STAB)")
+			if result.seab > 1.0:
+				line += TranslationServer.translate(" (SEAB)")
 
 			line += TranslationServer.translate(" (%d/%d HP | %d/%d EN)") % [
 				target.hp,

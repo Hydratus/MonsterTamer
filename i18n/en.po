@@ -471,8 +471,8 @@ msgstr "%s takes %d damage."
 msgid "A critical hit!"
 msgstr "A critical hit!"
 
-msgid " (STAB)"
-msgstr " (STAB)"
+msgid " (SEAB)"
+msgstr " (SEAB)"
 
 msgid "%s steals %d HP through lifesteal!"
 msgstr "%s steals %d HP through lifesteal!"

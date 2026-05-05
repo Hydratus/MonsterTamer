@@ -9,9 +9,9 @@ static func calculate_damage(action: MTBattleAction) -> Dictionary:
 			"damage": 0,
 			"effectiveness": 0.0,
 			"effectiveness_text": "",
-			"stab": 1.0,
-			"is_crit": false
-		}
+		"seab": 1.0,
+		"is_crit": false
+	}
 
 	var attacker: MTMonsterInstance = action.actor
 	var defender: MTMonsterInstance = action.target
@@ -20,7 +20,7 @@ static func calculate_damage(action: MTBattleAction) -> Dictionary:
 			"damage": 0,
 			"effectiveness": 0.0,
 			"effectiveness_text": "",
-			"stab": 1.0,
+			"seab": 1.0,
 			"is_crit": false
 		}
 	if action.damage_type == MTDamageType.Type.STATUS:
@@ -28,10 +28,7 @@ static func calculate_damage(action: MTBattleAction) -> Dictionary:
 			"damage": 0,
 			"effectiveness": 1.0,
 			"effectiveness_text": "",
-			"stab": 1.0,
-			"is_crit": false
-		}
-
+			"seab": 1.0,
 	# ----------------------------
 	# ATTACK / DEFENSE
 	# ----------------------------
@@ -72,11 +69,11 @@ static func calculate_damage(action: MTBattleAction) -> Dictionary:
 	)
 
 	# ----------------------------
-	# STAB
+	# SEAB
 	# ----------------------------
-	var stab: float = 1.0
+	var seab: float = 1.0
 	if attacker.data.elements.has(action.attack_element):
-		stab = 1.5
+		seab = 1.5
 
 	# ----------------------------
 	# CRIT
@@ -105,7 +102,7 @@ static func calculate_damage(action: MTBattleAction) -> Dictionary:
 	var final_damage: int = int(ceil(
 		base_damage
 		* effectiveness
-		* stab
+		* seab
 		* crit_multiplier
 		* random_factor
 	))
@@ -119,7 +116,7 @@ static func calculate_damage(action: MTBattleAction) -> Dictionary:
 		"damage": final_damage,
 		"effectiveness": effectiveness,
 		"effectiveness_text": _get_effectiveness_text(effectiveness),
-		"stab": stab,
+		"seab": seab,
 		"is_crit": is_crit
 	}
 
