@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://dvchq6nrv60fa"
+
+[deps]
+
+files=["res://docs/trait_brainstorm_080.Name.translation", "res://docs/trait_brainstorm_080.Rarity.translation", "res://docs/trait_brainstorm_080.Theme.translation", "res://docs/trait_brainstorm_080.Role.translation", "res://docs/trait_brainstorm_080.Implementation Tier.translation", "res://docs/trait_brainstorm_080.Description.translation", "res://docs/trait_brainstorm_080.Unlock Level.translation", "res://docs/trait_brainstorm_080.Passive Stat Mods.translation", "res://docs/trait_brainstorm_080.Damage Multiplier.translation", "res://docs/trait_brainstorm_080.Damage Type Filter.translation", "res://docs/trait_brainstorm_080.Element Filter.translation", "res://docs/trait_brainstorm_080.Lifesteal Ratio.translation", "res://docs/trait_brainstorm_080.Regen HP Ratio.translation", "res://docs/trait_brainstorm_080.Regen Energy Ratio.translation", "res://docs/trait_brainstorm_080.Round Start Stage Mods.translation", "res://docs/trait_brainstorm_080.Active Below HP Ratio.translation", "res://docs/trait_brainstorm_080.Only When Attacking.translation", "res://docs/trait_brainstorm_080.Only When Defending.translation", "res://docs/trait_brainstorm_080.Contact Thorns Ratio.translation", "res://docs/trait_brainstorm_080.Contact Stage Mods.translation", "res://docs/trait_brainstorm_080.Future Trigger.translation", "res://docs/trait_brainstorm_080.Future Effect.translation", "res://docs/trait_brainstorm_080.Counterplay.translation", "res://docs/trait_brainstorm_080.Notes.translation"]
+
+source_file="res://docs/trait_brainstorm_080.csv"
+dest_files=["res://docs/trait_brainstorm_080.Name.translation", "res://docs/trait_brainstorm_080.Rarity.translation", "res://docs/trait_brainstorm_080.Theme.translation", "res://docs/trait_brainstorm_080.Role.translation", "res://docs/trait_brainstorm_080.Implementation Tier.translation", "res://docs/trait_brainstorm_080.Description.translation", "res://docs/trait_brainstorm_080.Unlock Level.translation", "res://docs/trait_brainstorm_080.Passive Stat Mods.translation", "res://docs/trait_brainstorm_080.Damage Multiplier.translation", "res://docs/trait_brainstorm_080.Damage Type Filter.translation", "res://docs/trait_brainstorm_080.Element Filter.translation", "res://docs/trait_brainstorm_080.Lifesteal Ratio.translation", "res://docs/trait_brainstorm_080.Regen HP Ratio.translation", "res://docs/trait_brainstorm_080.Regen Energy Ratio.translation", "res://docs/trait_brainstorm_080.Round Start Stage Mods.translation", "res://docs/trait_brainstorm_080.Active Below HP Ratio.translation", "res://docs/trait_brainstorm_080.Only When Attacking.translation", "res://docs/trait_brainstorm_080.Only When Defending.translation", "res://docs/trait_brainstorm_080.Contact Thorns Ratio.translation", "res://docs/trait_brainstorm_080.Contact Stage Mods.translation", "res://docs/trait_brainstorm_080.Future Trigger.translation", "res://docs/trait_brainstorm_080.Future Effect.translation", "res://docs/trait_brainstorm_080.Counterplay.translation", "res://docs/trait_brainstorm_080.Notes.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

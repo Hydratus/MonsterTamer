@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="EncounterEntry" format=3 uid="uid://b5bppwsmk1rcj"]
+[gd_resource type="Resource" script_class="MTEncounterEntry" format=3 uid="uid://b5bppwsmk1rcj"]
 
 [ext_resource type="Script" uid="uid://ndxg70wtpumi" path="res://core/world/encounter_entry.gd" id="1_0yqm5"]
-[ext_resource type="Resource" uid="uid://dw2p17b0415xh" path="res://data/monsters/slime/slime.tres" id="1_fg5cf"]
+[ext_resource type="Resource" uid="uid://dm66o2nabnusq" path="res://data/monsters/slime.tres" id="1_fg5cf"]
 
 [resource]
 script = ExtResource("1_0yqm5")

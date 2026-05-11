@@ -293,6 +293,8 @@ func _on_item_used(item: ItemDataClass, target: MTMonsterInstance) -> void:
 	_item_menu.refresh()
 
 func _apply_item_overworld(item: ItemDataClass, target: MTMonsterInstance) -> void:
+	var messages: Array[String] = []
+	var consumed := false
 	if item.heal_max > 0:
 		var rng := RandomNumberGenerator.new()
 		rng.randomize()
@@ -301,12 +303,24 @@ func _apply_item_overworld(item: ItemDataClass, target: MTMonsterInstance) -> vo
 		target.hp = min(target.hp + amount, target.get_max_hp())
 		var healed := target.hp - before
 		if healed > 0:
-			var game = _get_game()
-			if game != null:
-				game.remove_item(item.id, 1)
-			item_used_message.emit(tr("Used %s on %s, healed %d HP.") % [TranslationServer.translate(item.name), _monster_name(target), healed])
-		else:
-			item_used_message.emit(tr("Couldn't use!"))
+			consumed = true
+			messages.append(tr("Used %s on %s, healed %d HP.") % [TranslationServer.translate(item.name), _monster_name(target), healed])
+	var item_evolutions := target.get_available_evolutions({"used_item_id": str(item.id)})
+	if not item_evolutions.is_empty():
+		var selected_target: MTMonsterData = item_evolutions[0].get("target_monster", null)
+		var before_name := _monster_name(target)
+		if target.apply_evolution(Callable(), selected_target, {"used_item_id": str(item.id)}):
+			consumed = true
+			messages.append(tr("%s evolved into %s!") % [before_name, _monster_name(target)])
+	if consumed:
+		var game = _get_game()
+		if game != null:
+			game.remove_item(item.id, 1)
+		for message in messages:
+			item_used_message.emit(message)
+		return
+	if item.heal_max <= 0:
+		item_used_message.emit(tr("Couldn't use!"))
 	else:
 		item_used_message.emit(tr("Couldn't use!"))
 

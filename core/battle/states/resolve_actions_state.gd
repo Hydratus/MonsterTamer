@@ -33,6 +33,13 @@ func _execute_next_action(battle):
 		battle.flush_action_messages()
 		battle.show_battle_messages()
 		return
+
+	if "actor" in action and action.actor != null and action.actor.has_method("process_pre_action_status"):
+		var can_act: bool = action.actor.process_pre_action_status(Callable(battle, "log_message"))
+		if not can_act:
+			battle.flush_action_messages()
+			battle.show_battle_messages()
+			return
 	
 	# Führe die Action aus
 	if action.has_method("execute"):

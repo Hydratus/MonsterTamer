@@ -63,6 +63,11 @@ static func calculate_damage(action: MTBattleAction) -> Dictionary:
 			action
 		)
 
+	if attacker.has_method("get_outgoing_damage_multiplier"):
+		base_damage *= attacker.get_outgoing_damage_multiplier(action)
+	if defender.has_method("get_incoming_damage_multiplier"):
+		base_damage *= defender.get_incoming_damage_multiplier(action)
+
 	# ----------------------------
 	# EFFECTIVENESS
 	# ----------------------------

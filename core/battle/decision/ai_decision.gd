@@ -296,6 +296,8 @@ func _create_attack_action(
 	action.makes_contact = attack.makes_contact
 	action.requires_contact_for_effect = attack.requires_contact_for_effect
 	action.lifesteal = attack.lifesteal
+	action.recoil_ratio = attack.recoil_ratio
 	action.crit_rate = attack.crit_rate
+	action.stat_change_chance = attack.stat_change_chance
 	action.stat_changes = attack.stat_changes.duplicate()
 	return action

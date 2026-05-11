@@ -46,7 +46,7 @@ func change_world(scene_path: String, payload: Dictionary = {}) -> void:
 	var script_path := "<none>"
 	if world_script != null and world_script is Script:
 		script_path = (world_script as Script).resource_path
-	if scene_path == "res://scenes/world/dungeon_test.tscn" and script_path == "res://core/world/overworld.gd":
+	if scene_path == "res://scenes/world/dungeon.tscn" and script_path == "res://core/world/overworld.gd":
 		var dungeon_script := load("res://core/world/dungeon_scene.gd")
 		if dungeon_script != null:
 			world.set_script(dungeon_script)

@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="EncounterEntry" format=3 uid="uid://dqsng4jrsy7kc"]
+[gd_resource type="Resource" script_class="MTEncounterEntry" format=3 uid="uid://dqsng4jrsy7kc"]
 
-[ext_resource type="Resource" uid="uid://bn0botltdcede" path="res://data/monsters/wolf/wolf.tres" id="1_32h2a"]
+[ext_resource type="Resource" uid="uid://dldjblscwuikv" path="res://data/monsters/wolf.tres" id="1_32h2a"]
 [ext_resource type="Script" uid="uid://ndxg70wtpumi" path="res://core/world/encounter_entry.gd" id="1_h78l7"]
 
 [resource]

@@ -15,8 +15,9 @@ const STAT_SCALE_MULTIPLIER := 2.0
 const STAT_SCALE_DIVISOR := 100.0
 const HP_LEVEL_BONUS := 5
 
-## Energy Calculation: ((2 × base_max_energy × level) / 100) + ENERGY_BASE_BONUS
+## Energy Calculation: ((2 × base_max_energy × level) / 100) + ENERGY_BASE_BONUS + floor(level / ENERGY_LEVEL_BONUS_STEP)
 const ENERGY_BASE_BONUS := 3
+const ENERGY_LEVEL_BONUS_STEP := 3
 
 ## Other Stats Calculation: ((2 × base_stat × level) / 100) + STAT_BASE_BONUS
 const STAT_BASE_BONUS := 5
@@ -71,6 +72,71 @@ const STARTING_ITEMS := {
 	"lesser_binding_rune": 10,
 	"secret_key": 1
 }
+
+# ================================================================
+# DUNGEON THREAT ESCALATION
+# ================================================================
+const THREAT_TIME_SECONDS_PER_POINT := 90.0
+const THREAT_WILD_BATTLE_POINTS := 1
+const THREAT_SPECIAL_BATTLE_POINTS := 2
+const THREAT_BIOME_BOSS_RESET_FACTOR := 0.70
+
+## Points per additional level beyond Tier 5 base (overflow scaling)
+const THREAT_TIER5_OVERFLOW_STEP := 15
+const THREAT_TIER5_ELITE_OVERFLOW_STEP := 30
+const THREAT_TIER5_ELITE_OVERFLOW_BONUS := 0.02
+const THREAT_TIER5_ELITE_OVERFLOW_CAP := 0.20
+
+const THREAT_TIER_RULES: Array[Dictionary] = [
+	{
+		"tier": 0,
+		"min_points": 0,
+		"max_points": 14,
+		"level_bonus": 0,
+		"elite_budget_multiplier": 1.0,
+		"encounter_chance_bonus": 0.0
+	},
+	{
+		"tier": 1,
+		"min_points": 15,
+		"max_points": 29,
+		"level_bonus": 1,
+		"elite_budget_multiplier": 1.0,
+		"encounter_chance_bonus": 0.0
+	},
+	{
+		"tier": 2,
+		"min_points": 30,
+		"max_points": 49,
+		"level_bonus": 2,
+		"elite_budget_multiplier": 1.12,
+		"encounter_chance_bonus": 0.0
+	},
+	{
+		"tier": 3,
+		"min_points": 50,
+		"max_points": 74,
+		"level_bonus": 4,
+		"elite_budget_multiplier": 1.22,
+		"encounter_chance_bonus": 0.01
+	},
+	{
+		"tier": 4,
+		"min_points": 75,
+		"max_points": 109,
+		"level_bonus": 6,
+		"elite_budget_multiplier": 1.35,
+		"encounter_chance_bonus": 0.02
+	},
+	{
+		"tier": 5,
+		"min_points": 110,
+		"max_points": 999999,
+		"level_bonus": 8,
+		"elite_budget_multiplier": 1.50,
+		"encounter_chance_bonus": 0.03
+	}
+]
 
 # ================================================================
 # DUNGEON ENCOUNTERS
@@ -309,54 +375,54 @@ const DUNGEON_ENCOUNTER_CONFIG := {
 	"default": {
 		"rarity_pools": {
 			"common": [
-				"res://data/monsters/slime/slime.tres",
-				"res://data/monsters/wolf/wolf.tres",
-				"res://data/monsters/stoneback/stoneback.tres"
+				"res://data/monsters/slime.tres",
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/stoneback.tres"
 			],
 			"uncommon": [
-				"res://data/monsters/ghostling/ghostling.tres",
-				"res://data/monsters/fernox/fernox.tres",
-				"res://data/monsters/aquafin/aquafin.tres",
-				"res://data/monsters/emberkat/emberkat.tres"
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/fernox.tres",
+				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/emberkat.tres"
 			],
 			"rare": [
-				"res://data/monsters/wolfinator/wolfinator.tres"
+				"res://data/monsters/wolfinator.tres"
 			],
 			"very_rare": [],
 			"legendary": []
 		},
 		"monster_costs": {
-			"res://data/monsters/slime/slime.tres": 10,
-			"res://data/monsters/wolf/wolf.tres": 12,
-			"res://data/monsters/stoneback/stoneback.tres": 14,
-			"res://data/monsters/ghostling/ghostling.tres": 16,
-			"res://data/monsters/fernox/fernox.tres": 17,
-			"res://data/monsters/aquafin/aquafin.tres": 18,
-			"res://data/monsters/emberkat/emberkat.tres": 19,
-			"res://data/monsters/wolfinator/wolfinator.tres": 24
+			"res://data/monsters/slime.tres": 10,
+			"res://data/monsters/wolf.tres": 12,
+			"res://data/monsters/stoneback.tres": 14,
+			"res://data/monsters/ghostling.tres": 16,
+			"res://data/monsters/fernox.tres": 17,
+			"res://data/monsters/aquafin.tres": 18,
+			"res://data/monsters/emberkat.tres": 19,
+			"res://data/monsters/wolfinator.tres": 24
 		},
 		"thief_team_templates": [
 			[
-				"res://data/monsters/ghostling/ghostling.tres",
-				"res://data/monsters/wolf/wolf.tres"
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/wolf.tres"
 			],
 			[
-				"res://data/monsters/emberkat/emberkat.tres",
-				"res://data/monsters/slime/slime.tres",
-				"res://data/monsters/wolf/wolf.tres"
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/slime.tres",
+				"res://data/monsters/wolf.tres"
 			]
 		],
 		"boss_team_templates": [
 			[
-				"res://data/monsters/wolfinator/wolfinator.tres",
-				"res://data/monsters/stoneback/stoneback.tres",
-				"res://data/monsters/ghostling/ghostling.tres"
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/stoneback.tres",
+				"res://data/monsters/ghostling.tres"
 			],
 			[
-				"res://data/monsters/wolfinator/wolfinator.tres",
-				"res://data/monsters/emberkat/emberkat.tres",
-				"res://data/monsters/fernox/fernox.tres",
-				"res://data/monsters/wolf/wolf.tres"
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/fernox.tres",
+				"res://data/monsters/wolf.tres"
 			]
 		]
 	},
@@ -389,40 +455,40 @@ const DUNGEON_ENCOUNTER_CONFIG := {
 		],
 		"rarity_pools": {
 			"common": [
-				"res://data/monsters/slime/slime.tres",
-				"res://data/monsters/wolf/wolf.tres",
-				"res://data/monsters/stoneback/stoneback.tres"
+				"res://data/monsters/slime.tres",
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/stoneback.tres"
 			],
 			"uncommon": [
-				"res://data/monsters/ghostling/ghostling.tres",
-				"res://data/monsters/emberkat/emberkat.tres"
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/emberkat.tres"
 			],
 			"rare": [
-				"res://data/monsters/wolfinator/wolfinator.tres"
+				"res://data/monsters/wolfinator.tres"
 			],
 			"very_rare": [],
 			"legendary": []
 		},
 		"thief_team_templates": [
 			[
-				"res://data/monsters/wolf/wolf.tres",
-				"res://data/monsters/ghostling/ghostling.tres"
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/ghostling.tres"
 			],
 			[
-				"res://data/monsters/emberkat/emberkat.tres",
-				"res://data/monsters/stoneback/stoneback.tres"
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/stoneback.tres"
 			]
 		],
 		"boss_team_templates": [
 			[
-				"res://data/monsters/wolfinator/wolfinator.tres",
-				"res://data/monsters/stoneback/stoneback.tres",
-				"res://data/monsters/ghostling/ghostling.tres"
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/stoneback.tres",
+				"res://data/monsters/ghostling.tres"
 			],
 			[
-				"res://data/monsters/wolfinator/wolfinator.tres",
-				"res://data/monsters/emberkat/emberkat.tres",
-				"res://data/monsters/slime/slime.tres"
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/slime.tres"
 			]
 		]
 	},
@@ -455,41 +521,41 @@ const DUNGEON_ENCOUNTER_CONFIG := {
 		],
 		"rarity_pools": {
 			"common": [
-				"res://data/monsters/wolf/wolf.tres",
-				"res://data/monsters/slime/slime.tres"
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/slime.tres"
 			],
 			"uncommon": [
-				"res://data/monsters/fernox/fernox.tres",
-				"res://data/monsters/aquafin/aquafin.tres"
+				"res://data/monsters/fernox.tres",
+				"res://data/monsters/aquafin.tres"
 			],
 			"rare": [
-				"res://data/monsters/wolfinator/wolfinator.tres"
+				"res://data/monsters/wolfinator.tres"
 			],
 			"very_rare": [],
 			"legendary": []
 		},
 		"thief_team_templates": [
 			[
-				"res://data/monsters/wolf/wolf.tres",
-				"res://data/monsters/fernox/fernox.tres"
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/fernox.tres"
 			],
 			[
-				"res://data/monsters/aquafin/aquafin.tres",
-				"res://data/monsters/slime/slime.tres",
-				"res://data/monsters/wolf/wolf.tres"
+				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/slime.tres",
+				"res://data/monsters/wolf.tres"
 			]
 		],
 		"boss_team_templates": [
 			[
-				"res://data/monsters/wolfinator/wolfinator.tres",
-				"res://data/monsters/fernox/fernox.tres",
-				"res://data/monsters/aquafin/aquafin.tres"
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/fernox.tres",
+				"res://data/monsters/aquafin.tres"
 			],
 			[
-				"res://data/monsters/wolfinator/wolfinator.tres",
-				"res://data/monsters/wolf/wolf.tres",
-				"res://data/monsters/fernox/fernox.tres",
-				"res://data/monsters/slime/slime.tres"
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/fernox.tres",
+				"res://data/monsters/slime.tres"
 			]
 		]
 	},
@@ -522,41 +588,41 @@ const DUNGEON_ENCOUNTER_CONFIG := {
 		],
 		"rarity_pools": {
 			"common": [
-				"res://data/monsters/slime/slime.tres",
-				"res://data/monsters/wolf/wolf.tres"
+				"res://data/monsters/slime.tres",
+				"res://data/monsters/wolf.tres"
 			],
 			"uncommon": [
-				"res://data/monsters/ghostling/ghostling.tres",
-				"res://data/monsters/emberkat/emberkat.tres",
-				"res://data/monsters/stoneback/stoneback.tres"
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/stoneback.tres"
 			],
 			"rare": [
-				"res://data/monsters/wolfinator/wolfinator.tres"
+				"res://data/monsters/wolfinator.tres"
 			],
 			"very_rare": [],
 			"legendary": []
 		},
 		"thief_team_templates": [
 			[
-				"res://data/monsters/ghostling/ghostling.tres",
-				"res://data/monsters/wolf/wolf.tres"
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/wolf.tres"
 			],
 			[
-				"res://data/monsters/emberkat/emberkat.tres",
-				"res://data/monsters/stoneback/stoneback.tres",
-				"res://data/monsters/slime/slime.tres"
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/stoneback.tres",
+				"res://data/monsters/slime.tres"
 			]
 		],
 		"boss_team_templates": [
 			[
-				"res://data/monsters/wolfinator/wolfinator.tres",
-				"res://data/monsters/ghostling/ghostling.tres",
-				"res://data/monsters/stoneback/stoneback.tres"
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/stoneback.tres"
 			],
 			[
-				"res://data/monsters/wolfinator/wolfinator.tres",
-				"res://data/monsters/emberkat/emberkat.tres",
-				"res://data/monsters/wolf/wolf.tres"
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/wolf.tres"
 			]
 		]
 	},
@@ -589,41 +655,41 @@ const DUNGEON_ENCOUNTER_CONFIG := {
 		],
 		"rarity_pools": {
 			"common": [
-				"res://data/monsters/slime/slime.tres",
-				"res://data/monsters/wolf/wolf.tres"
+				"res://data/monsters/slime.tres",
+				"res://data/monsters/wolf.tres"
 			],
 			"uncommon": [
-				"res://data/monsters/aquafin/aquafin.tres",
-				"res://data/monsters/fernox/fernox.tres",
-				"res://data/monsters/ghostling/ghostling.tres"
+				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/fernox.tres",
+				"res://data/monsters/ghostling.tres"
 			],
 			"rare": [
-				"res://data/monsters/wolfinator/wolfinator.tres"
+				"res://data/monsters/wolfinator.tres"
 			],
 			"very_rare": [],
 			"legendary": []
 		},
 		"thief_team_templates": [
 			[
-				"res://data/monsters/ghostling/ghostling.tres",
-				"res://data/monsters/aquafin/aquafin.tres"
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/aquafin.tres"
 			],
 			[
-				"res://data/monsters/fernox/fernox.tres",
-				"res://data/monsters/slime/slime.tres",
-				"res://data/monsters/wolf/wolf.tres"
+				"res://data/monsters/fernox.tres",
+				"res://data/monsters/slime.tres",
+				"res://data/monsters/wolf.tres"
 			]
 		],
 		"boss_team_templates": [
 			[
-				"res://data/monsters/wolfinator/wolfinator.tres",
-				"res://data/monsters/aquafin/aquafin.tres",
-				"res://data/monsters/fernox/fernox.tres"
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/fernox.tres"
 			],
 			[
-				"res://data/monsters/wolfinator/wolfinator.tres",
-				"res://data/monsters/ghostling/ghostling.tres",
-				"res://data/monsters/slime/slime.tres"
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/slime.tres"
 			]
 		]
 	}

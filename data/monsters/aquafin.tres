@@ -1,0 +1,52 @@
+[gd_resource type="Resource" script_class="MTMonsterData" format=3]
+
+[ext_resource type="Script" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
+[ext_resource type="Script" path="res://core/battle/traits/trait_data.gd" id="2_trsc"]
+[ext_resource type="Script" path="res://core/monsters/attack_learn_data.gd" id="3_c68vm"]
+[ext_resource type="Script" path="res://core/monsters/monster_data.gd" id="3_mdsc"]
+[ext_resource type="Resource" path="res://data/moves/generated/water/WaterStrike.tres" id="4_atk"]
+[ext_resource type="Resource" path="res://data/moves/generated/ice/IceBolt.tres" id="5_atk"]
+[ext_resource type="Resource" path="res://data/moves/AquaBlast.tres" id="6_atk"]
+[ext_resource type="Script" path="res://core/monsters/trait_learn_data.gd" id="6_fj4gc"]
+[ext_resource type="Resource" path="res://data/traits/SmallRegeneration.tres" id="7_trt"]
+[ext_resource type="Resource" path="res://data/traits/HPRegen.tres" id="8_trt"]
+
+[sub_resource type="Resource" id="Resource_omrx3"]
+script = ExtResource("3_c68vm")
+attack = ExtResource("4_atk")
+
+[sub_resource type="Resource" id="Resource_4s66f"]
+script = ExtResource("3_c68vm")
+attack = ExtResource("5_atk")
+learn_level = 6
+
+[sub_resource type="Resource" id="Resource_hge1s"]
+script = ExtResource("3_c68vm")
+attack = ExtResource("6_atk")
+learn_level = 16
+
+[sub_resource type="Resource" id="Resource_15ilt"]
+script = ExtResource("6_fj4gc")
+trait_data = ExtResource("7_trt")
+
+[sub_resource type="Resource" id="Resource_5kehq"]
+script = ExtResource("6_fj4gc")
+trait_data = ExtResource("8_trt")
+learn_level = 12
+
+[resource]
+script = ExtResource("3_mdsc")
+name = "Aquafin"
+base_max_hp = 40
+base_max_energy = 30
+base_strength = 18
+base_magic = 30
+base_defense = 21
+base_resistance = 27
+base_speed = 33
+base_exp = 80
+base_catch_rate = 75
+elements = Array[int]([3, 15])
+learnable_attacks = [SubResource("Resource_omrx3"), SubResource("Resource_4s66f"), SubResource("Resource_hge1s")]
+learnable_traits = [SubResource("Resource_15ilt"), SubResource("Resource_5kehq")]
+metadata/_custom_type_script = "uid://dlkhfxldvfm2b"

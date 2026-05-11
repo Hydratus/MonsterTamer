@@ -414,8 +414,12 @@ func _show_monster_options(team: MTMonsterTeam, index: int, monster: MTMonsterIn
 	# Switch-Button (nur wenn Monster lebt und nicht bereits aktiv)
 	if monster.is_alive() and monster != team.get_active_monster():
 		_log_debug("show switch button for %s" % _monster_name(monster))
+		var can_switch_out := current_monster == null \
+			or not current_monster.has_method("can_switch_out") \
+			or current_monster.can_switch_out()
 		var switch_button := Button.new()
-		switch_button.text = tr("Switch")
+		switch_button.text = tr("Switch") if can_switch_out else tr("Switch (Trapped!)")
+		switch_button.disabled = not can_switch_out
 		switch_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		switch_button.pressed.connect(func():
 			_log_debug("switch clicked for %s index=%d" % [_monster_name(monster), index])
@@ -517,9 +521,9 @@ func _monster_name(monster: MTMonsterInstance) -> String:
 	return monster.data.name
 
 func _monster_level(monster: MTMonsterInstance) -> int:
-	if monster == null or monster.data == null:
+	if monster == null:
 		return 0
-	return monster.data.level
+	return monster.level
 
 func _resolve_team_index(team: MTMonsterTeam) -> int:
 	if battle_controller == null:

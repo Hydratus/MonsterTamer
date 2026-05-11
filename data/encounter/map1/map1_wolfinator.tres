@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="EncounterEntry" format=3 uid="uid://5s8e71chtsiv"]
+[gd_resource type="Resource" script_class="MTEncounterEntry" format=3 uid="uid://5s8e71chtsiv"]
 
 [ext_resource type="Script" uid="uid://ndxg70wtpumi" path="res://core/world/encounter_entry.gd" id="1_jrc73"]
-[ext_resource type="Resource" uid="uid://0tyw1amx8xfm" path="res://data/monsters/wolfinator/wolfinator.tres" id="1_spt88"]
+[ext_resource type="Resource" uid="uid://cpkdo4q4hork0" path="res://data/monsters/wolfinator.tres" id="1_spt88"]
 
 [resource]
 script = ExtResource("1_jrc73")

@@ -5,8 +5,8 @@ const RestActionClass = preload("res://core/battle/actions/rest_action.gd")
 const EscapeActionClass = preload("res://core/battle/actions/escape_action.gd")
 const AttackActionClass = preload("res://core/battle/actions/attack_action.gd")
 
-const SLIME_DATA: MTMonsterData = preload("res://data/monsters/slime/slime.tres")
-const WOLF_DATA: MTMonsterData = preload("res://data/monsters/wolf/wolf.tres")
+const SLIME_DATA: MTMonsterData = preload("res://data/monsters/slime.tres")
+const WOLF_DATA: MTMonsterData = preload("res://data/monsters/wolf.tres")
 const INFERNO_ATTACK: MTAttackData = preload("res://data/moves/Inferno.tres")
 const NORMAL_ATTACK: MTAttackData = preload("res://data/moves/NormalAttack.tres")
 const AQUA_BLAST_ATTACK: MTAttackData = preload("res://data/moves/AquaBlast.tres")
@@ -21,6 +21,7 @@ const WEAKENING_HIDE_TRAIT: MTTraitData = preload("res://data/traits/WeakeningHi
 const BRUTE_FORCE_TRAIT: MTTraitData = preload("res://data/traits/BruteForce.tres")
 const HP_REGEN_TRAIT: MTTraitData = preload("res://data/traits/HPRegen.tres")
 const STRONG_BODY_TRAIT: MTTraitData = preload("res://data/traits/StrongBody.tres")
+const EvolutionEntryDataClass = preload("res://core/monsters/evolution_entry_data.gd")
 const DEBUG_LOG = preload("res://core/systems/debug_log.gd")
 
 class _DummyMessageBox:
@@ -113,6 +114,7 @@ static func run_all() -> Dictionary:
 		"adapter_message_bridge": _test_adapter_message_bridge(),
 		"adapter_ui_bridge": _test_adapter_ui_bridge(),
 		"adapter_item_bridge": _test_adapter_item_bridge(),
+		"item_evolution_uses_item_condition": _test_item_evolution_uses_item_condition(),
 		"reserve_regen_skips_ko": _test_reserve_regen_skips_ko(),
 		"contact_thorns_reflects_damage": _test_contact_thorns_reflects_damage(),
 		"contact_weakening_lowers_strength": _test_contact_weakening_lowers_strength(),
@@ -121,6 +123,21 @@ static func run_all() -> Dictionary:
 		"player_ko_requests_forced_switch": _test_player_ko_requests_forced_switch(),
 		"enemy_ko_auto_switches_reserve": _test_enemy_ko_auto_switches_reserve(),
 		"lifesteal_restores_attacker_hp": _test_lifesteal_restores_attacker_hp(),
+		# --- status effects ---
+		"status_burn_reduces_physical_outgoing": _test_status_burn_reduces_physical_outgoing(),
+		"status_wet_reduces_fire_incoming": _test_status_wet_reduces_fire_incoming(),
+		"status_wet_increases_electric_incoming": _test_status_wet_increases_electric_incoming(),
+		"status_wet_reduces_fire_outgoing": _test_status_wet_reduces_fire_outgoing(),
+		"status_wet_removed_on_freeze": _test_status_wet_removed_on_freeze(),
+		"status_fire_attack_removes_wet_from_target": _test_status_fire_attack_removes_wet_from_target(),
+		"status_fire_attack_thaws_frozen_target": _test_status_fire_attack_thaws_frozen_target(),
+		"status_poison_dot_12pct": _test_status_poison_dot_12pct(),
+		"status_bleed_reduces_speed": _test_status_bleed_reduces_speed(),
+		"status_root_blocks_switch": _test_status_root_blocks_switch(),
+		"status_bind_blocks_switch": _test_status_bind_blocks_switch(),
+		"status_silence_blocks_sound_attack": _test_status_silence_blocks_sound_attack(),
+		"status_sleep_blocks_action": _test_status_sleep_blocks_action(),
+		"status_sleep_wakes_on_hit": _test_status_sleep_wakes_on_hit(),
 	}
 	return _finalize_results(results)
 
@@ -312,6 +329,38 @@ static func _test_player_item_submit_heals_self() -> bool:
 
 	battle.submit_player_item(player, heal_item, null)
 	return _expect(player.hp > hp_before, "Submitting item with null target should heal active player (self-target fallback)")
+
+static func _test_item_evolution_uses_item_condition() -> bool:
+	var wolf_data: MTMonsterData = WOLF_DATA.duplicate(true)
+	if wolf_data == null or wolf_data.evolutions.is_empty():
+		return _expect(false, "Wolf test data should have inline evolution data")
+	var first_entry: Resource = wolf_data.evolutions[0]
+	var target_monster: MTMonsterData = first_entry.get("target_monster")
+	if target_monster == null:
+		return _expect(false, "Wolf evolution target should exist")
+	wolf_data.evolution = null
+	var evolution_entry: Resource = EvolutionEntryDataClass.new()
+	evolution_entry.set("label", "Item Wolfinator")
+	evolution_entry.set("min_level", 1)
+	evolution_entry.set("required_item_id", "secret_key")
+	evolution_entry.set("target_monster", target_monster)
+	wolf_data.evolutions = [evolution_entry]
+	var actor := _create_monster(SLIME_DATA)
+	var target := MTMonsterInstance.new(wolf_data)
+	var item := MTItemData.new()
+	item.id = "secret_key"
+	item.name = "Secret Key"
+	item.category = MTItemData.Category.ACTIVE
+	item.consumable = false
+	var action := MTItemAction.new()
+	action.actor = actor
+	action.target = target
+	action.item = item
+	var can_evolve_without_item := target.can_evolve()
+	var can_evolve_with_item := target.can_evolve({"used_item_id": item.id})
+	var executed: Variant = action.execute(_DummyBattleScene.new())
+	var evolved := executed == null and target.data != null and target.data.name == target_monster.name
+	return _expect(not can_evolve_without_item and can_evolve_with_item and evolved, "Item-gated evolution should require the matching item context")
 
 static func _test_player_action_gating_requires_all_human_inputs() -> bool:
 	var player_a := _create_monster(SLIME_DATA, MTPlayerDecision.new())
@@ -582,18 +631,13 @@ static func _test_stat_scaling_with_level() -> bool:
 	return _expect(all_scaled_up, "All stats should increase significantly from level 1 to 50")
 
 static func _test_evolution_triggers_at_correct_level() -> bool:
-	var monster := MTMonsterInstance.new(SLIME_DATA)
+	var monster := MTMonsterInstance.new(WOLF_DATA)
 	var can_evolve_early := monster.can_evolve()
-	
-	if monster.data.evolution == null:
+	if monster.data.evolution == null and monster.data.evolutions.is_empty():
 		return _expect(not can_evolve_early, "Monster without evolution data should not be evolvable")
-	
-	var evolution_data := monster.data.evolution as MTEvolutionData
-	if evolution_data == null:
-		return true  # Skip if no valid evolution
-	
-	monster.level = evolution_data.evolution_level
+	monster.level = 13
 	monster._recalculate_stats()
+	var available_evolutions := monster.get_available_evolutions()
 	var can_evolve_now := monster.can_evolve()
 	
 	var pre_evolution_name := monster.data.name
@@ -601,7 +645,7 @@ static func _test_evolution_triggers_at_correct_level() -> bool:
 	var post_evolution_name := monster.data.name
 	
 	var name_changed := pre_evolution_name != post_evolution_name
-	return _expect(can_evolve_now and evolved and name_changed, "Evolution should trigger at correct level and change monster data")
+	return _expect(not can_evolve_early and can_evolve_now and available_evolutions.size() == 1 and evolved and name_changed, "Evolution should trigger at correct level and change monster data")
 
 static func _test_move_learning_at_level_up() -> bool:
 	var monster := MTMonsterInstance.new(SLIME_DATA)
@@ -771,6 +815,149 @@ static func _test_encounter_sanitizing_removes_invalid_entries() -> bool:
 	
 	return _expect(valid_entries.size() == 1, "Sanitizing should remove all invalid entries and keep only 1 valid")
 
+# ========== STATUS EFFECT TESTS ==========
+
+const StatusAilmentClass = preload("res://core/battle/status/status_ailment.gd")
+
+static func _test_status_burn_reduces_physical_outgoing() -> bool:
+	var monster := _create_monster(SLIME_DATA)
+	monster.apply_status(StatusAilmentClass.Type.BURN, 3)
+	var action := _create_attack_action(monster, monster, {
+		"damage_type": MTDamageType.Type.PHYSICAL,
+		"attack_element": MTElement.Type.BEAST
+	})
+	var mult: float = monster.get_outgoing_damage_multiplier(action)
+	return _expect(absf(mult - 0.67) < 0.01, "Burn should reduce physical outgoing to 0.67x")
+
+static func _test_status_wet_reduces_fire_incoming() -> bool:
+	var monster := _create_monster(SLIME_DATA)
+	monster.apply_status(StatusAilmentClass.Type.WET, 3)
+	var action := _create_attack_action(monster, monster, {
+		"attack_element": MTElement.Type.FIRE
+	})
+	var mult: float = monster.get_incoming_damage_multiplier(action)
+	return _expect(absf(mult - 0.67) < 0.01, "Wet should reduce fire incoming to 0.67x")
+
+static func _test_status_wet_increases_electric_incoming() -> bool:
+	var monster := _create_monster(SLIME_DATA)
+	monster.apply_status(StatusAilmentClass.Type.WET, 3)
+	var action := _create_attack_action(monster, monster, {
+		"attack_element": MTElement.Type.ELECTRIC
+	})
+	var mult: float = monster.get_incoming_damage_multiplier(action)
+	return _expect(absf(mult - 1.33) < 0.01, "Wet should increase electric incoming to 1.33x")
+
+static func _test_status_wet_reduces_fire_outgoing() -> bool:
+	var monster := _create_monster(SLIME_DATA)
+	monster.apply_status(StatusAilmentClass.Type.WET, 3)
+	var action := _create_attack_action(monster, monster, {
+		"attack_element": MTElement.Type.FIRE,
+		"damage_type": MTDamageType.Type.MAGICAL
+	})
+	var mult: float = monster.get_outgoing_damage_multiplier(action)
+	return _expect(absf(mult - 0.67) < 0.01, "Wet should reduce own fire outgoing to 0.67x")
+
+static func _test_status_wet_removed_on_freeze() -> bool:
+	var monster := _create_monster(SLIME_DATA)
+	monster.apply_status(StatusAilmentClass.Type.WET, 3)
+	monster.apply_status(StatusAilmentClass.Type.FREEZE, 3)
+	return _expect(not monster.has_status(StatusAilmentClass.Type.WET), "Applying FREEZE should remove WET")
+
+static func _test_status_fire_attack_removes_wet_from_target() -> bool:
+	var actor := _create_monster(SLIME_DATA)
+	var target := _create_monster(WOLF_DATA)
+	actor.energy = 999
+	target.apply_status(StatusAilmentClass.Type.WET, 3)
+	var action := _create_attack_action(actor, target, {
+		"attack_element": MTElement.Type.FIRE,
+		"power": 10,
+		"crit_rate": 0.0
+	})
+	action.execute()
+	return _expect(not target.has_status(StatusAilmentClass.Type.WET), "Fire attack should remove WET from target")
+
+static func _test_status_fire_attack_thaws_frozen_target() -> bool:
+	var actor := _create_monster(SLIME_DATA)
+	var target := _create_monster(WOLF_DATA)
+	actor.energy = 999
+	target.apply_status(StatusAilmentClass.Type.FREEZE, 3)
+	var action := _create_attack_action(actor, target, {
+		"attack_element": MTElement.Type.FIRE,
+		"power": 10,
+		"crit_rate": 0.0
+	})
+	action.execute()
+	return _expect(not target.has_status(StatusAilmentClass.Type.FREEZE), "Fire attack should remove FREEZE from target")
+
+static func _test_status_poison_dot_12pct() -> bool:
+	var monster := _create_monster(SLIME_DATA)
+	monster.hp = monster.get_max_hp()
+	monster.passive_traits = []
+	monster.apply_status(StatusAilmentClass.Type.POISON, 3)
+	var max_hp: int = monster.get_max_hp()
+	var hp_before: int = monster.hp
+	monster.on_round_end()
+	var damage_taken: int = max(0, hp_before - monster.hp)
+	var expected: int = int(ceil(max_hp * 0.12))
+	return _expect(damage_taken == expected, "Poison DOT should be 12%% of max HP (expected %d got %d)" % [expected, damage_taken])
+
+static func _test_status_bleed_reduces_speed() -> bool:
+	var monster := _create_monster(SLIME_DATA)
+	monster.apply_status(StatusAilmentClass.Type.BLEED, 3)
+	var mult: float = monster.get_speed_multiplier_from_status()
+	return _expect(absf(mult - 0.85) < 0.01, "Bleed should reduce speed multiplier to 0.85")
+
+static func _test_status_root_blocks_switch() -> bool:
+	var monster := _create_monster(SLIME_DATA)
+	monster.apply_status(StatusAilmentClass.Type.ROOT, 3)
+	return _expect(not monster.can_switch_out(), "ROOT should block can_switch_out")
+
+static func _test_status_bind_blocks_switch() -> bool:
+	var monster := _create_monster(SLIME_DATA)
+	monster.apply_status(StatusAilmentClass.Type.BIND, 3)
+	return _expect(not monster.can_switch_out(), "BIND should block can_switch_out")
+
+static func _test_status_silence_blocks_sound_attack() -> bool:
+	var actor := _create_monster(SLIME_DATA)
+	var target := _create_monster(WOLF_DATA)
+	actor.energy = 999
+	actor.apply_status(StatusAilmentClass.Type.SILENCE, 3)
+	var hp_before: int = target.hp
+	var action := _create_attack_action(actor, target, {
+		"attack_element": MTElement.Type.SOUND,
+		"power": 50,
+		"crit_rate": 0.0
+	})
+	action.execute()
+	return _expect(target.hp == hp_before, "SILENCE should block SOUND element attacks")
+
+static func _test_status_sleep_blocks_action() -> bool:
+	var monster := _create_monster(SLIME_DATA)
+	monster.apply_status(StatusAilmentClass.Type.SLEEP, 5)
+	# Force duration to guarantee sleep is present
+	monster.status_durations[StatusAilmentClass.Type.SLEEP] = 5
+	var can_act: bool = monster.process_pre_action_status()
+	# Either blocked (sleep held) or woke up naturally (20% chance) — both are valid
+	var sleep_gone: bool = not monster.has_status(StatusAilmentClass.Type.SLEEP)
+	return _expect(not can_act or sleep_gone, "SLEEP should block action or remove itself when waking")
+
+static func _test_status_sleep_wakes_on_hit() -> bool:
+	var actor := _create_monster(SLIME_DATA)
+	actor.energy = 9999
+	# 50% wake-on-hit: P(never wakes in 30 hits) = 0.5^30 < 0.0000001%
+	for _i: int in range(30):
+		var target := _create_monster(WOLF_DATA)
+		target.apply_status(StatusAilmentClass.Type.SLEEP, 5)
+		var action := _create_attack_action(actor, target, {
+			"attack_element": MTElement.Type.FIRE,
+			"power": 10,
+			"crit_rate": 0.0
+		})
+		action.execute()
+		if not target.has_status(StatusAilmentClass.Type.SLEEP):
+			return _expect(true, "Sleep woke on hit at least once")
+	return _expect(false, "Sleep should wake on hit at least once in 30 attempts (50% chance)")
+
 # ========== HELPER FUNCTIONS ==========
 
 static func _calculate_test_capture_chance(target: MTMonsterInstance, item: MTItemData) -> float:
@@ -823,7 +1010,9 @@ static func _create_attack_action(actor: MTMonsterInstance, target: MTMonsterIns
 	action.attack_element = overrides.get("attack_element", MTElement.Type.FIRE)
 	action.makes_contact = bool(overrides.get("makes_contact", false))
 	action.lifesteal = float(overrides.get("lifesteal", 0.0))
+	action.recoil_ratio = float(overrides.get("recoil_ratio", 0.0))
 	action.crit_rate = float(overrides.get("crit_rate", 0.0))
+	action.stat_change_chance = float(overrides.get("stat_change_chance", 1.0))
 	return action
 
 static func _expect(condition: bool, message: String) -> bool:

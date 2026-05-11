@@ -21,6 +21,10 @@ static func add_title(container: VBoxContainer, monster: MTMonsterInstance) -> v
 		monster.energy,
 		monster.get_max_energy()
 	]
+	if monster.has_method("get_status_labels"):
+		var labels: Array[String] = monster.get_status_labels()
+		if not labels.is_empty():
+			title.text += "\n" + TranslationServer.translate("Status") + ": " + ", ".join(labels)
 	container.add_child(title)
 
 static func add_tab_content(container: VBoxContainer, monster: MTMonsterInstance, tab_index: int) -> void:
@@ -79,6 +83,8 @@ static func _add_attacks_tab(container: VBoxContainer, monster: MTMonsterInstanc
 			attack.energy_cost,
 			attack.accuracy
 		]
+		if attack.recoil_ratio > 0.0:
+			attack_label.text += TranslationServer.translate("  |  Recoil: %d%%") % int(round(attack.recoil_ratio * 100.0))
 		if localized_attack_description != "":
 			attack_label.text += "\n  " + localized_attack_description
 		container.add_child(attack_label)

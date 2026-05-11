@@ -1,0 +1,69 @@
+[gd_resource type="Resource" script_class="MTMonsterData" format=3]
+
+[ext_resource type="Script" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
+[ext_resource type="Script" path="res://core/battle/traits/trait_data.gd" id="2_trsc"]
+[ext_resource type="Script" path="res://core/monsters/monster_data.gd" id="3_mdsc"]
+[ext_resource type="Script" path="res://core/monsters/attack_learn_data.gd" id="3_u3lkw"]
+[ext_resource type="Resource" path="res://data/moves/generated/plant/PlantStrike.tres" id="4_atk"]
+[ext_resource type="Resource" path="res://data/moves/generated/plant/PlantClaw.tres" id="5_atk"]
+[ext_resource type="Resource" path="res://data/moves/generated/earth/EarthWave.tres" id="6_atk"]
+[ext_resource type="Resource" path="res://data/moves/generated/plant/PlantHex.tres" id="7_atk"]
+[ext_resource type="Resource" path="res://data/moves/Entangle.tres" id="8_atk"]
+[ext_resource type="Resource" path="res://data/moves/SolarStrike.tres" id="9_atk"]
+[ext_resource type="Script" path="res://core/monsters/trait_learn_data.gd" id="9_etiuk"]
+[ext_resource type="Resource" path="res://data/traits/HPRegen.tres" id="10_trt"]
+[ext_resource type="Resource" path="res://data/traits/StrongBody.tres" id="11_trt"]
+
+[sub_resource type="Resource" id="Resource_c1xm0"]
+script = ExtResource("3_u3lkw")
+attack = ExtResource("4_atk")
+
+[sub_resource type="Resource" id="Resource_gww0b"]
+script = ExtResource("3_u3lkw")
+attack = ExtResource("6_atk")
+learn_level = 3
+
+[sub_resource type="Resource" id="Resource_7x433"]
+script = ExtResource("3_u3lkw")
+attack = ExtResource("7_atk")
+learn_level = 6
+
+[sub_resource type="Resource" id="Resource_gjm51"]
+script = ExtResource("3_u3lkw")
+attack = ExtResource("8_atk")
+learn_level = 9
+
+[sub_resource type="Resource" id="Resource_83f7j"]
+script = ExtResource("3_u3lkw")
+attack = ExtResource("5_atk")
+learn_level = 12
+
+[sub_resource type="Resource" id="Resource_xqw7c"]
+script = ExtResource("3_u3lkw")
+attack = ExtResource("9_atk")
+learn_level = 18
+
+[sub_resource type="Resource" id="Resource_lwhjc"]
+script = ExtResource("9_etiuk")
+trait_data = ExtResource("10_trt")
+
+[sub_resource type="Resource" id="Resource_534cg"]
+script = ExtResource("9_etiuk")
+trait_data = ExtResource("11_trt")
+
+[resource]
+script = ExtResource("3_mdsc")
+name = "Fernox"
+base_max_hp = 65
+base_max_energy = 20
+base_strength = 24
+base_magic = 27
+base_defense = 30
+base_resistance = 30
+base_speed = 21
+base_exp = 90
+base_catch_rate = 80
+elements = Array[int]([2, 14])
+learnable_attacks = [SubResource("Resource_c1xm0"), SubResource("Resource_gww0b"), SubResource("Resource_7x433"), SubResource("Resource_gjm51"), SubResource("Resource_83f7j"), SubResource("Resource_xqw7c")]
+learnable_traits = [SubResource("Resource_lwhjc"), SubResource("Resource_534cg")]
+metadata/_custom_type_script = "uid://dlkhfxldvfm2b"

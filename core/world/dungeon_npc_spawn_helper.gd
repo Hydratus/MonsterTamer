@@ -280,10 +280,13 @@ static func create_mimic_npc_data(owner) -> MTNPCData:
 	data.battle_once = true
 	data.walk_enabled = false
 	var team_size: int = 1 if owner.current_floor < 4 else 2
+	var threat_level_bonus: int = owner._get_current_threat_level_bonus()
+	var wild_levels: Vector2i = owner._get_wild_level_range(threat_level_bonus)
+	var mimic_min_level: int = wild_levels.y + 1
 	for _i in range(team_size):
 		var entry := NPCMonsterEntryClass.new()
 		entry.monster_data = pick_monster_for_habitat(owner)
-		entry.level = max(4, owner.current_floor * 2 + 4 + owner._rng.randi_range(0, 3))
+		entry.level = mimic_min_level + owner._rng.randi_range(0, 2)
 		data.team_entries.append(entry)
 	return data
 
@@ -401,12 +404,12 @@ static func create_secret_vault_npc_data() -> MTNPCData:
 static func pick_monster_for_habitat(owner) -> MTMonsterData:
 	var paths: Array[String] = owner._get_habitat_monster_paths()
 	if paths.is_empty():
-		return load("res://data/monsters/slime/slime.tres") as MTMonsterData
+		return load("res://data/monsters/slime.tres") as MTMonsterData
 	var path: String = paths[owner._rng.randi_range(0, paths.size() - 1)]
 	var result := load(path) as MTMonsterData
 	if result != null:
 		return result
-	return load("res://data/monsters/slime/slime.tres") as MTMonsterData
+	return load("res://data/monsters/slime.tres") as MTMonsterData
 
 static func pick_free_floor_cell(owner, reserved: Dictionary) -> Vector2i:
 	if owner._floor_cells.is_empty():

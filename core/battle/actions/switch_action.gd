@@ -18,6 +18,10 @@ func execute(controller = null) -> Variant:
 	# controller ist die MTBattleController-Instanz
 	if controller == null:
 		return null
+	# Block if the active monster is trapped
+	if actor != null and actor.has_method("can_switch_out") and not actor.can_switch_out():
+		controller.log_message(TranslationServer.translate("%s is trapped and cannot switch out!") % _monster_name(actor))
+		return null
 	var success = controller.perform_switch(team_index, monster_index, actor)
 	if success:
 		var team = controller.teams[team_index]

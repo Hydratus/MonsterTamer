@@ -1,9 +1,10 @@
 [gd_scene format=3 uid="uid://mo710kaoy3if"]
 
 [ext_resource type="Script" uid="uid://c6n5i2l5oecv3" path="res://main.gd" id="1_o5qli"]
-[ext_resource type="Resource" uid="uid://dw2p17b0415xh" path="res://data/monsters/slime/slime.tres" id="2_0wfyh"]
-[ext_resource type="Resource" uid="uid://bn0botltdcede" path="res://data/monsters/wolf/wolf.tres" id="3_sugp2"]
+[ext_resource type="Script" uid="uid://dlkhfxldvfm2b" path="res://core/monsters/monster_data.gd" id="2_jyhfs"]
+[ext_resource type="Resource" uid="uid://dldjblscwuikv" path="res://data/monsters/wolf.tres" id="3_sugp2"]
+[ext_resource type="Resource" uid="uid://dm66o2nabnusq" path="res://data/monsters/slime.tres" id="4_tbgi4"]
 
 [node name="Main" type="Node2D" unique_id=969814577]
 script = ExtResource("1_o5qli")
-starter_team = Array[Resource]([ExtResource("3_sugp2"), ExtResource("2_0wfyh")])
+starter_team = Array[ExtResource("2_jyhfs")]([ExtResource("3_sugp2"), ExtResource("4_tbgi4")])

@@ -1,5 +1,6 @@
 extends MTBattleAction
 class_name MTAttackAction
+const StatusAilmentClass = preload("res://core/battle/status/status_ailment.gd")
 
 # See GameBalanceConstants for the centralized versions
 const TEAM_EXP_BONUS_PER_EXTRA_MEMBER := 0.375
@@ -27,6 +28,9 @@ var last_damage_dealt: int = 0
 @export_range(0.0, 1.0, 0.01)
 var lifesteal: float = 0.0
 
+@export_range(0.0, 1.0, 0.01)
+var recoil_ratio: float = 0.0
+
 # --------------------------------------------------
 # CRIT SYSTEM
 # --------------------------------------------------
@@ -38,6 +42,14 @@ var crit_multiplier: float = 1.5  # See GameBalanceConstants.CRIT_DAMAGE_MULTIPL
 # STAT CHANGES (BUFFS / DEBUFFS)
 # --------------------------------------------------
 var stat_changes: Array[MTStatChangeData] = []
+@export_range(0.0, 1.0, 0.01)
+var stat_change_chance: float = 1.0
+var status_effect: int = StatusAilmentClass.Type.NONE
+@export_range(0.0, 1.0, 0.01)
+var status_chance: float = 0.0
+@export_range(0, 8, 1)
+var status_duration: int = 0
+var status_target_self: bool = false
 
 # --------------------------------------------------
 # TARGET TEAM (statt target direkt, um dynamische Wechsel zu unterstützen)
@@ -76,6 +88,13 @@ func execute(_controller = null) -> Variant:
 		return null
 
 	# 🎯 Accuracy Check
+	if (damage_type == MTDamageType.Type.STATUS or attack_element == MTElement.Type.SOUND) and actor.has_method("has_status") and actor.has_status(StatusAilmentClass.Type.SILENCE):
+		battle_log(
+			TranslationServer.translate("%s is silenced and cannot use status moves!")
+			% [_monster_name(actor)]
+		)
+		return null
+
 	if not _roll_hit():
 		battle_log(
 			TranslationServer.translate("%s uses %s on %s, but it misses!")
@@ -97,7 +116,7 @@ func execute(_controller = null) -> Variant:
 	_phase_actor_was_ko_before_action = actor != null and not actor.is_alive()
 
 	_execute_damage_step()
-	_queue_next_step(Callable(self, "_execute_contact_step"))
+	_queue_next_step(Callable(self, "_execute_recoil_step"))
 
 	return null
 
@@ -156,7 +175,40 @@ func _execute_damage_step() -> void:
 			battle_log(line)
 
 	last_damage_dealt = _phase_dealt_damage
+	_handle_fire_element_interactions()
+	_handle_sleep_wake_on_hit()
 	_flush_step_messages()
+
+func _handle_fire_element_interactions() -> void:
+	if attack_element != MTElement.Type.FIRE:
+		return
+	# Actor uses fire while wet -> evaporates
+	if actor != null and actor.has_method("has_status") and actor.has_status(StatusAilmentClass.Type.WET):
+		actor.remove_status(StatusAilmentClass.Type.WET)
+		battle_log(TranslationServer.translate("%s's Wet status evaporated from its own fire!") % _monster_name(actor))
+	if target == null or not target.has_method("has_status"):
+		return
+	# Target frozen -> thaw immediately; 50% chance to become Wet
+	if target.has_status(StatusAilmentClass.Type.FREEZE):
+		target.remove_status(StatusAilmentClass.Type.FREEZE)
+		battle_log(TranslationServer.translate("%s thawed out from the fire!") % _monster_name(target))
+		if randf() <= 0.50:
+			var wet_dur: int = StatusAilmentClass.default_duration(StatusAilmentClass.Type.WET)
+			target.apply_status(StatusAilmentClass.Type.WET, wet_dur)
+			battle_log(TranslationServer.translate("%s became Wet from the steam!") % _monster_name(target))
+	# Target wet -> fire dries it off
+	elif target.has_status(StatusAilmentClass.Type.WET):
+		target.remove_status(StatusAilmentClass.Type.WET)
+		battle_log(TranslationServer.translate("%s's Wet status was dried off by the fire!") % _monster_name(target))
+
+func _handle_sleep_wake_on_hit() -> void:
+	if _phase_dealt_damage <= 0:
+		return
+	if target == null or not target.has_method("has_status"):
+		return
+	if target.has_status(StatusAilmentClass.Type.SLEEP) and randf() <= 0.50:
+		target.remove_status(StatusAilmentClass.Type.SLEEP)
+		battle_log(TranslationServer.translate("%s was jolted awake!") % _monster_name(target))
 
 func _execute_contact_step() -> void:
 	if makes_contact:
@@ -177,6 +229,8 @@ func _execute_lifesteal_step() -> void:
 
 		if secondary_effects_enabled and total_lifesteal > 0.0:
 			var heal_amount: int = int(ceil(_phase_dealt_damage * total_lifesteal))
+			if actor.has_method("can_receive_healing") and not actor.can_receive_healing():
+				heal_amount = 0
 
 			if heal_amount > 0:
 				var before: int = actor.hp
@@ -193,46 +247,67 @@ func _execute_lifesteal_step() -> void:
 	_flush_step_messages()
 	_queue_next_step(Callable(self, "_execute_final_step"))
 
+func _execute_recoil_step() -> void:
+	if _phase_dealt_damage > 0 and actor != null and actor.is_alive() and recoil_ratio > 0.0:
+		var recoil_damage: int = int(ceil(_phase_dealt_damage * recoil_ratio))
+		if recoil_damage > 0:
+			var hp_before: int = actor.hp
+			actor.take_damage(recoil_damage)
+			actor.clamp_resources()
+			var dealt_recoil: int = max(0, hp_before - actor.hp)
+			if dealt_recoil > 0:
+				battle_log(
+					TranslationServer.translate("%s is hurt by recoil and loses %d HP!")
+					% [_monster_name(actor), dealt_recoil]
+				)
+
+	_flush_step_messages()
+	_queue_next_step(Callable(self, "_execute_contact_step"))
+
 func _execute_final_step() -> void:
-	for change in stat_changes:
-		if actor == null or not actor.is_alive():
-			break
-		if requires_contact_for_effect and not makes_contact:
-			continue
-		var receiver := actor if change.target_self else target
-		if receiver == null or not receiver.is_alive():
-			continue
+	if not stat_changes.is_empty() and not _roll_stat_changes_hit():
+		battle_log(TranslationServer.translate("The secondary stat effects did not trigger."))
+	else:
+		for change in stat_changes:
+			if actor == null or not actor.is_alive():
+				break
+			if requires_contact_for_effect and not makes_contact:
+				continue
+			var receiver := actor if change.target_self else target
+			if receiver == null or not receiver.is_alive():
+				continue
 
-		var delta: int = receiver.modify_stat_stage(
-			change.stat,
-			change.stages
-		)
-
-		var stat_name: String = _localize_stat_name(MTMonsterInstance.StatType.keys()[change.stat])
-
-		if delta == 0:
-			if change.stages > 0:
-				battle_log(TranslationServer.translate("%s's %s won't go any higher!") % [
-					_monster_name(receiver),
-					stat_name
-				])
-			else:
-				battle_log(TranslationServer.translate("%s's %s won't go any lower!") % [
-					_monster_name(receiver),
-					stat_name
-				])
-		else:
-			var sign_prefix := "+" if delta > 0 else ""
-			battle_log(
-				TranslationServer.translate("%s's %s changed by %s%d!")
-				% [
-					_monster_name(receiver),
-					stat_name,
-					sign_prefix,
-					delta
-				]
+			var delta: int = receiver.modify_stat_stage(
+				change.stat,
+				change.stages
 			)
 
+			var stat_name: String = _localize_stat_name(MTMonsterInstance.StatType.keys()[change.stat])
+
+			if delta == 0:
+				if change.stages > 0:
+					battle_log(TranslationServer.translate("%s's %s won't go any higher!") % [
+						_monster_name(receiver),
+						stat_name
+					])
+				else:
+					battle_log(TranslationServer.translate("%s's %s won't go any lower!") % [
+						_monster_name(receiver),
+						stat_name
+					])
+			else:
+				var sign_prefix := "+" if delta > 0 else ""
+				battle_log(
+					TranslationServer.translate("%s's %s changed by %s%d!")
+					% [
+						_monster_name(receiver),
+						stat_name,
+						sign_prefix,
+						delta
+					]
+				)
+
+	_apply_status_package()
 	actor.clamp_resources()
 	target.clamp_resources()
 	_handle_post_attack_knockouts(
@@ -240,6 +315,53 @@ func _execute_final_step() -> void:
 		_phase_actor_was_ko_before_action
 	)
 	_flush_step_messages()
+
+func _apply_status_package() -> void:
+	if status_effect == StatusAilmentClass.Type.NONE:
+		return
+
+	var receiver: MTMonsterInstance = actor if status_target_self else target
+	if receiver == null or not receiver.is_alive():
+		return
+
+	if status_effect == StatusAilmentClass.Type.CLEANSE:
+		if receiver.has_method("clear_negative_statuses"):
+			var removed: int = receiver.clear_negative_statuses()
+			if removed > 0:
+				battle_log(TranslationServer.translate("%s is cleansed of %d status effects!") % [_monster_name(receiver), removed])
+			else:
+				battle_log(TranslationServer.translate("%s is unaffected by cleanse.") % [_monster_name(receiver)])
+		return
+
+	if _phase_dealt_damage <= 0 and damage_type != MTDamageType.Type.STATUS:
+		return
+
+	if not _roll_status_hit():
+		return
+
+	var duration := status_duration
+	if duration <= 0:
+		duration = StatusAilmentClass.default_duration(status_effect)
+
+	if receiver.has_method("apply_status"):
+		var applied: bool = receiver.apply_status(status_effect, duration)
+		if applied:
+			battle_log(
+				TranslationServer.translate("%s is afflicted with %s for %d rounds!")
+				% [_monster_name(receiver), StatusAilmentClass.display_name(status_effect), duration]
+			)
+
+func _roll_status_hit() -> bool:
+	var chance_percent: float = _to_chance_percent(status_chance)
+	if chance_percent <= 0.0:
+		return false
+	return randf_range(0.0, 100.0) <= chance_percent
+
+func _to_chance_percent(raw_chance: float) -> float:
+	var chance: float = max(0.0, raw_chance)
+	if chance <= 1.0:
+		return clampf(chance * 100.0, 0.0, 100.0)
+	return clampf(chance, 0.0, 100.0)
 
 func _localize_stat_name(stat_key: String) -> String:
 	match stat_key:
@@ -521,5 +643,14 @@ func _roll_hit() -> bool:
 		/ target.evasion_modifier
 	)
 
+	if actor.has_method("get_accuracy_multiplier_from_status"):
+		final_accuracy *= actor.get_accuracy_multiplier_from_status()
+
 	final_accuracy = clamp(final_accuracy, 0.0, 100.0)
 	return randf_range(0.0, 100.0) <= final_accuracy
+
+func _roll_stat_changes_hit() -> bool:
+	if stat_changes.is_empty():
+		return true
+	var chance_percent: float = clampf(float(stat_change_chance), 0.0, 1.0) * 100.0
+	return randf_range(0.0, 100.0) <= chance_percent

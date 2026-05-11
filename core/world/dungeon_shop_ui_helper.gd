@@ -162,27 +162,52 @@ static func create_currency_hud(owner) -> void:
 	owner._currency_hud_label.anchor_right = 0.0
 	owner._currency_hud_label.anchor_bottom = 0.5
 	owner._currency_hud_label.offset_left = 10
-	owner._currency_hud_label.offset_top = -24
-	owner._currency_hud_label.offset_right = 260
-	owner._currency_hud_label.offset_bottom = 24
+	owner._currency_hud_label.offset_top = -52
+	owner._currency_hud_label.offset_right = 360
+	owner._currency_hud_label.offset_bottom = 52
 	owner._currency_hud_label.add_theme_color_override("font_color", Color(1, 0.95, 0.75, 1))
 	owner._currency_hud_layer.add_child(owner._currency_hud_label)
 
 static func update_currency_hud(owner, force: bool = false) -> void:
 	if owner._currency_hud_label == null:
 		return
+	var biome_text := "-"
+	var floor_text := "-"
+	if owner.has_method("get_dungeon_hud_biome_text"):
+		biome_text = str(owner.get_dungeon_hud_biome_text())
+	if owner.has_method("get_dungeon_hud_floor_text"):
+		floor_text = str(owner.get_dungeon_hud_floor_text())
+	var threat_time_text := "00:00"
+	if owner.has_method("get_dungeon_hud_threat_time_text"):
+		threat_time_text = str(owner.get_dungeon_hud_threat_time_text())
+	var threat_points: int = int(owner.get("_run_threat_points") if owner.get("_run_threat_points") != null else 0)
+	var threat_tier: int = int(owner.get("_run_threat_tier") if owner.get("_run_threat_tier") != null else 0)
 	if not _has_game():
 		if force:
-			owner._currency_hud_label.text = TranslationServer.translate("Gold: -\nSoul Essence: -")
+			owner._currency_hud_label.text = "%s\n%s\n%s\n%s" % [
+				TranslationServer.translate("Gold: - | Soul Essence: -"),
+				TranslationServer.translate("Biome: %s | Floor: %s") % [biome_text, floor_text],
+				TranslationServer.translate("Threat: Tier %d | Points: %d") % [0, 0],
+				TranslationServer.translate("Threat Time: %s") % threat_time_text
+			]
 		return
 	var game = _get_game()
 	var gold: int = game.run_gold
 	var essence: int = game.soul_essence
-	if not force and gold == owner._last_gold_display and essence == owner._last_essence_display:
+	var threat_seconds: int = max(0, int(floor(float(owner.get("_run_exploration_seconds") if owner.get("_run_exploration_seconds") != null else 0.0))))
+	if not force and gold == owner._last_gold_display and essence == owner._last_essence_display and threat_points == owner._last_threat_points_display and threat_tier == owner._last_threat_tier_display and threat_seconds == owner._last_threat_seconds_display:
 		return
 	owner._last_gold_display = gold
 	owner._last_essence_display = essence
-	owner._currency_hud_label.text = TranslationServer.translate("Gold: %d\nSoul Essence: %d") % [gold, essence]
+	owner._last_threat_points_display = threat_points
+	owner._last_threat_tier_display = threat_tier
+	owner._last_threat_seconds_display = threat_seconds
+	owner._currency_hud_label.text = "%s\n%s\n%s\n%s" % [
+		TranslationServer.translate("Gold: %d | Soul Essence: %d") % [gold, essence],
+		TranslationServer.translate("Biome: %s | Floor: %s") % [biome_text, floor_text],
+		TranslationServer.translate("Threat: Tier %d | Points: %d") % [threat_tier, threat_points],
+		TranslationServer.translate("Threat Time: %s") % threat_time_text
+	]
 
 static func apply_merchant_discount(_owner, base_price: int) -> int:
 	if not _has_game():

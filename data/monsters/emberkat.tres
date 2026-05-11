@@ -1,0 +1,59 @@
+[gd_resource type="Resource" script_class="MTMonsterData" format=3]
+
+[ext_resource type="Script" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
+[ext_resource type="Script" path="res://core/battle/traits/trait_data.gd" id="2_trsc"]
+[ext_resource type="Script" path="res://core/monsters/attack_learn_data.gd" id="3_8hg3y"]
+[ext_resource type="Script" path="res://core/monsters/monster_data.gd" id="3_mdsc"]
+[ext_resource type="Resource" path="res://data/moves/generated/fire/FireStrike.tres" id="4_atk"]
+[ext_resource type="Resource" path="res://data/moves/generated/fire/FireBolt.tres" id="5_atk"]
+[ext_resource type="Resource" path="res://data/moves/generated/fire/FireHex.tres" id="6_atk"]
+[ext_resource type="Resource" path="res://data/moves/Inferno.tres" id="7_atk"]
+[ext_resource type="Script" path="res://core/monsters/trait_learn_data.gd" id="7_qkld4"]
+[ext_resource type="Resource" path="res://data/traits/StrongBeginning.tres" id="8_trt"]
+[ext_resource type="Resource" path="res://data/traits/BruteForce.tres" id="9_trt"]
+
+[sub_resource type="Resource" id="Resource_nmsai"]
+script = ExtResource("3_8hg3y")
+attack = ExtResource("4_atk")
+
+[sub_resource type="Resource" id="Resource_4aqxp"]
+script = ExtResource("3_8hg3y")
+attack = ExtResource("5_atk")
+learn_level = 4
+
+[sub_resource type="Resource" id="Resource_loi4i"]
+script = ExtResource("3_8hg3y")
+attack = ExtResource("6_atk")
+learn_level = 8
+
+[sub_resource type="Resource" id="Resource_0kfnb"]
+script = ExtResource("3_8hg3y")
+attack = ExtResource("7_atk")
+learn_level = 16
+
+[sub_resource type="Resource" id="Resource_64ly3"]
+script = ExtResource("7_qkld4")
+trait_data = ExtResource("8_trt")
+
+[sub_resource type="Resource" id="Resource_j0ppi"]
+script = ExtResource("7_qkld4")
+trait_data = ExtResource("9_trt")
+learn_level = 6
+
+[resource]
+script = ExtResource("3_mdsc")
+name = "Emberkat"
+base_max_hp = 30
+base_max_energy = 40
+base_strength = 27
+base_magic = 33
+base_defense = 18
+base_resistance = 24
+base_speed = 36
+base_exp = 85
+growth_rate = 0
+base_catch_rate = 70
+elements = Array[int]([1])
+learnable_attacks = [SubResource("Resource_nmsai"), SubResource("Resource_4aqxp"), SubResource("Resource_loi4i"), SubResource("Resource_0kfnb")]
+learnable_traits = [SubResource("Resource_64ly3"), SubResource("Resource_j0ppi")]
+metadata/_custom_type_script = "uid://dlkhfxldvfm2b"

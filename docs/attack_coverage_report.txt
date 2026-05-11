@@ -1,0 +1,78 @@
+Thresholds: weak <= 55, mid 60-95, strong >= 100
+
+=== COVERAGE ===
+
+Element  DamageType Weak Mid Strong
+-------  ---------- ---- --- ------
+Air      Magic         1   2      0
+Air      Physical      2   4      0
+Beast    Magic         0   0      0
+Beast    Physical      3   3      2
+Cosmic   Magic         2   2      3
+Cosmic   Physical      0   2      0
+Dragon   Magic         0   3      1
+Dragon   Physical      1   0      4
+Earth    Magic         0   0      2
+Earth    Physical      1   0      1
+Electric Magic         0   1      2
+Electric Physical      1   2      0
+Fire     Magic         0   0      3
+Fire     Physical      1   1      0
+Holy     Magic         0   0      2
+Holy     Physical      1   1      0
+Ice      Magic         0   1      1
+Ice      Physical      1   0      1
+Metal    Magic         0   0      1
+Metal    Physical      1   2      3
+Plant    Magic         1   1      0
+Plant    Physical      1   1      0
+Poison   Magic         0   1      0
+Poison   Physical      1   1      0
+Sound    Magic         0   2      1
+Sound    Physical      1   2      1
+Undead   Magic         1   2      0
+Undead   Physical      1   1      0
+Water    Magic         0   3      1
+Water    Physical      3   1      0
+
+
+=== MISSING ===
+
+Element  DamageType MissingTier
+-------  ---------- -----------
+Air      Magic      strong
+Air      Physical   strong
+Beast    Magic      mid
+Beast    Magic      strong
+Beast    Magic      weak
+Cosmic   Physical   strong
+Cosmic   Physical   weak
+Dragon   Magic      weak
+Dragon   Physical   mid
+Earth    Magic      mid
+Earth    Magic      weak
+Earth    Physical   mid
+Electric Magic      weak
+Electric Physical   strong
+Fire     Magic      mid
+Fire     Magic      weak
+Fire     Physical   strong
+Holy     Magic      mid
+Holy     Magic      weak
+Holy     Physical   strong
+Ice      Magic      weak
+Ice      Physical   mid
+Metal    Magic      mid
+Metal    Magic      weak
+Plant    Magic      strong
+Plant    Physical   strong
+Poison   Magic      strong
+Poison   Magic      weak
+Poison   Physical   strong
+Sound    Magic      weak
+Undead   Magic      strong
+Undead   Physical   strong
+Water    Magic      weak
+Water    Physical   strong
+
+

@@ -24,42 +24,21 @@ const META_UNLOCK_OPTIONS: Array[Dictionary] = [
 @export var anim_down: String = "Down"
 @export var anim_left: String = "Left"
 @export var anim_right: String = "Right"
-@export var encounter_chance: float = 0.10
 @export var debug_logs: bool = false
-@export var encounter_table: Array[MTEncounterEntry] = []
 @export var starter_team: Array[MTMonsterData] = []
 @export var dungeon_options: Array[Dictionary] = [
 	{
-		"name": "Test Dungeon (Cavern)",
-		"scene": "res://scenes/world/dungeon_test.tscn",
+		"name": "Enter Dungeon",
+		"scene": "res://scenes/world/dungeon.tscn",
 		"payload": {
 			"floor": 1,
-			"floor_count": 5,
+			"floor_count": 50,
 			"habitat": "cavern",
 			"seed": 0,
-			"base_encounter_chance": 0.05
-		}
-	},
-	{
-		"name": "Ruins Trial",
-		"scene": "res://scenes/world/dungeon_test.tscn",
-		"payload": {
-			"floor": 1,
-			"floor_count": 4,
-			"habitat": "ruins",
-			"seed": 1337,
-			"base_encounter_chance": 0.14
-		}
-	},
-	{
-		"name": "Swamp Depths",
-		"scene": "res://scenes/world/dungeon_test.tscn",
-		"payload": {
-			"floor": 1,
-			"floor_count": 6,
-			"habitat": "swamp",
-			"seed": 98765,
-			"base_encounter_chance": 0.18
+			"base_encounter_chance": 0.05,
+			"run_segment_min_len": 7,
+			"run_segment_max_len": 15,
+			"run_biome_pool": ["cavern", "forest", "ruins", "swamp"]
 		}
 	}
 ]
@@ -114,8 +93,6 @@ func _ready() -> void:
 	_create_scene_label()
 	_create_pause_menu()
 	_create_dungeon_menu()
-	_ensure_party()
-	_ensure_encounters()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _in_battle or _is_moving:
@@ -501,9 +478,6 @@ func _on_step_finished() -> void:
 		_play_idle_anim(_last_facing)
 	if _in_battle:
 		return
-	if _is_grass_cell(_player_cell) and _rng.randf() < encounter_chance:
-		_play_idle_anim(_last_facing)
-		_start_random_battle()
 
 func _cell_to_world(cell: Vector2i) -> Vector2:
 	if _grass_layer != null:
@@ -548,10 +522,6 @@ func _has_tile(layer: TileMapLayer, cell: Vector2i) -> bool:
 		return false
 	return layer.get_cell_source_id(cell) != -1
 
-func _is_grass_cell(cell: Vector2i) -> bool:
-	if _grass_layer == null:
-		return false
-	return _grass_layer.get_cell_source_id(cell) != -1
 
 func _get_used_rect() -> Rect2i:
 	var rect := Rect2i()
@@ -822,88 +792,6 @@ func _ensure_party() -> void:
 			DEBUG_LOG.error("World", "Failed to add starter monster to party in overworld")
 			break
 
-func _ensure_encounters() -> void:
-	_sanitize_encounter_table()
-	if not encounter_table.is_empty():
-		return
-	var slime := load("res://data/monsters/slime/slime.tres") as MTMonsterData
-	var wolf := load("res://data/monsters/wolf/wolf.tres") as MTMonsterData
-	if slime != null:
-		var slime_entry := MTEncounterEntry.new()
-		slime_entry.monster = slime
-		slime_entry.min_level = 2
-		slime_entry.max_level = 6
-		slime_entry.weight = 10
-		encounter_table.append(slime_entry)
-	if wolf != null:
-		var wolf_entry := MTEncounterEntry.new()
-		wolf_entry.monster = wolf
-		wolf_entry.min_level = 4
-		wolf_entry.max_level = 8
-		wolf_entry.weight = 5
-		encounter_table.append(wolf_entry)
-	_sanitize_encounter_table()
-
-func _sanitize_encounter_table() -> void:
-	var valid_entries: Array[MTEncounterEntry] = []
-	for entry in encounter_table:
-		if entry == null:
-			continue
-		if entry.monster == null:
-			continue
-		if entry.weight <= 0:
-			continue
-		if entry.max_level < entry.min_level:
-			entry.max_level = entry.min_level
-		if entry.min_level < 1:
-			entry.min_level = 1
-		valid_entries.append(entry)
-	encounter_table = valid_entries
-
-func _start_random_battle() -> void:
-	var enemy_team: Array[MTMonsterInstance] = _build_enemy_team()
-	if enemy_team.is_empty():
-		return
-	_pause_npc_walks()
-
-	_in_battle = true
-	_battle_scene = preload("res://scenes/battle_scene.tscn").instantiate()
-	_battle_scene.auto_start = false
-	add_child(_battle_scene)
-	_battle_scene.battle_finished.connect(_on_battle_finished)
-	_battle_scene.capture_allowed = true
-	_battle_scene.escape_allowed = true
-	_battle_scene.player_soulbinder_name = _player_name()
-	_battle_scene.enemy_soulbinder_name = "Wild"
-	var player_team: Array[MTMonsterInstance] = _build_player_team_from_party()
-	_battle_scene.start_battle(player_team, enemy_team)
-
-func _build_enemy_team() -> Array[MTMonsterInstance]:
-	_sanitize_encounter_table()
-	var entries := encounter_table.filter(func(e): return e != null and e.weight > 0 and e.monster != null)
-	if entries.is_empty():
-		return []
-
-	var total_weight := 0
-	for e in entries:
-		total_weight += e.weight
-
-	var roll := _rng.randi_range(1, total_weight)
-	var chosen: MTEncounterEntry = entries[0]
-	var running := 0
-	for e in entries:
-		running += e.weight
-		if roll <= running:
-			chosen = e
-			break
-
-	var level := _rng.randi_range(chosen.min_level, chosen.max_level)
-	var enemy_data := chosen.monster.duplicate()
-	enemy_data.level = level
-
-	var enemy := MTMonsterInstance.new(enemy_data)
-	enemy.decision = MTAIDecision.new()
-	return [enemy]
 
 func _on_battle_finished(_winner_team_index: int) -> void:
 	_in_battle = false

@@ -13,11 +13,13 @@ var message_box: MTBattleMessageBox
 var evolution_layer: CanvasLayer
 var evolution_panel: PanelContainer
 var evolution_label: Label
+var evolution_target_selector: OptionButton
 var evolution_yes_button: Button
 var evolution_no_button: Button
 var _pending_learning: Array = []
 var _pending_exp_steps: Array = []
 var _pending_message_step_callbacks: Array[Callable] = []
+var _pending_evolution_options: Array[Dictionary] = []
 var _evolution_decision_callback: Callable
 var _evolution_input_blocked := false
 var _evolution_prompt_token: int = 0
@@ -274,21 +276,33 @@ func _on_menu_item_used(item: MTItemData, target: MTMonsterInstance):
 			_resume_menu_after_message = true
 			_show_instant_battle_message(tr("Couldn't use!"))
 			return
-	if not _can_use_item_in_battle(item, actual_target):
+	var item_evolutions := _get_item_triggered_evolutions(item, actual_target)
+	if not _can_use_item_in_battle(item, actual_target, item_evolutions):
 		_resume_menu_after_message = true
 		_show_instant_battle_message(tr("Couldn't use!"))
 		return
+	var selected_evolution_target: MTMonsterData = null
+	if not item_evolutions.is_empty():
+		selected_evolution_target = item_evolutions[0].get("target_monster", null)
 	menu.hide_menu()
-	battle.submit_player_item(active_monster, item, actual_target)
+	battle.submit_player_item(active_monster, item, actual_target, selected_evolution_target)
 
-func _can_use_item_in_battle(item: MTItemData, target: MTMonsterInstance) -> bool:
+func _can_use_item_in_battle(item: MTItemData, target: MTMonsterInstance, item_evolutions: Array[Dictionary] = []) -> bool:
 	if item == null or target == null:
 		return false
 	if item.category == ItemDataClass.Category.SOULBINDER:
 		return capture_allowed and target.is_alive()
 	if item.heal_max > 0:
-		return target.hp < target.get_max_hp()
-	return false
+		if target.hp < target.get_max_hp():
+			return true
+	if item_evolutions.is_empty():
+		item_evolutions = _get_item_triggered_evolutions(item, target)
+	return not item_evolutions.is_empty()
+
+func _get_item_triggered_evolutions(item: MTItemData, target: MTMonsterInstance) -> Array[Dictionary]:
+	if item == null or target == null:
+		return []
+	return target.get_available_evolutions({"used_item_id": str(item.id)})
 
 func _on_menu_changed(menu_name: String):
 	# Verberge HUD wenn Team oder Inventory geöffnet werden
@@ -655,6 +669,10 @@ func _create_evolution_prompt_ui() -> void:
 	evolution_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(evolution_label)
 
+	evolution_target_selector = OptionButton.new()
+	evolution_target_selector.visible = false
+	vbox.add_child(evolution_target_selector)
+
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 10)
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -673,18 +691,28 @@ func _create_evolution_prompt_ui() -> void:
 	evolution_layer.visible = false
 
 func _show_evolution_prompt(monster: MTMonsterInstance, on_decision: Callable) -> void:
+	_pending_evolution_options = monster.get_available_evolutions()
+	evolution_target_selector.clear()
 	var evolved_name := monster.data.name
-	if monster.data != null and monster.data.evolution != null:
-		var evolution_data := monster.data.evolution as MTEvolutionData
-		if evolution_data != null and evolution_data.evolved_monster != null:
-			evolved_name = evolution_data.evolved_monster.name
+	if not _pending_evolution_options.is_empty():
+		evolved_name = _get_evolution_option_name(_pending_evolution_options[0])
+	if _pending_evolution_options.size() > 1:
+		evolution_target_selector.visible = true
+		for evolution_entry in _pending_evolution_options:
+			evolution_target_selector.add_item(_get_evolution_option_name(evolution_entry))
+		evolution_target_selector.select(0)
+	else:
+		evolution_target_selector.visible = false
 	var text := tr("%s tries to evolve into %s.\nDo you want to evolve %s?") % [monster.data.name, evolved_name, monster.data.name]
+	if _pending_evolution_options.size() > 1:
+		text = tr("%s can evolve into multiple forms.\nChoose an evolution for %s.") % [monster.data.name, monster.data.name]
 	evolution_layer.visible = true
 	evolution_yes_button.grab_focus()
 	_evolution_decision_callback = on_decision
 	_evolution_input_blocked = false
 	evolution_yes_button.disabled = false
 	evolution_no_button.disabled = false
+	evolution_target_selector.disabled = false
 	evolution_label.text = ""
 	_show_bottom_prompt(text)
 
@@ -694,7 +722,7 @@ func _on_evolution_yes_pressed() -> void:
 	evolution_layer.visible = false
 	_clear_bottom_prompt()
 	if _evolution_decision_callback.is_valid():
-		_evolution_decision_callback.call(true)
+		_evolution_decision_callback.call(_get_selected_evolution_option())
 
 func _on_evolution_no_pressed() -> void:
 	if _evolution_input_blocked:
@@ -702,7 +730,7 @@ func _on_evolution_no_pressed() -> void:
 	evolution_layer.visible = false
 	_clear_bottom_prompt()
 	if _evolution_decision_callback.is_valid():
-		_evolution_decision_callback.call(false)
+		_evolution_decision_callback.call({})
 
 func _run_evolution_prompt(token: int, text: String) -> void:
 	_evolution_typewriter(token, text)
@@ -728,6 +756,26 @@ func _evolution_typewriter_async(token: int, text: String) -> void:
 	_evolution_input_blocked = false
 	evolution_yes_button.disabled = false
 	evolution_no_button.disabled = false
+	evolution_target_selector.disabled = false
+
+func _get_selected_evolution_option() -> Dictionary:
+	if _pending_evolution_options.is_empty():
+		return {}
+	if evolution_target_selector == null or not evolution_target_selector.visible:
+		return _pending_evolution_options[0]
+	var selected_index := evolution_target_selector.get_selected_id()
+	if selected_index < 0 or selected_index >= _pending_evolution_options.size():
+		return {}
+	return _pending_evolution_options[selected_index]
+
+func _get_evolution_option_name(evolution_entry: Dictionary) -> String:
+	var label := str(evolution_entry.get("label", "")).strip_edges()
+	if label != "":
+		return label
+	var target_monster: MTMonsterData = evolution_entry.get("target_monster", null)
+	if target_monster != null and target_monster.name != "":
+		return target_monster.name
+	return tr("Unknown")
 
 func _try_handle_pending_evolution() -> bool:
 	if not _has_battle():
@@ -749,9 +797,10 @@ func _try_handle_pending_evolution() -> bool:
 		if learning_cb.is_valid():
 			_pending_learning.append({"cb": learning_cb, "monster": monster})
 		return true
-	_show_evolution_prompt(monster, func(accept: bool):
-		if accept:
-			monster.apply_evolution(Callable(battle, "log_message"))
+	_show_evolution_prompt(monster, func(selection: Dictionary):
+		if not selection.is_empty():
+			var selected_target: MTMonsterData = selection.get("target_monster", null)
+			monster.apply_evolution(Callable(battle, "log_message"), selected_target)
 		else:
 			battle.log_message(tr("%s did not evolve.") % monster.data.name)
 

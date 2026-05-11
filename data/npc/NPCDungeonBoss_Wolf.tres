@@ -1,7 +1,8 @@
 [gd_resource type="Resource" script_class="NPCMonsterEntry" format=3]
 
-[ext_resource type="Script" path="res://core/world/npc_monster_entry.gd" id="1_npc_entry"]
-[ext_resource type="Resource" path="res://data/monsters/wolf/wolf.tres" id="2_monster"]
+[ext_resource type="Script" uid="uid://choih6t5ybjci" path="res://core/world/npc_monster_entry.gd" id="1_npc_entry"]
+[ext_resource type="Resource" uid="uid://dldjblscwuikv" path="res://data/monsters/wolf.tres" id="2_monster"]
+
 
 [resource]
 script = ExtResource("1_npc_entry")

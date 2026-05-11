@@ -1,10 +1,6 @@
-[gd_scene format=4 uid="uid://bef73sv37vfyh"]
+[gd_scene format=4 uid="uid://dfmige0i7qqnp"]
 
 [ext_resource type="Script" uid="uid://w871621wnaqq" path="res://core/world/overworld.gd" id="1_1c2b3"]
-[ext_resource type="Script" uid="uid://ndxg70wtpumi" path="res://core/world/encounter_entry.gd" id="2_h0wcu"]
-[ext_resource type="Resource" uid="uid://b5bppwsmk1rcj" path="res://data/encounter/map1/map1_slime.tres" id="3_espw7"]
-[ext_resource type="Resource" uid="uid://dqsng4jrsy7kc" path="res://data/encounter/map1/map1_wolf.tres" id="4_o3ojk"]
-[ext_resource type="Resource" uid="uid://5s8e71chtsiv" path="res://data/encounter/map1/map1_wolfinator.tres" id="5_eccxn"]
 [ext_resource type="Texture2D" uid="uid://jgps4m0htvk5" path="res://assets/sprites/Tests/Ninja Adventure - Asset Pack/Backgrounds/Tilesets/TilesetFloor.png" id="6_eccxn"]
 [ext_resource type="Texture2D" uid="uid://dnpa1oddb2d4b" path="res://assets/sprites/Tests/Ninja Adventure - Asset Pack/Actor/Characters/NinjaGreen/SeparateAnim/Idle.png" id="7_s753n"]
 [ext_resource type="Texture2D" uid="uid://bv0iwwxgwhodc" path="res://assets/sprites/Tests/Ninja Adventure - Asset Pack/Actor/Characters/NinjaGreen/SeparateAnim/Walk.png" id="8_ap4hg"]
@@ -968,41 +964,8 @@ animations = [{
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ap4hg"]
 size = Vector2(14, 14)
 
-[node name="Overworld" type="Node2D" unique_id=1735293519]
+[node name="Dungeon" type="Node2D" unique_id=1735293519]
 script = ExtResource("1_1c2b3")
-encounter_chance = 0.05
-encounter_table = Array[ExtResource("2_h0wcu")]([ExtResource("3_espw7"), ExtResource("4_o3ojk"), ExtResource("5_eccxn")])
-dungeon_options = Array[Dictionary]([{
-"name": "Test Dungeon (Cavern)",
-"payload": {
-"base_encounter_chance": 0.05,
-"floor": 1,
-"floor_count": 5,
-"habitat": "cavern",
-"seed": 0
-},
-"scene": "res://scenes/world/dungeon_test.tscn"
-}, {
-"name": "Ruins Trial",
-"payload": {
-"base_encounter_chance": 0.05,
-"floor": 1,
-"floor_count": 4,
-"habitat": "ruins",
-"seed": 1337
-},
-"scene": "res://scenes/world/dungeon_test.tscn"
-}, {
-"name": "Swamp Depths",
-"payload": {
-"base_encounter_chance": 0.05,
-"floor": 1,
-"floor_count": 6,
-"habitat": "swamp",
-"seed": 98765
-},
-"scene": "res://scenes/world/dungeon_test.tscn"
-}])
 
 [node name="Dirt" type="TileMapLayer" parent="." unique_id=537473179]
 z_index = 1

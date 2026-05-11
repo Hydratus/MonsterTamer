@@ -27,8 +27,39 @@ static func start_dungeon_run_if_needed(owner) -> void:
 		return
 	var start_gold: int = owner.run_start_gold + game.get_meta_unlock_level("starting_gold") * 25
 	game.reset_run_state(start_gold)
+	var route_total_floors: int = max(1, int(owner.run_total_floors))
+	var route_min_segment_len: int = max(1, int(owner.run_segment_min_len))
+	var route_max_segment_len: int = max(route_min_segment_len, int(owner.run_segment_max_len))
+	var preferred_start_biome := str(owner.habitat)
+	var route_seed: int = int(owner.generation_seed)
+	game.setup_dungeon_route(
+		route_total_floors,
+		owner.run_biome_pool,
+		preferred_start_biome,
+		route_min_segment_len,
+		route_max_segment_len,
+		route_seed
+	)
+	owner.floor_count = route_total_floors
+	var start_biome: String = game.get_dungeon_biome_for_floor(owner.current_floor)
+	if start_biome != "":
+		owner.habitat = start_biome
 	game.flags["dungeon_run_active"] = true
-	owner._enqueue_message(TranslationServer.translate("Run started. Gold: %d") % game.run_gold)
+	if game.dungeon_route_segments.size() > 0:
+		var route_parts: Array[String] = []
+		for raw_segment in game.dungeon_route_segments:
+			var segment: Dictionary = raw_segment if raw_segment is Dictionary else {}
+			if segment.is_empty():
+				continue
+			var biome: String = str(segment.get("biome", "?")).capitalize()
+			var start_floor: int = int(segment.get("start_floor", 1))
+			var end_floor: int = int(segment.get("end_floor", start_floor))
+			route_parts.append("%s %d-%d" % [biome, start_floor, end_floor])
+		owner._log_dungeon("[Dungeon] route=%s" % " | ".join(route_parts))
+	if start_biome != "":
+		owner._enqueue_message(TranslationServer.translate("Run started. Gold: %d\nBiome: %s") % [game.run_gold, start_biome.capitalize()])
+	else:
+		owner._enqueue_message(TranslationServer.translate("Run started. Gold: %d") % game.run_gold)
 
 static func finish_dungeon_run(owner) -> void:
 	if not _has_game():

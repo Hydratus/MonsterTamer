@@ -178,10 +178,16 @@ func submit_player_attack(monster: MTMonsterInstance, attack: MTAttackData):
 	action.damage_type = attack.damage_type
 	action.makes_contact = attack.makes_contact
 	action.requires_contact_for_effect = attack.requires_contact_for_effect
+	action.recoil_ratio = attack.recoil_ratio
 
 	# ✅ Crit korrekt
 	action.crit_rate = attack.crit_rate
 	action.crit_multiplier = monster.crit_damage_multiplier
+	action.stat_change_chance = attack.stat_change_chance
+	action.status_effect = attack.status_effect
+	action.status_chance = attack.status_chance
+	action.status_duration = attack.status_duration
+	action.status_target_self = attack.status_target_self
 
 	# 🔥 HIER WAR DER FEHLER
 	action.stat_changes = attack.stat_changes.duplicate()
@@ -197,7 +203,7 @@ func submit_player_switch(monster: MTMonsterInstance):
 	pending_player_actions[monster] = null  # null bedeutet: Wechsel durchgeführt
 	check_all_player_actions()
 
-func submit_player_item(monster: MTMonsterInstance, item: MTItemData, target: MTMonsterInstance) -> void:
+func submit_player_item(monster: MTMonsterInstance, item: MTItemData, target: MTMonsterInstance, evolution_target_monster: MTMonsterData = null) -> void:
 	if monster == null or item == null:
 		return
 	var action := MTItemAction.new()
@@ -205,6 +211,7 @@ func submit_player_item(monster: MTMonsterInstance, item: MTItemData, target: MT
 	action.actor = monster
 	action.target = target if target != null else monster
 	action.item = item
+	action.evolution_target_monster = evolution_target_monster
 	action.priority = PRIORITY_ITEM
 	action.initiative = monster.get_speed()
 	pending_player_actions[monster] = action

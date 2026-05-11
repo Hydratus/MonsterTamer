@@ -1,4 +1,4 @@
-﻿extends "res://core/world/overworld.gd"
+extends "res://core/world/overworld.gd"
 
 const EncounterEntryClass = preload("res://core/world/encounter_entry.gd")
 const NPCDataClass = preload("res://core/world/npc_data.gd")
@@ -34,9 +34,15 @@ enum QUEST_TYPE {
 
 @export var hub_scene_path: String = "res://scenes/world/hub_city.tscn"
 @export var habitat: String = "cavern"
-@export var floor_count: int = 5
+@export var floor_count: int = 50
 @export var current_floor: int = 1
-@export var base_encounter_chance: float = 0.12
+@export var base_encounter_chance: float = 0.05
+var encounter_chance: float = 0.0
+var encounter_table: Array[MTEncounterEntry] = []
+@export var run_total_floors: int = 50
+@export var run_segment_min_len: int = 7
+@export var run_segment_max_len: int = 15
+@export var run_biome_pool: Array[String] = ["cavern", "forest", "ruins", "swamp"]
 
 @export var map_width: int = 48
 @export var map_height: int = 32
@@ -150,8 +156,22 @@ var _currency_hud_layer: CanvasLayer
 var _currency_hud_label: Label
 var _last_gold_display: int = -1
 var _last_essence_display: int = -1
+var _last_threat_points_display: int = -1
+var _last_threat_tier_display: int = -1
+var _last_threat_seconds_display: int = -1
 var _encounter_segments: Array[Dictionary] = []
 var _active_encounter_segment_start: int = -1
+var _active_route_segment_start: int = -1
+var _active_route_segment_end: int = -1
+var _biome_banner_layer: CanvasLayer
+var _biome_banner_label: Label
+var _biome_banner_tween: Tween
+var _run_exploration_seconds: float = 0.0
+var _run_time_threat_points: int = 0
+var _run_wild_battles_won: int = 0
+var _run_special_battles_won: int = 0
+var _run_threat_points: int = 0
+var _run_threat_tier: int = 0
 
 #  Life-cycle 
 
@@ -166,6 +186,201 @@ func _get_game():
 	if loop == null or not loop is SceneTree:
 		return null
 	return (loop as SceneTree).root.get_node_or_null("Game")
+
+func _get_route_segment_for_floor(target_floor: int) -> Dictionary:
+	if not _has_game():
+		return {}
+	var game = _get_game()
+	if game == null:
+		return {}
+	if not game.has_method("get_dungeon_segment_for_floor"):
+		return {}
+	return game.get_dungeon_segment_for_floor(target_floor)
+
+func _sync_active_route_segment(show_banner: bool = false) -> void:
+	var segment: Dictionary = _get_route_segment_for_floor(current_floor)
+	if segment.is_empty():
+		_active_route_segment_start = 1
+		_active_route_segment_end = floor_count
+		return
+	var previous_start := _active_route_segment_start
+	var next_start: int = int(segment.get("start_floor", 1))
+	var next_end: int = int(segment.get("end_floor", floor_count))
+	var next_biome := str(segment.get("biome", habitat))
+	_active_route_segment_start = next_start
+	_active_route_segment_end = next_end
+	habitat = next_biome
+	if show_banner and previous_start != -1 and previous_start != next_start:
+		_show_biome_transition_banner(next_biome)
+
+
+func _create_biome_transition_banner() -> void:
+	_biome_banner_layer = CanvasLayer.new()
+	_biome_banner_layer.layer = 13
+	add_child(_biome_banner_layer)
+	_biome_banner_label = Label.new()
+	_biome_banner_label.anchor_left = 0.5
+	_biome_banner_label.anchor_top = 0.0
+	_biome_banner_label.anchor_right = 0.5
+	_biome_banner_label.anchor_bottom = 0.0
+	_biome_banner_label.offset_left = -210
+	_biome_banner_label.offset_top = 18
+	_biome_banner_label.offset_right = 210
+	_biome_banner_label.offset_bottom = 56
+	_biome_banner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_biome_banner_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_biome_banner_label.visible = false
+	_biome_banner_label.modulate = Color(1, 1, 1, 0)
+	_biome_banner_label.add_theme_color_override("font_color", Color(1, 0.95, 0.75, 1))
+	_biome_banner_layer.add_child(_biome_banner_label)
+
+func _show_biome_transition_banner(biome_name: String) -> void:
+	if _biome_banner_label == null:
+		return
+	if _biome_banner_tween != null and _biome_banner_tween.is_valid():
+		_biome_banner_tween.kill()
+	_biome_banner_label.text = tr("Entering Biome: %s") % biome_name.capitalize()
+	_biome_banner_label.visible = true
+	_biome_banner_label.modulate = Color(1, 1, 1, 0)
+	_biome_banner_tween = create_tween()
+	_biome_banner_tween.tween_property(_biome_banner_label, "modulate", Color(1, 1, 1, 1), 0.2)
+	_biome_banner_tween.tween_interval(1.6)
+	_biome_banner_tween.tween_property(_biome_banner_label, "modulate", Color(1, 1, 1, 0), 0.3)
+	_biome_banner_tween.finished.connect(func():
+		if _biome_banner_label != null:
+			_biome_banner_label.visible = false
+	)
+
+func _is_current_floor_boss_floor() -> bool:
+	return current_floor >= _active_route_segment_end
+
+func _is_final_floor() -> bool:
+	return current_floor >= floor_count
+
+func get_dungeon_hud_biome_text() -> String:
+	return habitat.capitalize()
+
+func get_dungeon_hud_floor_text() -> String:
+	return "%d / %d" % [current_floor, floor_count]
+
+func get_dungeon_hud_threat_time_text() -> String:
+	var total_seconds: int = max(0, int(floor(_run_exploration_seconds)))
+	var minutes: int = int(floor(float(total_seconds) / 60.0))
+	var seconds: int = total_seconds % 60
+	return "%02d:%02d" % [minutes, seconds]
+
+func _reset_run_threat_state() -> void:
+	_run_exploration_seconds = 0.0
+	_run_time_threat_points = 0
+	_run_wild_battles_won = 0
+	_run_special_battles_won = 0
+	_run_threat_points = 0
+	_run_threat_tier = 0
+
+func _refresh_run_threat_state() -> void:
+	var previous_tier := _run_threat_tier
+	_run_threat_points = _run_time_threat_points
+	_run_threat_points += _run_wild_battles_won * BalanceConstants.THREAT_WILD_BATTLE_POINTS
+	_run_threat_points += _run_special_battles_won * BalanceConstants.THREAT_SPECIAL_BATTLE_POINTS
+	_run_threat_tier = _get_threat_tier_for_points(_run_threat_points)
+	if previous_tier != _run_threat_tier:
+		_log_dungeon("[Dungeon] threat tier %d -> %d points=%d" % [previous_tier, _run_threat_tier, _run_threat_points])
+
+func _get_threat_tier_for_points(points: int) -> int:
+	for raw_rule in BalanceConstants.THREAT_TIER_RULES:
+		var rule: Dictionary = raw_rule if raw_rule is Dictionary else {}
+		var min_points: int = int(rule.get("min_points", 0))
+		var max_points: int = int(rule.get("max_points", 999999))
+		if points >= min_points and points <= max_points:
+			return int(rule.get("tier", 0))
+	if BalanceConstants.THREAT_TIER_RULES.is_empty():
+		return 0
+	var last_rule: Dictionary = BalanceConstants.THREAT_TIER_RULES[BalanceConstants.THREAT_TIER_RULES.size() - 1]
+	return int(last_rule.get("tier", 0))
+
+func _get_current_threat_rule() -> Dictionary:
+	for raw_rule in BalanceConstants.THREAT_TIER_RULES:
+		var rule: Dictionary = raw_rule if raw_rule is Dictionary else {}
+		if int(rule.get("tier", 0)) == _run_threat_tier:
+			return rule
+	return {}
+
+func _get_current_threat_level_bonus() -> int:
+	var rule: Dictionary = _get_current_threat_rule()
+	var base_bonus: int = int(rule.get("level_bonus", 0))
+	if _run_threat_tier < 5:
+		return base_bonus
+	var tier5_min: int = _get_threat_tier_min_points(5, 110)
+	var overflow: int = max(0, _run_threat_points - tier5_min)
+	var overflow_bonus: int = int(floor(float(overflow) / float(max(1, BalanceConstants.THREAT_TIER5_OVERFLOW_STEP))))
+	return base_bonus + overflow_bonus
+
+func _get_threat_tier_min_points(target_tier: int, fallback: int) -> int:
+	for raw_rule in BalanceConstants.THREAT_TIER_RULES:
+		var r: Dictionary = raw_rule if raw_rule is Dictionary else {}
+		if int(r.get("tier", -1)) == target_tier:
+			return int(r.get("min_points", fallback))
+	return fallback
+
+func _get_current_threat_elite_budget_multiplier() -> float:
+	var rule: Dictionary = _get_current_threat_rule()
+	var base_multiplier: float = max(0.1, float(rule.get("elite_budget_multiplier", 1.0)))
+	if _run_threat_tier < 5:
+		return base_multiplier
+	var tier5_min: int = _get_threat_tier_min_points(5, 110)
+	var overflow: int = max(0, _run_threat_points - tier5_min)
+	var overflow_step: int = max(1, int(BalanceConstants.THREAT_TIER5_ELITE_OVERFLOW_STEP))
+	var overflow_steps: int = int(floor(float(overflow) / float(overflow_step)))
+	var overflow_bonus: float = min(
+		float(BalanceConstants.THREAT_TIER5_ELITE_OVERFLOW_CAP),
+		float(overflow_steps) * float(BalanceConstants.THREAT_TIER5_ELITE_OVERFLOW_BONUS)
+	)
+	return base_multiplier + overflow_bonus
+
+func _get_current_threat_encounter_bonus() -> float:
+	var rule: Dictionary = _get_current_threat_rule()
+	return max(0.0, float(rule.get("encounter_chance_bonus", 0.0)))
+
+func _update_threat_time(delta: float) -> void:
+	if delta <= 0.0 or _in_battle:
+		return
+	_run_exploration_seconds += delta
+	var per_point: float = max(1.0, float(BalanceConstants.THREAT_TIME_SECONDS_PER_POINT))
+	var next_time_points: int = int(floor(_run_exploration_seconds / per_point))
+	if next_time_points != _run_time_threat_points:
+		_run_time_threat_points = next_time_points
+		_refresh_run_threat_state()
+
+func _register_battle_threat(winner_team_index: int, finished_interaction: String) -> void:
+	if winner_team_index != 0:
+		return
+	if finished_interaction == "":
+		_run_wild_battles_won += 1
+	else:
+		_run_special_battles_won += 1
+	_refresh_run_threat_state()
+
+func _apply_biome_boss_threat_reset() -> void:
+	if _run_threat_points <= 0:
+		return
+	var reset_factor: float = clamp(float(BalanceConstants.THREAT_BIOME_BOSS_RESET_FACTOR), 0.0, 1.0)
+	var before_points := _run_threat_points
+	_run_threat_points = int(floor(float(_run_threat_points) * reset_factor))
+	_run_time_threat_points = min(_run_time_threat_points, _run_threat_points)
+	var encounter_points: int = _run_wild_battles_won * BalanceConstants.THREAT_WILD_BATTLE_POINTS
+	encounter_points += _run_special_battles_won * BalanceConstants.THREAT_SPECIAL_BATTLE_POINTS
+	if encounter_points > _run_threat_points:
+		var remaining_points: int = _run_threat_points - _run_time_threat_points
+		if remaining_points < 0:
+			remaining_points = 0
+		var special_points: int = max(1, BalanceConstants.THREAT_SPECIAL_BATTLE_POINTS)
+		var weighted_total: int = max(1, _run_wild_battles_won + (_run_special_battles_won * special_points))
+		var wild_share: float = float(_run_wild_battles_won) / float(weighted_total)
+		var special_share: float = float(_run_special_battles_won * special_points) / float(weighted_total)
+		_run_wild_battles_won = max(0, int(floor(float(remaining_points) * wild_share)))
+		_run_special_battles_won = max(0, int(floor(float(remaining_points) * special_share / max(1.0, float(BalanceConstants.THREAT_SPECIAL_BATTLE_POINTS)))))
+	_refresh_run_threat_state()
+	_log_dungeon("[Dungeon] biome boss threat reset %d -> %d" % [before_points, _run_threat_points])
 
 func _has_npc_data(npc) -> bool:
 	return npc != null and npc.npc_data != null
@@ -192,7 +407,10 @@ func _touch_split_state_keepalive() -> void:
 			_currency_hud_layer,
 			_currency_hud_label,
 			_last_gold_display,
-			_last_essence_display
+			_last_essence_display,
+			_last_threat_points_display,
+			_last_threat_tier_display,
+			_last_threat_seconds_display
 		]
 		_keepalive_refs.clear()
 
@@ -203,6 +421,7 @@ func _ready() -> void:
 	_validate_dungeon_item_pools()
 	_create_merchant_shop_ui()
 	_create_currency_hud()
+	_create_biome_transition_banner()
 	_update_currency_hud(true)
 	_log_dungeon("[Dungeon] grass=%s  dirt=%s  player=%s  npcs=%d" % [
 		str(_grass_layer), str(_dirt_layer), str(_player), _npcs.size()])
@@ -216,6 +435,7 @@ func _process(delta: float) -> void:
 		_update_currency_hud(false)
 		return
 	super._process(delta)
+	_update_threat_time(delta)
 	_update_currency_hud(false)
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -245,25 +465,42 @@ func apply_world_payload(payload: Dictionary) -> void:
 			need_regen = true
 	if payload.has("floor_count"):
 		floor_count = int(payload["floor_count"])
+		run_total_floors = floor_count
 		need_regen = true
+	if payload.has("run_total_floors"):
+		run_total_floors = int(payload["run_total_floors"])
+		floor_count = run_total_floors
+		need_regen = true
+	if payload.has("run_segment_min_len"):
+		run_segment_min_len = int(payload["run_segment_min_len"])
+	if payload.has("run_segment_max_len"):
+		run_segment_max_len = int(payload["run_segment_max_len"])
+	if payload.has("run_biome_pool") and payload["run_biome_pool"] is Array:
+		var raw_biome_pool: Array = payload["run_biome_pool"]
+		var normalized_biome_pool: Array[String] = []
+		for raw_biome in raw_biome_pool:
+			var biome := str(raw_biome).strip_edges().to_lower()
+			if biome == "" or normalized_biome_pool.has(biome):
+				continue
+			normalized_biome_pool.append(biome)
+		if not normalized_biome_pool.is_empty():
+			run_biome_pool = normalized_biome_pool
 	if payload.has("habitat"):
 		habitat = str(payload["habitat"])
 		need_regen = true
 	if payload.has("base_encounter_chance"):
 		base_encounter_chance = clamp(float(payload["base_encounter_chance"]), 0.0, 1.0)
 		need_regen = true
-	elif payload.has("encounter_chance"):
-		# Alias for convenience in inspector payload dictionaries.
-		base_encounter_chance = clamp(float(payload["encounter_chance"]), 0.0, 1.0)
-		need_regen = true
 	if payload.has("seed"):
 		generation_seed = int(payload["seed"])
 		_layout_seed = 0
 		need_regen = true
+	_sync_active_route_segment()
 	# Only regenerate when the floor is still empty (first-time entry when _ready
 	# already ran) or when the payload actually requests a different setup.
 	if _floor_cells.is_empty() or need_regen:
 		_apply_floor_rules(false)
+	_update_currency_hud(true)
 
 #  Walkability overrides 
 # Dungeon floors live on the Dirt layer; empty cells = impassable walls.
@@ -285,7 +522,7 @@ func _handle_custom_npc_interaction(npc) -> bool:
 	if not _has_npc_data(npc):
 		return false
 	var interaction: String = str(npc.npc_data.interaction_id)
-	if interaction == "dungeon_stairs" and current_floor < floor_count:
+	if interaction == "dungeon_stairs" and not _is_current_floor_boss_floor() and current_floor < floor_count:
 		# Check if floor goal is satisfied
 		var goal_satisfied: bool = _is_floor_goal_satisfied()
 		if not goal_satisfied:
@@ -297,7 +534,7 @@ func _handle_custom_npc_interaction(npc) -> bool:
 			prompt = "Descend to floor %d?" % (current_floor + 1)
 		_enqueue_message(prompt)
 		return true
-	if interaction == "dungeon_boss" and current_floor >= floor_count:
+	if interaction == "dungeon_boss" and _is_current_floor_boss_floor():
 		_boss_battle_active = true
 		return false
 	
@@ -373,6 +610,7 @@ func _on_battle_finished(winner_team_index: int) -> void:
 	if _active_npc != null and _active_npc.npc_data != null:
 		finished_interaction = str(_active_npc.npc_data.interaction_id)
 	super._on_battle_finished(winner_team_index)
+	_register_battle_threat(winner_team_index, finished_interaction)
 	_award_battle_rewards(winner_team_index, finished_interaction)
 	if winner_team_index == 0 and finished_interaction == "elite_pack":
 		_elite_cleared_this_floor = true
@@ -408,12 +646,17 @@ func _on_battle_finished(winner_team_index: int) -> void:
 		return
 	if _boss_battle_active and winner_team_index == 0:
 		_boss_battle_active = false
-		_pending_return_to_hub = true
+		_apply_biome_boss_threat_reset()
 		if _has_game():
 			var game = _get_game()
 			game.add_soul_essence(boss_battle_soul_essence)
 			_enqueue_message(tr("Soul Essence +%d") % boss_battle_soul_essence)
-		_enqueue_message(tr("Boss defeated! Returning to the city."))
+		if _is_final_floor():
+			_pending_return_to_hub = true
+			_enqueue_message(tr("Boss defeated! Returning to the city."))
+		else:
+			_pending_floor_advance = true
+			_enqueue_message(tr("Boss defeated! The path to the next biome opens."))
 
 #  Floor advancement 
 
@@ -421,23 +664,29 @@ func _advance_floor() -> void:
 	if current_floor >= floor_count:
 		return
 	current_floor += 1
+	_sync_active_route_segment(true)
 	_layout_seed = 0  # fresh layout per floor
 	_apply_floor_rules(true)
-	_enqueue_message(tr("Floor %d / %d") % [current_floor, floor_count])
+	_enqueue_message(tr("Floor %d / %d  |  Biome: %s") % [current_floor, floor_count, habitat.capitalize()])
+	_update_currency_hud(true)
 
 func _apply_floor_rules(reset_player: bool) -> void:
+	floor_count = max(run_total_floors, 1)
 	current_floor = clamp(current_floor, 1, max(floor_count, 1))
-	floor_count = max(floor_count, 1)
+	_sync_active_route_segment()
 	if current_floor == 1:
+		_reset_run_threat_state()
 		_encounter_segments.clear()
 		_active_encounter_segment_start = -1
 	_start_dungeon_run_if_needed()
+	floor_count = max(run_total_floors, floor_count)
+	_sync_active_route_segment()
 	if base_encounter_chance <= 0.0:
 		# Explicitly allow encounter-free dungeons via payload/inspector.
 		encounter_chance = 0.0
 	else:
 		encounter_chance = clamp(
-			base_encounter_chance + float(current_floor - 1) * 0.015, 0.0, 0.35)
+			base_encounter_chance + float(current_floor - 1) * 0.002 + _get_current_threat_encounter_bonus(), 0.0, 0.20)
 	_log_dungeon("[Dungeon] encounter base=%s effective=%s floor=%d" % [
 		str(base_encounter_chance), str(encounter_chance), current_floor])
 	_check_monster_egg_hatch()
@@ -451,14 +700,62 @@ func _apply_floor_rules(reset_player: bool) -> void:
 	_maybe_spawn_quest_npc()
 	if reset_player or _player != null:
 		_reset_player_position()
+	_update_currency_hud(true)
 
 func _start_random_battle() -> void:
 	# Hard safety-net: when encounter chance is configured to zero, no random
 	# battles are allowed to start in dungeon floors.
 	if base_encounter_chance <= 0.0 or encounter_chance <= 0.0:
 		return
-	_log_dungeon("[Dungeon] encounter source=wild floor=%d chance=%s" % [current_floor, str(encounter_chance)])
-	super._start_random_battle()
+	_log_dungeon("[Dungeon] encounter source=wild floor=%d chance=%s threat_points=%d tier=%d" % [
+		current_floor,
+		str(encounter_chance),
+		_run_threat_points,
+		_run_threat_tier
+	])
+	var enemy_team: Array[MTMonsterInstance] = _build_enemy_team()
+	if enemy_team.is_empty():
+		return
+	_pause_npc_walks()
+
+	_in_battle = true
+	_battle_scene = preload("res://scenes/battle_scene.tscn").instantiate()
+	_battle_scene.auto_start = false
+	add_child(_battle_scene)
+	_battle_scene.battle_finished.connect(_on_battle_finished)
+	_battle_scene.capture_allowed = true
+	_battle_scene.escape_allowed = true
+	_battle_scene.player_soulbinder_name = _player_name()
+	_battle_scene.enemy_soulbinder_name = "Wild"
+	var player_team: Array[MTMonsterInstance] = _build_player_team_from_party()
+	_battle_scene.start_battle(player_team, enemy_team)
+
+func _build_enemy_team() -> Array[MTMonsterInstance]:
+	_sanitize_encounter_entries()
+	var entries := encounter_table.filter(func(e): return e != null and e.weight > 0 and e.monster != null)
+	if entries.is_empty():
+		return []
+
+	var total_weight := 0
+	for e in entries:
+		total_weight += e.weight
+
+	var roll := _rng.randi_range(1, total_weight)
+	var chosen: MTEncounterEntry = entries[0]
+	var running := 0
+	for e in entries:
+		running += e.weight
+		if roll <= running:
+			chosen = e
+			break
+
+	var level := _rng.randi_range(chosen.min_level, chosen.max_level)
+	var enemy_data := chosen.monster.duplicate()
+	enemy_data.level = level
+
+	var enemy := MTMonsterInstance.new(enemy_data)
+	enemy.decision = MTAIDecision.new()
+	return [enemy]
 
 func _start_npc_battle(npc) -> void:
 	if not _has_npc_data(npc):
@@ -475,8 +772,17 @@ func _start_npc_battle(npc) -> void:
 
 #  Encounter table 
 
+func _get_wild_level_range(threat_level_bonus: int) -> Vector2i:
+	var min_level: int = current_floor + int(current_floor / 2.0) + threat_level_bonus
+	if min_level < 1:
+		min_level = 1
+	var max_level: int = min_level + 3 + int((current_floor - 1) / 10.0)
+	return Vector2i(min_level, max_level)
+
 func _build_floor_encounters() -> void:
 	encounter_table.clear()
+	var threat_level_bonus: int = _get_current_threat_level_bonus()
+	var wild_levels: Vector2i = _get_wild_level_range(threat_level_bonus)
 	var segment := _get_active_encounter_segment()
 	var candidates: Array = segment.get("candidates", [])
 	for i in range(candidates.size()):
@@ -486,18 +792,18 @@ func _build_floor_encounters() -> void:
 			continue
 		var entry := EncounterEntryClass.new()
 		entry.monster = monster
-		entry.min_level = max(1, current_floor * 2 - 1 + i)
-		entry.max_level = entry.min_level + 2 + int(current_floor / 2.0)
+		entry.min_level = wild_levels.x
+		entry.max_level = wild_levels.y
 		entry.weight = max(1, int(candidate.get("roll_weight", 1)))
 		encounter_table.append(entry)
 
 	if encounter_table.is_empty():
-		var fallback := load("res://data/monsters/slime/slime.tres") as MTMonsterData
+		var fallback := load("res://data/monsters/slime.tres") as MTMonsterData
 		if fallback != null:
 			var e := EncounterEntryClass.new()
 			e.monster = fallback
-			e.min_level = max(1, current_floor)
-			e.max_level = e.min_level + 2
+			e.min_level = wild_levels.x
+			e.max_level = wild_levels.y
 			e.weight = 10
 			encounter_table.append(e)
 	_sanitize_encounter_entries()
@@ -514,9 +820,7 @@ func _get_dungeon_encounter_config() -> Dictionary:
 	return merged
 
 func _get_rarity_weights_for_start_floor(start_floor: int) -> Dictionary:
-	var config: Dictionary = _get_dungeon_encounter_config()
-	var habitat_rules: Array = config.get("rarity_weight_rules", [])
-	var rules: Array = habitat_rules if not habitat_rules.is_empty() else BalanceConstants.ENCOUNTER_RARITY_WEIGHT_RULES
+	var rules: Array = BalanceConstants.ENCOUNTER_RARITY_WEIGHT_RULES
 	for raw_rule in rules:
 		var rule: Dictionary = raw_rule if raw_rule is Dictionary else {}
 		var min_floor: int = int(rule.get("start_min", 1))
@@ -526,9 +830,7 @@ func _get_rarity_weights_for_start_floor(start_floor: int) -> Dictionary:
 	return {"common": 100}
 
 func _get_elite_budget_rule_for_start_floor(start_floor: int) -> Dictionary:
-	var config: Dictionary = _get_dungeon_encounter_config()
-	var habitat_rules: Array = config.get("elite_budget_rules", [])
-	var rules: Array = habitat_rules if not habitat_rules.is_empty() else BalanceConstants.ELITE_BUDGET_RULES
+	var rules: Array = BalanceConstants.ELITE_BUDGET_RULES
 	for raw_rule in rules:
 		var rule: Dictionary = raw_rule if raw_rule is Dictionary else {}
 		var min_floor: int = int(rule.get("start_min", 1))
@@ -548,6 +850,9 @@ func _get_active_encounter_segment() -> Dictionary:
 		var start_floor: int = int(segment.get("start_floor", 1))
 		var end_floor_exclusive: int = int(segment.get("end_floor_exclusive", 2))
 		if current_floor >= start_floor and current_floor < end_floor_exclusive:
+			var segment_biome := str(segment.get("biome", habitat))
+			if segment_biome != "":
+				habitat = segment_biome
 			if _active_encounter_segment_start != start_floor:
 				_active_encounter_segment_start = start_floor
 				_log_dungeon("[Dungeon] encounter segment active start=%d end=%d pool=%d" % [
@@ -561,6 +866,45 @@ func _get_active_encounter_segment() -> Dictionary:
 func _ensure_encounter_segments() -> void:
 	if not _encounter_segments.is_empty():
 		return
+	if _has_game():
+		var game = _get_game()
+		if game != null and game.has_method("get_dungeon_segment_for_floor"):
+			var route_segments = game.dungeon_route_segments
+			var route_segment_rules: Dictionary = BalanceConstants.ENCOUNTER_SEGMENT_RULES
+			var route_candidate_min: int = max(1, int(route_segment_rules.get("candidate_min", 4)))
+			var route_candidate_max: int = max(route_candidate_min, int(route_segment_rules.get("candidate_max", 7)))
+			for raw_segment in route_segments:
+				var segment: Dictionary = raw_segment if raw_segment is Dictionary else {}
+				if segment.is_empty():
+					continue
+				var route_start_floor: int = int(segment.get("start_floor", 1))
+				var route_end_floor: int = int(segment.get("end_floor", route_start_floor))
+				var biome: String = str(segment.get("biome", habitat))
+				var old_habitat := habitat
+				habitat = biome
+				var biome_config: Dictionary = _get_dungeon_encounter_config()
+				habitat = old_habitat
+				
+				# Generate sub-table lengths for this biome segment
+				var segment_len: int = route_end_floor - route_start_floor + 1
+				var subtable_lengths: Array[int] = _generate_subtable_lengths(segment_len)
+				
+				# Create encounter segments for each sub-table
+				var table_floor: int = route_start_floor
+				for subtable_len in subtable_lengths:
+					var subtable_end_floor: int = table_floor + subtable_len - 1
+					var route_candidate_count: int = _rng.randi_range(route_candidate_min, route_candidate_max)
+					var candidates: Array[Dictionary] = _build_segment_candidates(biome_config, table_floor, route_candidate_count)
+					_encounter_segments.append({
+						"start_floor": table_floor,
+						"end_floor_exclusive": subtable_end_floor + 1,
+						"candidates": candidates,
+						"biome": biome
+					})
+					table_floor = subtable_end_floor + 1
+			if not _encounter_segments.is_empty():
+				return
+
 	var config: Dictionary = _get_dungeon_encounter_config()
 	var segment_rules: Dictionary = BalanceConstants.ENCOUNTER_SEGMENT_RULES
 	var min_len: int = max(1, int(segment_rules.get("min_len", 3)))
@@ -572,14 +916,51 @@ func _ensure_encounter_segments() -> void:
 	while start_floor <= floor_count:
 		var seg_len: int = _rng.randi_range(min_len, max_len)
 		var end_floor_exclusive: int = min(start_floor + seg_len, floor_count + 1)
-		var candidate_count: int = _rng.randi_range(candidate_min, candidate_max)
-		var candidates: Array[Dictionary] = _build_segment_candidates(config, start_floor, candidate_count)
-		_encounter_segments.append({
-			"start_floor": start_floor,
-			"end_floor_exclusive": end_floor_exclusive,
-			"candidates": candidates
-		})
+		var actual_seg_len: int = end_floor_exclusive - start_floor
+		
+		# Generate sub-table lengths for this segment
+		var subtable_lengths: Array[int] = _generate_subtable_lengths(actual_seg_len)
+		
+		# Create encounter segments for each sub-table
+		var table_floor: int = start_floor
+		for subtable_len in subtable_lengths:
+			var subtable_end_floor: int = table_floor + subtable_len - 1
+			var candidate_count: int = _rng.randi_range(candidate_min, candidate_max)
+			var candidates: Array[Dictionary] = _build_segment_candidates(config, table_floor, candidate_count)
+			_encounter_segments.append({
+				"start_floor": table_floor,
+				"end_floor_exclusive": subtable_end_floor + 1,
+				"candidates": candidates
+			})
+			table_floor = subtable_end_floor + 1
 		start_floor = end_floor_exclusive
+
+# Generate variable sub-table lengths (3-7 each) that sum to segment_len
+func _generate_subtable_lengths(segment_len: int) -> Array[int]:
+	const MIN_TABLE_LEN := 3
+	const MAX_TABLE_LEN := 7
+	
+	if segment_len < MIN_TABLE_LEN:
+		return [segment_len]
+	if segment_len <= MAX_TABLE_LEN:
+		return [segment_len]
+	
+	var lengths: Array[int] = []
+	var remaining: int = segment_len
+	
+	while remaining > 0:
+		if remaining <= MIN_TABLE_LEN:
+			lengths.append(remaining)
+			remaining = 0
+		elif remaining <= MAX_TABLE_LEN:
+			lengths.append(remaining)
+			remaining = 0
+		else:
+			var length: int = _rng.randi_range(MIN_TABLE_LEN, min(MAX_TABLE_LEN, remaining))
+			lengths.append(length)
+			remaining -= length
+	
+	return lengths
 
 func _build_segment_candidates(config: Dictionary, start_floor: int, target_count: int) -> Array[Dictionary]:
 	var pools: Dictionary = config.get("rarity_pools", {})
@@ -612,10 +993,10 @@ func _build_segment_candidates(config: Dictionary, start_floor: int, target_coun
 		})
 
 	if candidates.is_empty():
-		var fallback := load("res://data/monsters/slime/slime.tres") as MTMonsterData
+		var fallback := load("res://data/monsters/slime.tres") as MTMonsterData
 		if fallback != null:
 			candidates.append({
-				"path": "res://data/monsters/slime/slime.tres",
+				"path": "res://data/monsters/slime.tres",
 				"monster": fallback,
 				"rarity": "common",
 				"roll_weight": 10,
@@ -768,7 +1149,7 @@ func _update_special_npcs() -> void:
 	_log_dungeon("[Dungeon] spawn=%s  stairs/boss=%s  world=%s" % [
 		str(start_cell), str(far_cell), str(_cell_to_world(far_cell))])
 
-	if current_floor < floor_count:
+	if not _is_current_floor_boss_floor():
 		_set_npc_active(_stairs_npc, true, far_cell)
 		_set_npc_active(_boss_npc, false, Vector2i.ZERO)
 	else:
@@ -909,17 +1290,22 @@ func _get_active_segment_start_floor() -> int:
 
 func _build_elite_team_entries() -> Array[MTNPCMonsterEntry]:
 	var entries: Array[MTNPCMonsterEntry] = []
+	var threat_level_bonus: int = _get_current_threat_level_bonus()
+	var wild_levels := _get_wild_level_range(threat_level_bonus)
+	var elite_min_level: int = wild_levels.y + 1
 	var segment: Dictionary = _get_active_encounter_segment()
 	var candidates: Array = segment.get("candidates", [])
 	if candidates.is_empty():
 		var fallback: MTNPCMonsterEntry = NPCMonsterEntryClass.new()
 		fallback.monster_data = _pick_monster_for_habitat()
-		fallback.level = max(3, current_floor * 2 + 3)
+		fallback.level = elite_min_level
 		entries.append(fallback)
 		return entries
 
 	var budget_rule: Dictionary = _get_elite_budget_rule_for_start_floor(_get_active_segment_start_floor())
-	var target_budget: int = _rng.randi_range(int(budget_rule.get("budget_min", 45)), int(budget_rule.get("budget_max", 65)))
+	var threat_budget_multiplier: float = _get_current_threat_elite_budget_multiplier()
+	var base_budget: int = _rng.randi_range(int(budget_rule.get("budget_min", 45)), int(budget_rule.get("budget_max", 65)))
+	var target_budget: int = max(1, int(round(float(base_budget) * threat_budget_multiplier)))
 	var team_min: int = max(1, int(budget_rule.get("team_min", 2)))
 	var team_max: int = max(team_min, int(budget_rule.get("team_max", 3)))
 	var team_target: int = _rng.randi_range(team_min, team_max)
@@ -940,7 +1326,7 @@ func _build_elite_team_entries() -> Array[MTNPCMonsterEntry]:
 		entry.monster_data = candidate.get("monster", null)
 		if entry.monster_data == null:
 			continue
-		entry.level = max(3, current_floor * 2 + 3 + _rng.randi_range(0, 2))
+		entry.level = elite_min_level + _rng.randi_range(0, 2)
 		entries.append(entry)
 		budget_used += cost
 		if rarity == "very_rare" or rarity == "legendary":
@@ -949,7 +1335,7 @@ func _build_elite_team_entries() -> Array[MTNPCMonsterEntry]:
 	while entries.size() < team_min:
 		var fallback_entry: MTNPCMonsterEntry = NPCMonsterEntryClass.new()
 		fallback_entry.monster_data = _pick_monster_for_habitat()
-		fallback_entry.level = max(3, current_floor * 2 + 3 + _rng.randi_range(0, 1))
+		fallback_entry.level = elite_min_level + _rng.randi_range(0, 1)
 		entries.append(fallback_entry)
 
 	return entries
@@ -962,6 +1348,13 @@ func _build_boss_team_entries(target_team_size: int) -> Array[MTNPCMonsterEntry]
 	return _build_curated_template_team("boss_team_templates", max(1, target_team_size))
 
 func _build_curated_template_team(template_key: String, target_team_size: int) -> Array[MTNPCMonsterEntry]:
+	var threat_level_bonus: int = _get_current_threat_level_bonus()
+	var wild_levels := _get_wild_level_range(threat_level_bonus)
+	var curated_min_level: int = wild_levels.y + 1
+	var curated_variance: int = 1
+	if template_key == "boss_team_templates":
+		curated_min_level += 2
+		curated_variance = 2
 	var config: Dictionary = _get_dungeon_encounter_config()
 	var templates: Array = config.get(template_key, [])
 	var chosen_template: Array = []
@@ -976,13 +1369,13 @@ func _build_curated_template_team(template_key: String, target_team_size: int) -
 			continue
 		var entry := NPCMonsterEntryClass.new()
 		entry.monster_data = monster_data
-		entry.level = max(3, current_floor * 2 + 3 + _rng.randi_range(0, 2))
+		entry.level = curated_min_level + _rng.randi_range(0, curated_variance)
 		entries.append(entry)
 
 	while entries.size() < target_team_size:
 		var extra := NPCMonsterEntryClass.new()
 		extra.monster_data = _pick_monster_for_habitat()
-		extra.level = max(3, current_floor * 2 + 3 + _rng.randi_range(0, 2))
+		extra.level = curated_min_level + _rng.randi_range(0, curated_variance)
 		entries.append(extra)
 	return entries
 
@@ -1452,46 +1845,38 @@ func _get_habitat_monster_paths() -> Array[String]:
 	match habitat.to_lower():
 		"forest":
 			return [
-				"res://data/monsters/wolf/wolf.tres",
-				"res://data/monsters/slime/slime.tres",
-				"res://data/monsters/wolfinator/wolfinator.tres",
-				"res://data/monsters/fernox/fernox.tres",
-				"res://data/monsters/aquafin/aquafin.tres"
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/slime.tres",
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/fernox.tres",
+				"res://data/monsters/aquafin.tres"
 			]
 		"ruins":
 			return [
-				"res://data/monsters/wolfinator/wolfinator.tres",
-				"res://data/monsters/wolf/wolf.tres",
-				"res://data/monsters/slime/slime.tres",
-				"res://data/monsters/ghostling/ghostling.tres",
-				"res://data/monsters/emberkat/emberkat.tres",
-				"res://data/monsters/stoneback/stoneback.tres"
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/slime.tres",
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/stoneback.tres"
 			]
 		"swamp":
 			return [
-				"res://data/monsters/slime/slime.tres",
-				"res://data/monsters/wolf/wolf.tres",
-				"res://data/monsters/wolfinator/wolfinator.tres",
-				"res://data/monsters/aquafin/aquafin.tres",
-				"res://data/monsters/fernox/fernox.tres",
-				"res://data/monsters/ghostling/ghostling.tres"
+				"res://data/monsters/slime.tres",
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/fernox.tres",
+				"res://data/monsters/ghostling.tres"
 			]
 		_:
 			return [
-				"res://data/monsters/slime/slime.tres",
-				"res://data/monsters/wolf/wolf.tres",
-				"res://data/monsters/wolfinator/wolfinator.tres",
-				"res://data/monsters/stoneback/stoneback.tres",
-				"res://data/monsters/ghostling/ghostling.tres"
+				"res://data/monsters/slime.tres",
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/stoneback.tres",
+				"res://data/monsters/ghostling.tres"
 			]
-
-func _get_habitat_weights() -> Array[int]:
-	match habitat.to_lower():
-		"forest":  return [10, 5, 2, 8, 6]
-		"ruins":   return [6,  4, 3, 8, 7, 5]
-		"swamp":   return [10, 4, 2, 8, 7, 5]
-		_:         return [8,  6, 3, 7, 5]
-
 #  Player reset 
 
 func _reset_player_position() -> void:

@@ -1,0 +1,50 @@
+[gd_resource type="Resource" script_class="MTMonsterData" format=3 uid="uid://cpkdo4q4hork0"]
+
+[ext_resource type="Script" uid="uid://byip331ngwvgq" path="res://core/battle/attacks/attack_data.gd" id="1_atsc"]
+[ext_resource type="Script" uid="uid://devgkm5eu4v73" path="res://core/battle/traits/trait_data.gd" id="2_trsc"]
+[ext_resource type="Script" uid="uid://dlkhfxldvfm2b" path="res://core/monsters/monster_data.gd" id="3_mdsc"]
+[ext_resource type="Script" uid="uid://b23dqagtptegd" path="res://core/monsters/attack_learn_data.gd" id="3_sp0ky"]
+[ext_resource type="Resource" path="res://data/moves/generated/beast/BeastStrike.tres" id="4_atk"]
+[ext_resource type="Resource" path="res://data/moves/generated/dragon/DragonClaw.tres" id="5_atk"]
+[ext_resource type="Resource" path="res://data/moves/generated/dragon/DragonNova.tres" id="6_atk"]
+[ext_resource type="Resource" uid="uid://rxsud2do07b0" path="res://data/moves/FireCrunch.tres" id="7_atk"]
+[ext_resource type="Resource" uid="uid://bw7nrfjda4m3y" path="res://data/moves/NormalAttack.tres" id="8_atk"]
+
+[sub_resource type="Resource" id="Resource_2qi7r"]
+script = ExtResource("3_sp0ky")
+attack = ExtResource("8_atk")
+
+[sub_resource type="Resource" id="Resource_lwveb"]
+script = ExtResource("3_sp0ky")
+attack = ExtResource("4_atk")
+
+[sub_resource type="Resource" id="Resource_ca707"]
+script = ExtResource("3_sp0ky")
+attack = ExtResource("5_atk")
+learn_level = 8
+
+[sub_resource type="Resource" id="Resource_sh5ow"]
+script = ExtResource("3_sp0ky")
+attack = ExtResource("6_atk")
+learn_level = 12
+
+[sub_resource type="Resource" id="Resource_4y304"]
+script = ExtResource("3_sp0ky")
+attack = ExtResource("7_atk")
+learn_level = 18
+
+[resource]
+script = ExtResource("3_mdsc")
+name = "Wolfinator"
+base_max_hp = 70
+base_max_energy = 55
+base_strength = 75
+base_magic = 24
+base_defense = 30
+base_resistance = 24
+base_speed = 50
+base_exp = 150
+growth_rate = 2
+elements = Array[int]([13, 11])
+learnable_attacks = [SubResource("Resource_2qi7r"), SubResource("Resource_lwveb"), SubResource("Resource_ca707"), SubResource("Resource_sh5ow"), SubResource("Resource_4y304")]
+metadata/_custom_type_script = "uid://dlkhfxldvfm2b"

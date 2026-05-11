@@ -1,10 +1,6 @@
-[gd_scene format=4 uid="uid://c64p8n1d3b2dw"]
+[gd_scene format=4 uid="uid://hj7x1kheg42c"]
 
 [ext_resource type="Script" uid="uid://w871621wnaqq" path="res://core/world/overworld.gd" id="1_1c2b3"]
-[ext_resource type="Script" uid="uid://ndxg70wtpumi" path="res://core/world/encounter_entry.gd" id="2_h0wcu"]
-[ext_resource type="Resource" uid="uid://b5bppwsmk1rcj" path="res://data/encounter/map1/map1_slime.tres" id="3_espw7"]
-[ext_resource type="Resource" uid="uid://dqsng4jrsy7kc" path="res://data/encounter/map1/map1_wolf.tres" id="4_o3ojk"]
-[ext_resource type="Resource" uid="uid://5s8e71chtsiv" path="res://data/encounter/map1/map1_wolfinator.tres" id="5_eccxn"]
 [ext_resource type="Texture2D" uid="uid://jgps4m0htvk5" path="res://assets/sprites/Tests/Ninja Adventure - Asset Pack/Backgrounds/Tilesets/TilesetFloor.png" id="6_eccxn"]
 [ext_resource type="Texture2D" uid="uid://dnpa1oddb2d4b" path="res://assets/sprites/Tests/Ninja Adventure - Asset Pack/Actor/Characters/NinjaGreen/SeparateAnim/Idle.png" id="7_s753n"]
 [ext_resource type="Texture2D" uid="uid://bv0iwwxgwhodc" path="res://assets/sprites/Tests/Ninja Adventure - Asset Pack/Actor/Characters/NinjaGreen/SeparateAnim/Walk.png" id="8_ap4hg"]
@@ -970,8 +966,6 @@ size = Vector2(14, 14)
 
 [node name="Overworld" type="Node2D" unique_id=1735293519]
 script = ExtResource("1_1c2b3")
-encounter_chance = 0.05
-encounter_table = Array[ExtResource("2_h0wcu")]([ExtResource("3_espw7"), ExtResource("4_o3ojk"), ExtResource("5_eccxn")])
 
 [node name="Dirt" type="TileMapLayer" parent="." unique_id=537473179]
 z_index = 1

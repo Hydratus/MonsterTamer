@@ -1,0 +1,15 @@
+1v1 heuristic flags
+
+
+ID  Name         Issue
+--  ----         -----
+032 Magnet Snare Hard control status too reliable in 1v1
+043 Drake Talon  High burst too reliable/cheap
+054 Volt Heel    Priority damage likely too efficient
+071 Mute Pulse   Hard control status too reliable in 1v1
+083 Updraft Cut  Priority damage likely too efficient
+128 Dead Air     Hard control status too reliable in 1v1
+146 Slip Knot    Hard control status too reliable in 1v1
+175 Thorn Gospel High damage with sustain and low downside
+
+

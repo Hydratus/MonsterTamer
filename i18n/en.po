@@ -204,6 +204,45 @@ msgstr "Status"
 msgid "Swap %s with ..."
 msgstr "Swap %s with ..."
 
+msgid "Gold"
+msgstr "Gold"
+
+msgid "Soul Essence"
+msgstr "Soul Essence"
+
+msgid "Biome"
+msgstr "Biome"
+
+msgid "Floor"
+msgstr "Floor"
+
+msgid "Threat"
+msgstr "Threat"
+
+msgid "Tier"
+msgstr "Tier"
+
+msgid "Points"
+msgstr "Points"
+
+msgid "Threat Time"
+msgstr "Threat Time"
+
+msgid "Gold: - | Soul Essence: -"
+msgstr "Gold: - | Soul Essence: -"
+
+msgid "Gold: %d | Soul Essence: %d"
+msgstr "Gold: %d | Soul Essence: %d"
+
+msgid "Biome: %s | Floor: %s"
+msgstr "Biome: %s | Floor: %s"
+
+msgid "Threat: Tier %d | Points: %d"
+msgstr "Threat: Tier %d | Points: %d"
+
+msgid "Threat Time: %s"
+msgstr "Threat Time: %s"
+
 msgid "Switch"
 msgstr "Switch"
 
