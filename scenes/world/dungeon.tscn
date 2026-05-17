@@ -972,9 +972,9 @@ dungeon_options = Array[Dictionary]([{
 	"base_encounter_chance": 0.05,
 "floor": 1,
 	"floor_count": 50,
-"habitat": "cavern",
+"habitat": "gloomrot_catacombs",
 	"seed": 0,
-	"run_biome_pool": Array[String](["cavern", "forest", "ruins", "swamp"]),
+	"run_biome_pool": Array[String](["gloomrot_catacombs", "thornfang_warrens", "sunforge_basilica", "skytide_reservoir", "emberfault_chasm", "stargrave_observatory", "ironhowl_bastion", "echo_vault"]),
 	"run_segment_max_len": 15,
 	"run_segment_min_len": 7
 },

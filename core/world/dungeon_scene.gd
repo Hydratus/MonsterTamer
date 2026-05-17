@@ -6,6 +6,7 @@ const NPCMonsterEntryClass = preload("res://core/world/npc_monster_entry.gd")
 const ITEM_DB_CLASS = preload("res://core/items/item_db.gd")
 const DungeonLayoutHelperClass = preload("res://core/world/dungeon_layout_helper.gd")
 const DungeonShopUIHelperClass = preload("res://core/world/dungeon_shop_ui_helper.gd")
+const DungeonPortalUIHelperClass = preload("res://core/world/dungeon_portal_ui_helper.gd")
 const DungeonRunHelperClass = preload("res://core/world/dungeon_run_helper.gd")
 const DungeonNPCSpawnHelperClass = preload("res://core/world/dungeon_npc_spawn_helper.gd")
 const DungeonQuestHelperClass = preload("res://core/world/dungeon_quest_helper.gd")
@@ -33,7 +34,7 @@ enum QUEST_TYPE {
 }
 
 @export var hub_scene_path: String = "res://scenes/world/hub_city.tscn"
-@export var habitat: String = "cavern"
+@export var habitat: String = "gloomrot_catacombs"
 @export var floor_count: int = 50
 @export var current_floor: int = 1
 @export var base_encounter_chance: float = 0.05
@@ -42,7 +43,16 @@ var encounter_table: Array[MTEncounterEntry] = []
 @export var run_total_floors: int = 50
 @export var run_segment_min_len: int = 7
 @export var run_segment_max_len: int = 15
-@export var run_biome_pool: Array[String] = ["cavern", "forest", "ruins", "swamp"]
+@export var run_biome_pool: Array[String] = [
+	"gloomrot_catacombs",
+	"thornfang_warrens",
+	"sunforge_basilica",
+	"skytide_reservoir",
+	"emberfault_chasm",
+	"stargrave_observatory",
+	"ironhowl_bastion",
+	"echo_vault"
+]
 
 @export var map_width: int = 48
 @export var map_height: int = 32
@@ -112,6 +122,8 @@ var _layout_seed: int = 0
 
 var _stairs_npc
 var _boss_npc
+var _portal_layer
+var _portal_container
 var _npc_spawn_positions: Dictionary = {}
 var _disabled_static_npcs: Array = []
 var _dynamic_npcs: Array = []
@@ -121,7 +133,13 @@ var _player_spawn_cell: Vector2i = Vector2i.ZERO
 var _pending_floor_advance := false
 var _pending_return_to_hub := false
 var _boss_battle_active := false
+var _pending_biome_selection := false
+var _selected_next_biome: String = ""
 var _room_cells_lookup: Dictionary = {}
+var _gauntlet_fight_queue: Array[Dictionary] = []
+var _current_gauntlet_fight_index: int = 0
+var _gauntlet_active := false
+var _final_boss_phase_active := false
 var _corridor_cells_lookup: Dictionary = {}
 var _room_type_by_index: Dictionary = {}
 var _room_index_by_cell: Dictionary = {}
@@ -239,7 +257,7 @@ func _show_biome_transition_banner(biome_name: String) -> void:
 		return
 	if _biome_banner_tween != null and _biome_banner_tween.is_valid():
 		_biome_banner_tween.kill()
-	_biome_banner_label.text = tr("Entering Biome: %s") % biome_name.capitalize()
+	_biome_banner_label.text = tr("Entering Biome: %s") % _get_habitat_display_name(biome_name)
 	_biome_banner_label.visible = true
 	_biome_banner_label.modulate = Color(1, 1, 1, 0)
 	_biome_banner_tween = create_tween()
@@ -252,13 +270,42 @@ func _show_biome_transition_banner(biome_name: String) -> void:
 	)
 
 func _is_current_floor_boss_floor() -> bool:
+	# Dynamic boss system: segment ends (<=49) plus floor 50 endgame.
+	var game = _get_game()
+	if game != null and game.boss_system_enabled:
+		return game.is_dungeon_boss_floor(current_floor)
+	# Legacy system
 	return current_floor >= _active_route_segment_end
 
 func _is_final_floor() -> bool:
 	return current_floor >= floor_count
 
+func _get_habitat_display_name(habitat_key: String) -> String:
+	match habitat_key.to_lower():
+		"gloomrot_catacombs":
+			return "Gloomrot Catacombs"
+		"thornfang_warrens":
+			return "Thornfang Warrens"
+		"sunforge_basilica":
+			return "Sunforge Basilica"
+		"skytide_reservoir":
+			return "Skytide Reservoir"
+		"emberfault_chasm":
+			return "Emberfault Chasm"
+		"stargrave_observatory":
+			return "Stargrave Observatory"
+		"ironhowl_bastion":
+			return "Ironhowl Bastion"
+		"echo_vault":
+			return "Echo Vault"
+		_:
+			return habitat_key.capitalize()
+
+func get_habitat_display_name(habitat_key: String) -> String:
+	return _get_habitat_display_name(habitat_key)
+
 func get_dungeon_hud_biome_text() -> String:
-	return habitat.capitalize()
+	return _get_habitat_display_name(habitat)
 
 func get_dungeon_hud_floor_text() -> String:
 	return "%d / %d" % [current_floor, floor_count]
@@ -397,6 +444,8 @@ func _touch_split_state_keepalive() -> void:
 			_merchant_shop_index,
 			_event_room_index,
 			_floor_goal_state,
+			_portal_layer,
+			_portal_container,
 			_merchant_shop_layer,
 			_merchant_shop_panel,
 			_merchant_shop_title,
@@ -420,6 +469,7 @@ func _ready() -> void:
 	super._ready()
 	_validate_dungeon_item_pools()
 	_create_merchant_shop_ui()
+	_create_portal_ui()
 	_create_currency_hud()
 	_create_biome_transition_banner()
 	_update_currency_hud(true)
@@ -569,6 +619,8 @@ func _handle_custom_npc_interaction(npc) -> bool:
 		return _handle_status_trap(npc)
 	if interaction == "dungeon_merchant_cache":
 		return _handle_merchant_shop(npc)
+	if interaction == "dungeon_boss_floor_shop":
+		return _handle_boss_floor_shop(npc)
 	if interaction == "dungeon_monster_egg":
 		return _handle_monster_egg(npc)
 	if interaction == "dungeon_cursed_altar":
@@ -647,27 +699,107 @@ func _on_battle_finished(winner_team_index: int) -> void:
 	if _boss_battle_active and winner_team_index == 0:
 		_boss_battle_active = false
 		_apply_biome_boss_threat_reset()
-		if _has_game():
-			var game = _get_game()
+		var game = _get_game()
+		if game != null:
 			game.add_soul_essence(boss_battle_soul_essence)
 			_enqueue_message(tr("Soul Essence +%d") % boss_battle_soul_essence)
-		if _is_final_floor():
+
+			# Track defeated biome bosses (segment end floors up to 49).
+			if game.boss_system_enabled and current_floor <= 49 and game.is_dungeon_boss_floor(current_floor):
+				_track_defeated_boss()
+
+		# Floor 50 hosts both gauntlet and final boss, sequentially.
+		if game != null and game.is_gauntlet_floor(current_floor):
+			if _final_boss_phase_active:
+				_final_boss_phase_active = false
+				_pending_return_to_hub = true
+				_enqueue_message(tr("Final boss defeated! The run is complete!"))
+				return
+
+			if _gauntlet_active:
+				_current_gauntlet_fight_index += 1
+				if _current_gauntlet_fight_index < _gauntlet_fight_queue.size():
+					_enqueue_message(tr("Defeated! Preparing next gauntlet opponent..."))
+					call_deferred("_trigger_next_gauntlet_encounter")
+				else:
+					_gauntlet_active = false
+					_activate_final_boss_phase()
+				return
+
+			_activate_final_boss_phase()
+			return
+
+		if _is_final_floor() or (game != null and game.is_final_boss_floor(current_floor)):
 			_pending_return_to_hub = true
-			_enqueue_message(tr("Boss defeated! Returning to the city."))
+			_enqueue_message(tr("Boss defeated! The run is complete!"))
+			return
+
+		if game != null and game.boss_system_enabled and current_floor < 49 and game.is_dungeon_boss_floor(current_floor):
+			var biome_options = game.get_next_boss_biome_options(habitat, current_floor)
+			if not biome_options.is_empty():
+				_show_biome_portals(biome_options)
+				_pending_biome_selection = true
+				_enqueue_message(tr("Choose your next biome through the portals."))
+			else:
+				_pending_floor_advance = true
+				_enqueue_message(tr("Boss defeated! The path to the next biome opens."))
 		else:
 			_pending_floor_advance = true
 			_enqueue_message(tr("Boss defeated! The path to the next biome opens."))
+
+## Track defeated boss for gauntlet (floor 49)
+func _track_defeated_boss() -> void:
+	if _boss_npc == null or _boss_npc.npc_data == null:
+		return
+	
+	var boss_data: Dictionary = {
+		"floor": current_floor,
+		"biome": habitat,
+		"team_template": {
+			"team_size": _boss_npc.npc_data.team_entries.size(),
+			"monsters": []
+		}
+	}
+	
+	# Store team composition
+	for team_entry in _boss_npc.npc_data.team_entries:
+		if team_entry is MTNPCMonsterEntry:
+			var monster_data: MTMonsterData = team_entry.monster_data
+			if monster_data != null:
+				var monster_dict: Dictionary = {
+					"name": monster_data.display_name if monster_data.display_name != "" else "Boss Monster",
+					"level": team_entry.level,
+					"path": monster_data.resource_path
+				}
+				boss_data["team_template"]["monsters"].append(monster_dict)
+	
+	var game = _get_game()
+	if game != null:
+		game.add_defeated_boss(boss_data)
+		_log_dungeon("[Dungeon] boss tracked floor=%d biome=%s team_size=%d" % [
+			current_floor, habitat, boss_data["team_template"]["team_size"]])
 
 #  Floor advancement 
 
 func _advance_floor() -> void:
 	if current_floor >= floor_count:
 		return
+
+	if _selected_next_biome != "":
+		var game = _get_game()
+		if game != null and game.has_method("set_next_boss_biome_choice"):
+			game.set_next_boss_biome_choice(_selected_next_biome)
+		_selected_next_biome = ""
+		_pending_biome_selection = false
+
 	current_floor += 1
+	if current_floor == 50:
+		_enqueue_message(tr("The final gate trembles open. Descend to Floor 50: Gauntlet of the Fallen."))
+
 	_sync_active_route_segment(true)
 	_layout_seed = 0  # fresh layout per floor
 	_apply_floor_rules(true)
-	_enqueue_message(tr("Floor %d / %d  |  Biome: %s") % [current_floor, floor_count, habitat.capitalize()])
+	_enqueue_message(tr("Floor %d / %d  |  Biome: %s") % [current_floor, floor_count, get_dungeon_hud_biome_text()])
 	_update_currency_hud(true)
 
 func _apply_floor_rules(reset_player: bool) -> void:
@@ -703,6 +835,11 @@ func _apply_floor_rules(reset_player: bool) -> void:
 	_update_currency_hud(true)
 
 func _start_random_battle() -> void:
+	# Boss floors have no random encounters
+	var game = _get_game()
+	if game != null and game.is_dungeon_boss_floor(current_floor):
+		return
+	
 	# Hard safety-net: when encounter chance is configured to zero, no random
 	# battles are allowed to start in dungeon floors.
 	if base_encounter_chance <= 0.0 or encounter_chance <= 0.0:
@@ -863,9 +1000,58 @@ func _get_active_encounter_segment() -> Dictionary:
 			return segment
 	return {}
 
-func _ensure_encounter_segments() -> void:
-	if not _encounter_segments.is_empty():
+func _has_encounter_segment_for_floor(target_floor: int) -> bool:
+	for segment in _encounter_segments:
+		var start_floor: int = int(segment.get("start_floor", 1))
+		var end_floor_exclusive: int = int(segment.get("end_floor_exclusive", 2))
+		if target_floor >= start_floor and target_floor < end_floor_exclusive:
+			return true
+	return false
+
+func _has_encounter_segment_start(start_floor: int) -> bool:
+	for segment in _encounter_segments:
+		if int(segment.get("start_floor", -1)) == start_floor:
+			return true
+	return false
+
+func _append_encounter_segments_for_route_segment(route_segment: Dictionary, candidate_min: int, candidate_max: int) -> void:
+	if route_segment.is_empty():
 		return
+	var route_start_floor: int = int(route_segment.get("start_floor", 1))
+	if _has_encounter_segment_start(route_start_floor):
+		return
+	var route_end_floor: int = int(route_segment.get("end_floor", route_start_floor))
+	var biome: String = str(route_segment.get("biome", habitat))
+	var old_habitat := habitat
+	habitat = biome
+	var biome_config: Dictionary = _get_dungeon_encounter_config()
+	habitat = old_habitat
+
+	var segment_len: int = route_end_floor - route_start_floor + 1
+	var subtable_lengths: Array[int] = _generate_subtable_lengths(segment_len)
+
+	var table_floor: int = route_start_floor
+	for subtable_len in subtable_lengths:
+		var subtable_end_floor: int = table_floor + subtable_len - 1
+		var route_candidate_count: int = _rng.randi_range(candidate_min, candidate_max)
+		var candidates: Array[Dictionary] = _build_segment_candidates(biome_config, table_floor, route_candidate_count)
+		_encounter_segments.append({
+			"start_floor": table_floor,
+			"end_floor_exclusive": subtable_end_floor + 1,
+			"candidates": candidates,
+			"biome": biome
+		})
+		table_floor = subtable_end_floor + 1
+
+func _ensure_encounter_segments() -> void:
+	if _has_encounter_segment_for_floor(current_floor):
+		return
+
+	# Ensure route exists for current floor before deriving encounter pools.
+	_get_route_segment_for_floor(current_floor)
+	if _has_encounter_segment_for_floor(current_floor):
+		return
+
 	if _has_game():
 		var game = _get_game()
 		if game != null and game.has_method("get_dungeon_segment_for_floor"):
@@ -875,34 +1061,8 @@ func _ensure_encounter_segments() -> void:
 			var route_candidate_max: int = max(route_candidate_min, int(route_segment_rules.get("candidate_max", 7)))
 			for raw_segment in route_segments:
 				var segment: Dictionary = raw_segment if raw_segment is Dictionary else {}
-				if segment.is_empty():
-					continue
-				var route_start_floor: int = int(segment.get("start_floor", 1))
-				var route_end_floor: int = int(segment.get("end_floor", route_start_floor))
-				var biome: String = str(segment.get("biome", habitat))
-				var old_habitat := habitat
-				habitat = biome
-				var biome_config: Dictionary = _get_dungeon_encounter_config()
-				habitat = old_habitat
-				
-				# Generate sub-table lengths for this biome segment
-				var segment_len: int = route_end_floor - route_start_floor + 1
-				var subtable_lengths: Array[int] = _generate_subtable_lengths(segment_len)
-				
-				# Create encounter segments for each sub-table
-				var table_floor: int = route_start_floor
-				for subtable_len in subtable_lengths:
-					var subtable_end_floor: int = table_floor + subtable_len - 1
-					var route_candidate_count: int = _rng.randi_range(route_candidate_min, route_candidate_max)
-					var candidates: Array[Dictionary] = _build_segment_candidates(biome_config, table_floor, route_candidate_count)
-					_encounter_segments.append({
-						"start_floor": table_floor,
-						"end_floor_exclusive": subtable_end_floor + 1,
-						"candidates": candidates,
-						"biome": biome
-					})
-					table_floor = subtable_end_floor + 1
-			if not _encounter_segments.is_empty():
+				_append_encounter_segments_for_route_segment(segment, route_candidate_min, route_candidate_max)
+			if _has_encounter_segment_for_floor(current_floor):
 				return
 
 	var config: Dictionary = _get_dungeon_encounter_config()
@@ -1141,21 +1301,40 @@ func _update_special_npcs() -> void:
 		return
 
 	var start_cell := _room_center(_room_rects[0])
-	# Stairs / boss are placed in the farthest room from the player's spawn.
-	var far_room := _room_rects[_get_farthest_room_index(0)]
-	var far_cell := _room_center(far_room)
 	_player_spawn_cell = start_cell
 
-	_log_dungeon("[Dungeon] spawn=%s  stairs/boss=%s  world=%s" % [
-		str(start_cell), str(far_cell), str(_cell_to_world(far_cell))])
-
-	if not _is_current_floor_boss_floor():
+	var game = _get_game()
+	if game != null and game.is_gauntlet_floor(current_floor):
+		# Floor 50: gauntlet and final boss share this floor.
+		_set_npc_active(_stairs_npc, false, Vector2i.ZERO)
+		if _final_boss_phase_active:
+			_prepare_final_boss()
+			if _room_rects.size() > 2:
+				_set_npc_active(_boss_npc, true, _room_center(_room_rects[2]))
+			else:
+				_set_npc_active(_boss_npc, true, _room_center(_room_rects[1]))
+		else:
+			_prepare_gauntlet_battle()
+			if _room_rects.size() > 1:
+				_set_npc_active(_boss_npc, true, _room_center(_room_rects[1]))
+			else:
+				_set_npc_active(_boss_npc, true, _room_center(_room_rects[0]))
+	elif not _is_current_floor_boss_floor():
+		# Normal floors: stairs in far room
+		var far_room := _room_rects[_get_farthest_room_index(0)]
+		var far_cell := _room_center(far_room)
 		_set_npc_active(_stairs_npc, true, far_cell)
 		_set_npc_active(_boss_npc, false, Vector2i.ZERO)
 	else:
+		# Regular boss floors (41-48): boss in far room
+		var far_room := _room_rects[_get_farthest_room_index(0)]
+		var far_cell := _room_center(far_room)
 		_set_npc_active(_stairs_npc, false, Vector2i.ZERO)
 		_prepare_boss_npc()
 		_set_npc_active(_boss_npc, true, far_cell)
+
+	_log_dungeon("[Dungeon] spawn=%s  boss=%s" % [
+		str(start_cell), str(_boss_npc.global_position if _boss_npc != null else "NULL")])
 
 func _set_npc_active(npc, active: bool, cell: Vector2i) -> void:
 	if npc == null:
@@ -1189,6 +1368,161 @@ func _prepare_boss_npc() -> void:
 	boss_data.team_entries = upgraded_entries
 	_log_dungeon("[Dungeon] boss team prepared size=%d" % boss_data.team_entries.size())
 	_boss_npc.npc_data = boss_data
+
+## Prepare gauntlet battle (Floor 49)
+## Uses defeated bosses from earlier floors with Level 49
+func _prepare_gauntlet_battle() -> void:
+	"""Prepare multiple consecutive gauntlet boss fights (one per defeated boss)"""
+	if _boss_npc == null or _boss_npc.npc_data == null:
+		return
+	var game = _get_game()
+	if game == null:
+		return
+	
+	# Build queue of individual gauntlet fights (one per defeated boss)
+	var defeated_bosses: Array = game.get_defeated_boss_data()
+	_gauntlet_fight_queue.clear()
+	_current_gauntlet_fight_index = 0
+	_final_boss_phase_active = false
+	
+	# Create separate fight entry for each defeated boss
+	for i in range(defeated_bosses.size()):
+		var boss_entry: Dictionary = defeated_bosses[i] as Dictionary
+		if boss_entry.is_empty():
+			continue
+		
+		var gauntlet_entry: Dictionary = {
+			"boss_index": i,
+			"boss_data": boss_entry,
+			"team_entries": [],
+			"boss_name": boss_entry.get("name", "Boss %d" % (i + 1))
+		}
+		
+		# Build team for this gauntlet fight from boss's monsters
+		var template: Dictionary = boss_entry.get("team_template", {})
+		if template.has("monsters"):
+			for j in range(min(5, int(template.get("team_size", 5)))):
+				var monster_pool = template["monsters"]
+				if monster_pool is Array and j < monster_pool.size():
+					var monster_dict = monster_pool[j]
+					gauntlet_entry["team_entries"].append(_create_npc_monster_entry_from_dict(monster_dict, 50))
+		
+		if not gauntlet_entry["team_entries"].is_empty():
+			_gauntlet_fight_queue.append(gauntlet_entry)
+	
+	# If no defeated bosses, create default gauntlet fight
+	if _gauntlet_fight_queue.is_empty():
+		var default_fight: Dictionary = {
+			"boss_index": 0,
+			"boss_data": {},
+			"team_entries": _build_boss_team_entries(boss_team_size),
+			"boss_name": "Boss Gauntlet"
+		}
+		_gauntlet_fight_queue.append(default_fight)
+	
+	_gauntlet_active = true
+	_start_next_gauntlet_fight()
+	_log_dungeon("[Dungeon] gauntlet queue prepared fights=%d" % _gauntlet_fight_queue.size())
+
+func _start_next_gauntlet_fight() -> void:
+	"""Start the next fight in the gauntlet queue"""
+	if _current_gauntlet_fight_index >= _gauntlet_fight_queue.size():
+		_gauntlet_active = false
+		return
+	
+	if _boss_npc == null or _boss_npc.npc_data == null:
+		return
+	
+	var current_fight: Dictionary = _gauntlet_fight_queue[_current_gauntlet_fight_index]
+	var gauntlet_data: MTNPCData = _boss_npc.npc_data.duplicate(true) as MTNPCData
+	if gauntlet_data == null:
+		return
+	
+	gauntlet_data.battle_once = true
+	var total_fights = _gauntlet_fight_queue.size()
+	var fight_num = _current_gauntlet_fight_index + 1
+	gauntlet_data.npc_name = "Gauntlet (%d/%d): %s" % [fight_num, total_fights, current_fight["boss_name"]]
+	gauntlet_data.team_entries = current_fight["team_entries"]
+	
+	_boss_npc.npc_data = gauntlet_data
+	_log_dungeon("[Dungeon] gauntlet fight started index=%d name=%s team_size=%d" % [
+		_current_gauntlet_fight_index, gauntlet_data.npc_name, gauntlet_data.team_entries.size()])
+
+func _activate_final_boss_phase() -> void:
+	_final_boss_phase_active = true
+	_prepare_final_boss()
+	if _boss_npc != null:
+		if _room_rects.size() > 2:
+			_set_npc_active(_boss_npc, true, _room_center(_room_rects[2]))
+		elif _room_rects.size() > 1:
+			_set_npc_active(_boss_npc, true, _room_center(_room_rects[1]))
+	_enqueue_message(tr("Gauntlet cleared! The Final Warden appears."))
+
+func _trigger_next_gauntlet_encounter() -> void:
+	"""Trigger battle with next gauntlet opponent"""
+	if not _gauntlet_active or _current_gauntlet_fight_index >= _gauntlet_fight_queue.size():
+		return
+	
+	# Update boss NPC data for next fight
+	_start_next_gauntlet_fight()
+	
+	# Check if player is next to boss NPC and trigger battle
+	if _boss_npc != null:
+		var cell = _boss_npc.cell
+		var adj_cells = [
+			cell + Vector2i.UP,
+			cell + Vector2i.DOWN,
+			cell + Vector2i.LEFT,
+			cell + Vector2i.RIGHT
+		]
+		
+		if _player != null and _player.cell in adj_cells:
+			# Auto-trigger next gauntlet battle
+			_boss_battle_active = true
+			_start_npc_battle(_boss_npc)
+
+## Prepare final boss (Floor 50)
+## Super strong unique boss
+func _prepare_final_boss() -> void:
+	if _boss_npc == null or _boss_npc.npc_data == null:
+		return
+	
+	var final_data: MTNPCData = _boss_npc.npc_data.duplicate(true) as MTNPCData
+	if final_data == null:
+		return
+	
+	final_data.battle_once = true
+	final_data.npc_name = "The Final Warden"
+	
+	# Final boss team: 5 level 50 super-strong monsters
+	var final_entries: Array[MTNPCMonsterEntry] = []
+	var final_monsters := [
+		{"name": "Astralisk", "level": 50, "path": "res://data/monsters/astralisk.tres"},
+		{"name": "Aurumane", "level": 50, "path": "res://data/monsters/aurumane.tres"},
+		{"name": "Volcarn", "level": 50, "path": "res://data/monsters/volcarn.tres"},
+		{"name": "Thundrake", "level": 50, "path": "res://data/monsters/thundrake.tres"},
+		{"name": "Halcyriel", "level": 50, "path": "res://data/monsters/halcyriel.tres"}
+	]
+	
+	for monster_def in final_monsters:
+		var monster_entry := MTNPCMonsterEntry.new()
+		var monster_data = load(monster_def.get("path", "res://data/monsters/slime.tres")) as MTMonsterData
+		if monster_data != null:
+			monster_entry.monster_data = monster_data
+			monster_entry.level = 50
+			final_entries.append(monster_entry)
+	
+	final_data.team_entries = final_entries
+	_boss_npc.npc_data = final_data
+	_log_dungeon("[Dungeon] final boss team prepared size=%d" % final_data.team_entries.size())
+
+func _create_npc_monster_entry_from_dict(monster_dict: Dictionary, target_level: int) -> MTNPCMonsterEntry:
+	var entry := MTNPCMonsterEntry.new()
+	var monster_data = load(monster_dict.get("path", "res://data/monsters/slime.tres")) as MTMonsterData
+	if monster_data != null:
+		entry.monster_data = monster_data
+		entry.level = target_level
+	return entry
 
 #  Dynamic NPC spawning 
 
@@ -1391,7 +1725,109 @@ func _is_chokepoint_cell(cell: Vector2i) -> bool:
 #  Layout generation 
 
 func _generate_floor_layout() -> void:
-	DungeonLayoutHelperClass.generate_floor_layout(self)
+	# Boss floors use special minimal layout.
+	var game = _get_game()
+	if game != null and game.boss_system_enabled and game.is_dungeon_boss_floor(current_floor):
+		_generate_boss_floor_layout()
+	else:
+		DungeonLayoutHelperClass.generate_floor_layout(self)
+
+## Special layout for boss floors and gauntlet
+## Floors 41-48: 2 rooms (entry + boss)
+## Floors 49-50: 3 rooms (entry + gauntlet/final boss center + final boss/nexus)
+func _generate_boss_floor_layout() -> void:
+	_log_dungeon("[Dungeon] _generate_boss_floor_layout floor=%d" % current_floor)
+	
+	# Clear previous layout
+	_floor_cells.clear()
+	_room_rects.clear()
+	_room_type_by_index.clear()
+	_room_index_by_cell.clear()
+	_elite_room_index = -1
+	
+	var is_gauntlet_or_final := current_floor == 50
+	
+	if is_gauntlet_or_final:
+		# 3-room layout for Gauntlet (49) and Final Boss (50)
+		# Entry room: 8x8 at (8, 8)
+		var entry_rect := Rect2i(8, 8, 8, 8)
+		_room_rects.append(entry_rect)
+		_room_type_by_index[0] = ROOM_TYPE_START
+		
+		# Center battle room: 8x8 at (24, 8)
+		var center_rect := Rect2i(24, 8, 8, 8)
+		_room_rects.append(center_rect)
+		_room_type_by_index[1] = ROOM_TYPE_NORMAL
+		
+		# Final room: 8x8 at (40, 8)
+		var final_rect := Rect2i(40, 8, 8, 8)
+		_room_rects.append(final_rect)
+		_room_type_by_index[2] = ROOM_TYPE_EXIT
+		
+		# Carve all 3 rooms
+		for room_rect in _room_rects:
+			for x in range(room_rect.position.x, room_rect.position.x + room_rect.size.x):
+				for y in range(room_rect.position.y, room_rect.position.y + room_rect.size.y):
+					var cell := Vector2i(x, y)
+					_floor_cells.append(cell)
+					_room_index_by_cell[cell] = _room_rects.find(room_rect)
+		
+		# Carve corridors (entry -> center, center -> final)
+		var entry_center_x := int(entry_rect.get_center().x)
+		var center_center_x := int(center_rect.get_center().x)
+		var final_center_x := int(final_rect.get_center().x)
+		var corridor_y := int(entry_rect.get_center().y)
+		
+		# Corridor 1: entry to center
+		for x in range(entry_center_x, center_center_x + 1):
+			var cell := Vector2i(x, corridor_y)
+			if cell not in _floor_cells:
+				_floor_cells.append(cell)
+			_corridor_cells_lookup[cell] = true
+		
+		# Corridor 2: center to final
+		for x in range(center_center_x, final_center_x + 1):
+			var cell := Vector2i(x, corridor_y)
+			if cell not in _floor_cells:
+				_floor_cells.append(cell)
+			_corridor_cells_lookup[cell] = true
+		
+		_player_spawn_cell = entry_rect.get_center()
+	else:
+		# 2-room layout for regular boss floors (41-48)
+		# Entry room: 8x8 at position (8, 8)
+		var entry_rect := Rect2i(8, 8, 8, 8)
+		_room_rects.append(entry_rect)
+		_room_type_by_index[0] = ROOM_TYPE_START
+		
+		# Boss room: 8x8 at position (24, 8)
+		var boss_rect := Rect2i(24, 8, 8, 8)
+		_room_rects.append(boss_rect)
+		_room_type_by_index[1] = ROOM_TYPE_EXIT
+		
+		# Carve both rooms into floor cells
+		for room_rect in _room_rects:
+			for x in range(room_rect.position.x, room_rect.position.x + room_rect.size.x):
+				for y in range(room_rect.position.y, room_rect.position.y + room_rect.size.y):
+					var cell := Vector2i(x, y)
+					_floor_cells.append(cell)
+					_room_index_by_cell[cell] = _room_rects.find(room_rect)
+		
+		# Carve corridor between rooms
+		var corridor_start_x := int(entry_rect.get_center().x)
+		var corridor_end_x := int(boss_rect.get_center().x)
+		var corridor_y := int(entry_rect.get_center().y)
+		
+		if corridor_start_x < corridor_end_x:
+			for x in range(corridor_start_x, corridor_end_x + 1):
+				var cell := Vector2i(x, corridor_y)
+				if cell not in _floor_cells:
+					_floor_cells.append(cell)
+				_corridor_cells_lookup[cell] = true
+		
+		_player_spawn_cell = entry_rect.get_center()
+	
+	_log_dungeon("[Dungeon] boss floor layout: %d cells, %d rooms" % [_floor_cells.size(), _room_rects.size()])
 
 #  Tile-map painting 
 #
@@ -1714,8 +2150,36 @@ func _handle_merchant_shop(_npc) -> bool:
 	_open_merchant_shop()
 	return true
 
+func _handle_boss_floor_shop(_npc) -> bool:
+	"""Handle shopkeeper interaction on boss floors 41-48"""
+	if merchant_shop_items.is_empty():
+		_enqueue_message(tr("Shopkeeper: I'm out of stock for this run."))
+		return true
+	_open_merchant_shop()
+	return true
+
 func _create_merchant_shop_ui() -> void:
 	DungeonShopUIHelperClass.create_merchant_shop_ui(self)
+
+func _create_portal_ui() -> void:
+	DungeonPortalUIHelperClass.create_portal_ui(self)
+
+func _show_biome_portals(biome_options: Array[String]) -> void:
+	DungeonPortalUIHelperClass.show_biome_selection_portals(self, biome_options)
+
+func _hide_biome_portals() -> void:
+	DungeonPortalUIHelperClass.hide_biome_selection_portals(self)
+
+func _on_portal_biome_selected(biome: String) -> void:
+	"""Handle biome selection from portal UI"""
+	_selected_next_biome = biome
+	_pending_biome_selection = false
+	var game = _get_game()
+	if game != null and game.has_method("set_next_boss_biome_choice"):
+		game.set_next_boss_biome_choice(biome)
+	_hide_biome_portals()
+	_enqueue_message(tr("Traveling to %s...") % [DungeonPortalUIHelperClass.get_biome_display_name(biome)])
+	_pending_floor_advance = true
 
 func _rebuild_merchant_shop_buttons() -> void:
 	DungeonShopUIHelperClass.rebuild_merchant_shop_buttons(self, ITEM_DB_CLASS)
@@ -1843,39 +2307,71 @@ func _find_nearby_floor_cell(origin: Vector2i, max_dist: int) -> Vector2i:
 
 func _get_habitat_monster_paths() -> Array[String]:
 	match habitat.to_lower():
-		"forest":
+		"thornfang_warrens":
 			return [
 				"res://data/monsters/wolf.tres",
-				"res://data/monsters/slime.tres",
-				"res://data/monsters/wolfinator.tres",
 				"res://data/monsters/fernox.tres",
-				"res://data/monsters/aquafin.tres"
-			]
-		"ruins":
-			return [
-				"res://data/monsters/wolfinator.tres",
-				"res://data/monsters/wolf.tres",
 				"res://data/monsters/slime.tres",
-				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/wolfinator.tres"
+			]
+		"sunforge_basilica":
+			return [
+				"res://data/monsters/stoneback.tres",
+				"res://data/monsters/wolf.tres",
 				"res://data/monsters/emberkat.tres",
-				"res://data/monsters/stoneback.tres"
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/wolfinator.tres"
 			]
-		"swamp":
+		"skytide_reservoir":
 			return [
+				"res://data/monsters/aquafin.tres",
 				"res://data/monsters/slime.tres",
 				"res://data/monsters/wolf.tres",
-				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/fernox.tres",
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/wolfinator.tres"
+			]
+		"emberfault_chasm":
+			return [
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/stoneback.tres",
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/fernox.tres",
+				"res://data/monsters/wolfinator.tres"
+			]
+		"stargrave_observatory":
+			return [
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/slime.tres",
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/stoneback.tres",
+				"res://data/monsters/wolfinator.tres"
+			]
+		"ironhowl_bastion":
+			return [
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/stoneback.tres",
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/fernox.tres",
+				"res://data/monsters/wolfinator.tres"
+			]
+		"echo_vault":
+			return [
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/wolf.tres",
 				"res://data/monsters/aquafin.tres",
 				"res://data/monsters/fernox.tres",
-				"res://data/monsters/ghostling.tres"
+				"res://data/monsters/wolfinator.tres"
 			]
 		_:
 			return [
 				"res://data/monsters/slime.tres",
-				"res://data/monsters/wolf.tres",
-				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/ghostling.tres",
 				"res://data/monsters/stoneback.tres",
-				"res://data/monsters/ghostling.tres"
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/wolfinator.tres"
 			]
 #  Player reset 
 

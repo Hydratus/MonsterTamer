@@ -27,18 +27,20 @@ static func start_dungeon_run_if_needed(owner) -> void:
 		return
 	var start_gold: int = owner.run_start_gold + game.get_meta_unlock_level("starting_gold") * 25
 	game.reset_run_state(start_gold)
+	if owner.has_method("_hide_biome_portals"):
+		owner._hide_biome_portals()
 	var route_total_floors: int = max(1, int(owner.run_total_floors))
-	var route_min_segment_len: int = max(1, int(owner.run_segment_min_len))
-	var route_max_segment_len: int = max(route_min_segment_len, int(owner.run_segment_max_len))
 	var preferred_start_biome := str(owner.habitat)
 	var route_seed: int = int(owner.generation_seed)
-	game.setup_dungeon_route(
+	
+	# Use new boss system with portal-based biome selection
+	game.setup_dungeon_route_with_boss_system(
 		route_total_floors,
 		owner.run_biome_pool,
 		preferred_start_biome,
-		route_min_segment_len,
-		route_max_segment_len,
-		route_seed
+		route_seed,
+		owner.run_segment_min_len,
+		owner.run_segment_max_len
 	)
 	owner.floor_count = route_total_floors
 	var start_biome: String = game.get_dungeon_biome_for_floor(owner.current_floor)
@@ -51,13 +53,19 @@ static func start_dungeon_run_if_needed(owner) -> void:
 			var segment: Dictionary = raw_segment if raw_segment is Dictionary else {}
 			if segment.is_empty():
 				continue
-			var biome: String = str(segment.get("biome", "?")).capitalize()
+			var biome_key: String = str(segment.get("biome", "?"))
+			var biome: String = biome_key.capitalize()
+			if owner.has_method("get_habitat_display_name"):
+				biome = str(owner.get_habitat_display_name(biome_key))
 			var start_floor: int = int(segment.get("start_floor", 1))
 			var end_floor: int = int(segment.get("end_floor", start_floor))
 			route_parts.append("%s %d-%d" % [biome, start_floor, end_floor])
 		owner._log_dungeon("[Dungeon] route=%s" % " | ".join(route_parts))
 	if start_biome != "":
-		owner._enqueue_message(TranslationServer.translate("Run started. Gold: %d\nBiome: %s") % [game.run_gold, start_biome.capitalize()])
+		var start_biome_label := start_biome.capitalize()
+		if owner.has_method("get_habitat_display_name"):
+			start_biome_label = str(owner.get_habitat_display_name(start_biome))
+		owner._enqueue_message(TranslationServer.translate("Run started. Gold: %d\nBiome: %s") % [game.run_gold, start_biome_label])
 	else:
 		owner._enqueue_message(TranslationServer.translate("Run started. Gold: %d") % game.run_gold)
 
@@ -67,6 +75,8 @@ static func finish_dungeon_run(owner) -> void:
 	var game = _get_game()
 	owner._close_merchant_shop()
 	game.flags["dungeon_run_active"] = false
+	if game.has_method("restore_party_after_run"):
+		game.restore_party_after_run()
 	game.reset_run_state(0)
 
 static func award_battle_rewards(owner, winner_team_index: int, interaction: String) -> void:

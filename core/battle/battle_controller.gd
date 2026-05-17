@@ -111,6 +111,15 @@ func finish_battle(winner_team_index: int) -> void:
 	if scene_adapter != null:
 		scene_adapter.finish_battle(winner_team_index)
 
+func reset_all_stat_stages() -> void:
+	for team in teams:
+		if team == null:
+			continue
+		for monster in team.monsters:
+			if monster == null:
+				continue
+			monster.reset_stat_stages()
+
 func perform_capture_attempt(actor: MTMonsterInstance, target: MTMonsterInstance, item: MTItemData) -> void:
 	var scene_adapter = _get_scene_adapter()
 	if scene_adapter != null:

@@ -33,12 +33,21 @@ const META_UNLOCK_OPTIONS: Array[Dictionary] = [
 		"payload": {
 			"floor": 1,
 			"floor_count": 50,
-			"habitat": "cavern",
+			"habitat": "gloomrot_catacombs",
 			"seed": 0,
 			"base_encounter_chance": 0.05,
 			"run_segment_min_len": 7,
 			"run_segment_max_len": 15,
-			"run_biome_pool": ["cavern", "forest", "ruins", "swamp"]
+			"run_biome_pool": [
+				"gloomrot_catacombs",
+				"thornfang_warrens",
+				"sunforge_basilica",
+				"skytide_reservoir",
+				"emberfault_chasm",
+				"stargrave_observatory",
+				"ironhowl_bastion",
+				"echo_vault"
+			]
 		}
 	}
 ]

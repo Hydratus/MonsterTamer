@@ -23,4 +23,6 @@ func enter(battle):
 	
 	# EXP werden bereits in MTResolveActionsState verteilt
 	# Hier nur noch sicherstellen, dass alles korrekt dokumentiert wird
+	if battle != null and battle.has_method("reset_all_stat_stages"):
+		battle.reset_all_stat_stages()
 	battle.finish_battle(winner_team_index)

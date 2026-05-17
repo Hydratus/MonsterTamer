@@ -520,7 +520,10 @@ func _handle_capture_success(target: MTMonsterInstance) -> void:
 	var added_to_party := false
 	var _game_ref = _get_game()
 	if _game_ref != null:
-		added_to_party = _game_ref.add_to_party(captured_instance)
+		if _game_ref.is_party_full():
+			added_to_party = false
+		else:
+			added_to_party = _game_ref.add_to_party(captured_instance)
 	if player_team_ref != null:
 		if not player_team_ref.monsters.has(captured_instance):
 			player_team_ref.monsters.append(captured_instance)
@@ -605,11 +608,15 @@ func _clear_release_list() -> void:
 func _on_release_selected(index: int) -> void:
 	if _pending_release_team == null:
 		return
+	var captured_candidate: MTMonsterInstance = _pending_release_new_monster
 	var removed: MTMonsterInstance = _pending_release_team.remove_monster_at(index)
 	if removed != null:
 		var _game_ref2 = _get_game()
 		if _game_ref2 != null:
 			_game_ref2.remove_from_party(removed)
+			if captured_candidate != null and removed != captured_candidate:
+				if not _game_ref2.party.has(captured_candidate):
+					_game_ref2.add_to_party(captured_candidate)
 	_pending_release_team = null
 	_pending_release_new_monster = null
 	_release_prompt_active = false

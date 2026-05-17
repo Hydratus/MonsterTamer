@@ -23,6 +23,7 @@ const HP_REGEN_TRAIT: MTTraitData = preload("res://data/traits/HPRegen.tres")
 const STRONG_BODY_TRAIT: MTTraitData = preload("res://data/traits/StrongBody.tres")
 const EvolutionEntryDataClass = preload("res://core/monsters/evolution_entry_data.gd")
 const DEBUG_LOG = preload("res://core/systems/debug_log.gd")
+const GameClass = preload("res://globals/game.gd")
 
 class _DummyMessageBox:
 	extends RefCounted
@@ -97,6 +98,13 @@ class _DummyBattleScene:
 	func get_item_user_name(_actor: MTMonsterInstance) -> String:
 		return "DummyPlayer"
 
+class _TestBattleScene:
+	extends MTBattleScene
+	var injected_game: Node = null
+
+	func _get_game() -> Node:
+		return injected_game
+
 static func run_all() -> Dictionary:
 	var results: Dictionary = {
 		"rest_recovers_energy": _test_rest_recovers_energy(),
@@ -111,6 +119,8 @@ static func run_all() -> Dictionary:
 		"player_item_submit_heals_self": _test_player_item_submit_heals_self(),
 		"player_action_gating_requires_all_human_inputs": _test_player_action_gating_requires_all_human_inputs(),
 		"perform_switch_updates_active_monster": _test_perform_switch_updates_active_monster(),
+		"switch_resets_stat_stages": _test_switch_resets_stat_stages(),
+		"battle_end_resets_stat_stages": _test_battle_end_resets_stat_stages(),
 		"adapter_message_bridge": _test_adapter_message_bridge(),
 		"adapter_ui_bridge": _test_adapter_ui_bridge(),
 		"adapter_item_bridge": _test_adapter_item_bridge(),
@@ -123,6 +133,7 @@ static func run_all() -> Dictionary:
 		"player_ko_requests_forced_switch": _test_player_ko_requests_forced_switch(),
 		"enemy_ko_auto_switches_reserve": _test_enemy_ko_auto_switches_reserve(),
 		"lifesteal_restores_attacker_hp": _test_lifesteal_restores_attacker_hp(),
+		"capture_replace_persists_in_party": _test_capture_replace_persists_in_party(),
 		# --- status effects ---
 		"status_burn_reduces_physical_outgoing": _test_status_burn_reduces_physical_outgoing(),
 		"status_wet_reduces_fire_incoming": _test_status_wet_reduces_fire_incoming(),
@@ -398,6 +409,43 @@ static func _test_perform_switch_updates_active_monster() -> bool:
 	var msg_ok: bool = not messages.is_empty() and messages[0].find("sent out") >= 0
 	return _expect(switched and active_ok and msg_ok, "perform_switch should activate selected monster and emit switch message")
 
+static func _test_switch_resets_stat_stages() -> bool:
+	var active := _create_monster(SLIME_DATA)
+	var bench := _create_monster(WOLF_DATA)
+	var enemy := _create_monster(SLIME_DATA)
+	active.modify_stat_stage(MTMonsterInstance.StatType.STRENGTH, 2)
+	bench.modify_stat_stage(MTMonsterInstance.StatType.DEFENSE, -2)
+
+	var battle := _create_battle([
+		_create_team([active, bench]),
+		_create_team([enemy])
+	])
+
+	var switched: bool = battle.perform_switch(0, 1, active)
+	var active_is_bench: bool = battle.teams[0].get_active_monster() == bench
+	var old_reset: bool = active.stat_stages[MTMonsterInstance.StatType.STRENGTH] == 0
+	var new_reset: bool = bench.stat_stages[MTMonsterInstance.StatType.DEFENSE] == 0
+	return _expect(switched and active_is_bench and old_reset and new_reset, "Switching should reset stat stages for outgoing and incoming monsters")
+
+static func _test_battle_end_resets_stat_stages() -> bool:
+	var player := _create_monster(SLIME_DATA)
+	var enemy := _create_monster(WOLF_DATA)
+	player.modify_stat_stage(MTMonsterInstance.StatType.SPEED, 3)
+	enemy.modify_stat_stage(MTMonsterInstance.StatType.DEFENSE, -3)
+
+	var setup := _create_battle_with_dummy_scene([
+		_create_team([player]),
+		_create_team([enemy])
+	])
+	var battle: MTBattleController = setup.battle
+
+	var end_state := MTBattleEndState.new()
+	end_state.enter(battle)
+
+	var player_reset: bool = player.stat_stages[MTMonsterInstance.StatType.SPEED] == 0
+	var enemy_reset: bool = enemy.stat_stages[MTMonsterInstance.StatType.DEFENSE] == 0
+	return _expect(player_reset and enemy_reset, "Battle end should reset stat stages for all battle participants")
+
 static func _test_adapter_message_bridge() -> bool:
 	var setup := _create_battle_with_dummy_scene([])
 	var battle: MTBattleController = setup.battle
@@ -599,6 +647,57 @@ static func _test_enemy_ko_auto_switches_reserve() -> bool:
 	var switched_ok: bool = active_enemy == enemy_reserve
 	var message_ok := scene.logged_messages.size() >= 2
 	return _expect(switched_ok and message_ok, "Enemy KO should auto-switch to the next living reserve monster")
+
+static func _test_capture_replace_persists_in_party() -> bool:
+	var game: Node = GameClass.new()
+
+	# Build a full party (5), where slot 0 will be released.
+	var slot0 := _create_monster(SLIME_DATA)
+	var slot1 := _create_monster(WOLF_DATA)
+	var slot2 := _create_monster(SLIME_DATA)
+	var slot3 := _create_monster(WOLF_DATA)
+	var slot4 := _create_monster(SLIME_DATA)
+	game.add_to_party(slot0)
+	game.add_to_party(slot1)
+	game.add_to_party(slot2)
+	game.add_to_party(slot3)
+	game.add_to_party(slot4)
+
+	var player_team := _create_team([slot0, slot1, slot2, slot3, slot4], 0)
+	var enemy_team := _create_team([_create_monster(WOLF_DATA)], 0)
+	var battle := _create_battle([player_team, enemy_team])
+
+	var scene := _TestBattleScene.new()
+	scene.injected_game = game
+	battle.bind_scene(scene)
+	scene.battle = battle
+	scene._create_release_prompt_ui()
+
+	# Simulate successful capture while team is full.
+	var captured_target := _create_monster(WOLF_DATA)
+	captured_target.level = 12
+	captured_target.hp = 0
+	scene._handle_capture_success(captured_target)
+
+	# Release first old monster to keep newly captured one.
+	scene._on_release_selected(0)
+
+	var captured_present := false
+	for member in game.party:
+		if member == null:
+			continue
+		if member == slot0:
+			continue
+		if member.level == captured_target.level and member.data != null and member.data.name == captured_target.data.name:
+			captured_present = true
+			break
+
+	var removed_absent: bool = not game.party.has(slot0)
+	var party_size_ok: bool = game.party.size() == 5
+	var team_size_ok: bool = player_team.monsters.size() == 5
+
+	_cleanup_battle_scene(scene, battle)
+	return _expect(captured_present and removed_absent and party_size_ok and team_size_ok, "Capture with full team should keep the chosen replacement in persistent party")
 
 # ========== NEW TESTS (18-27) ==========
 

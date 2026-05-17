@@ -51,6 +51,7 @@ static func maybe_spawn_quest_npc(owner) -> void:
 		"ready_to_turn_in": false,
 		"shop_unlocked": false,
 		"delivery_item_id": "",
+		"delivery_item_found": false,
 		"monsters_killed": 0,
 		"monsters_needed": owner._rng.randi_range(2, 4)
 	}
@@ -143,9 +144,6 @@ static func create_delivery_quest_item_npc_data() -> MTNPCData:
 	return data
 
 static func handle_quest_delivery(owner, npc) -> bool:
-	if not _has_game():
-		return true
-	var game = _get_game()
 	if owner._active_quest.get("completed", false) and owner._active_quest.get("shop_unlocked", false):
 		return owner._handle_merchant_shop(npc)
 	var delivery_item_id: String = str(owner._active_quest.get("delivery_item_id", ""))
@@ -156,13 +154,13 @@ static func handle_quest_delivery(owner, npc) -> bool:
 		owner._active_quest["accepted"] = true
 		owner._enqueue_message(TranslationServer.translate("Merchant Quest: Find the lost satchel somewhere on this floor."))
 		return true
-	if game.get_item_count(delivery_item_id) <= 0:
+	if not bool(owner._active_quest.get("delivery_item_found", false)):
 		owner._enqueue_message(TranslationServer.translate("Merchant Quest: Please find my lost satchel and bring it back."))
 		return true
-	game.remove_item(delivery_item_id, 1)
 	owner._active_quest["completed"] = true
 	owner._active_quest["ready_to_turn_in"] = false
 	owner._active_quest["shop_unlocked"] = true
+	owner._active_quest["delivery_item_found"] = false
 	owner._enqueue_message(TranslationServer.translate("Quest Complete: You returned the lost satchel."))
 	owner._award_quest_rewards()
 	owner._enqueue_message(TranslationServer.translate("Merchant unlocked: Trade with run gold is now available."))
@@ -192,13 +190,10 @@ static func handle_quest_hunt(owner, _npc) -> bool:
 	return true
 
 static func handle_quest_delivery_item(owner, npc) -> bool:
-	if not _has_game():
-		return true
-	var game = _get_game()
 	var delivery_item_id: String = str(owner._active_quest.get("delivery_item_id", ""))
 	if delivery_item_id == "":
 		return true
-	game.add_item(delivery_item_id, 1)
+	owner._active_quest["delivery_item_found"] = true
 	if npc != null:
 		owner._set_npc_active(npc, false, Vector2i.ZERO)
 	owner._active_quest["ready_to_turn_in"] = true
@@ -222,10 +217,6 @@ static func award_quest_rewards(owner) -> void:
 		owner._log_dungeon("[Dungeon] quest reward failed - Game not initialized")
 
 static func reset_floor_quest_state(owner) -> void:
-	var old_delivery_item_id: String = str(owner._active_quest.get("delivery_item_id", ""))
-	if old_delivery_item_id != "" and _has_game():
-		var game = _get_game()
-		game.remove_item(old_delivery_item_id, game.get_item_count(old_delivery_item_id))
 	owner._active_quest.clear()
 	owner._has_quest_this_floor = false
 	owner._quest_npc = null

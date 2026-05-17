@@ -10,6 +10,13 @@ const INVALID_CELL := Vector2i(-1, -1)
 static func _is_invalid_cell(cell: Vector2i) -> bool:
 	return cell == INVALID_CELL
 
+static func _resolve_owner_game(owner):
+	if owner == null:
+		return null
+	if owner.has_method("_get_game"):
+		return owner._get_game()
+	return null
+
 static func spawn_floor_npcs(owner) -> void:
 	clear_dynamic_npcs(owner)
 	if owner._floor_cells.size() < 8:
@@ -28,8 +35,15 @@ static func spawn_floor_npcs(owner) -> void:
 		reserved[owner._world_to_cell(owner._stairs_npc.global_position)] = true
 	if owner._boss_npc != null and owner._boss_npc.visible:
 		reserved[owner._world_to_cell(owner._boss_npc.global_position)] = true
-	spawn_elite_room_npc(owner, reserved)
-	spawn_mimic_npc(owner, reserved)
+	
+	# Spawn shopkeeper only on actual boss floors from the active route logic.
+	var game = _resolve_owner_game(owner)
+	if game != null and game.boss_system_enabled and game.is_dungeon_boss_floor(owner.current_floor):
+		spawn_boss_floor_shopkeeper(owner, reserved)
+	else:
+		spawn_elite_room_npc(owner, reserved)
+		spawn_mimic_npc(owner, reserved)
+	
 	spawn_puzzle_switches(owner, reserved)
 	spawn_key_npc(owner, reserved)
 	spawn_event_object(owner, reserved)
@@ -397,6 +411,37 @@ static func create_secret_vault_npc_data() -> MTNPCData:
 	data.dialogue_before = TranslationServer.translate("A heavy iron vault. This requires a Secret Key to open.")
 	data.dialogue_after = ""
 	data.interaction_id = "dungeon_secret_vault"
+	data.battle_once = false
+	data.walk_enabled = false
+	return data
+
+## Spawn shopkeeper NPC on boss floors
+static func spawn_boss_floor_shopkeeper(owner, reserved: Dictionary) -> void:
+	if owner._room_rects.is_empty():
+		return
+	
+	# Place shopkeeper in entry room but never on the player spawn cell.
+	var entry_room_center: Vector2i = owner._room_center(owner._room_rects[0])
+	var spawn_cell: Vector2i = pick_cell_in_room(owner, 0, reserved)
+	if _is_invalid_cell(spawn_cell):
+		spawn_cell = owner._find_nearby_floor_cell(entry_room_center, 6)
+	if spawn_cell == owner._player_spawn_cell:
+		spawn_cell = owner._find_nearby_floor_cell(spawn_cell, 8)
+	if spawn_cell == owner._player_spawn_cell:
+		return
+	reserved[spawn_cell] = true
+	
+	var shopkeeper_data := create_boss_floor_shopkeeper_npc_data()
+	spawn_dynamic_npc(owner, spawn_cell, shopkeeper_data)
+	owner._log_dungeon("[Dungeon] boss floor shopkeeper spawned floor=%d cell=%s" % [owner.current_floor, str(spawn_cell)])
+
+## Create shopkeeper NPC data for boss floors
+static func create_boss_floor_shopkeeper_npc_data() -> MTNPCData:
+	var data := NPCDataClass.new()
+	data.display_name = TranslationServer.translate("Dungeon Shopkeeper")
+	data.dialogue_before = TranslationServer.translate("Welcome, brave adventurer! Restock before facing the challenge ahead.")
+	data.dialogue_after = ""
+	data.interaction_id = "dungeon_boss_floor_shop"
 	data.battle_once = false
 	data.walk_enabled = false
 	return data

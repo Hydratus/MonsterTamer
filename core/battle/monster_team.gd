@@ -35,13 +35,12 @@ func switch_to_monster(index: int) -> bool:
 	if index == active_monster_index:
 		return false  # Schon aktiv
 	
-	# Setze alle Stat-Stages des alten aktiven Monsters auf 0 (Buffs/Debuffs entfernen)
-	var old_monster = get_active_monster()
-	if old_monster != null:
-		for stat in MTMonsterInstance.StatType.values():
-			old_monster.stat_stages[stat] = 0
+	# Reset outgoing/incoming stages so switches cannot carry temporary buffs/debuffs.
+	var old_monster := get_active_monster()
+	_reset_monster_stat_stages(old_monster)
 	
 	active_monster_index = index
+	_reset_monster_stat_stages(get_active_monster())
 	return true
 
 # Alternative: switch_to (neuer Name)
@@ -52,16 +51,19 @@ func switch_to(index: int) -> bool:
 func switch_to_next_alive() -> bool:
 	for i in range(monsters.size()):
 		if i != active_monster_index and monsters[i] != null and monsters[i].is_alive():
-			# Setze alle Stat-Stages des alten aktiven Monsters auf 0 (Buffs/Debuffs entfernen)
-			var old_monster = get_active_monster()
-			if old_monster != null:
-				for stat in MTMonsterInstance.StatType.values():
-					old_monster.stat_stages[stat] = 0
+			var old_monster := get_active_monster()
+			_reset_monster_stat_stages(old_monster)
 			
 			active_monster_index = i
+			_reset_monster_stat_stages(get_active_monster())
 			return true
 	
 	return false  # Kein anderes lebendes Monster gefunden
+
+func _reset_monster_stat_stages(monster: MTMonsterInstance) -> void:
+	if monster == null:
+		return
+	monster.reset_stat_stages()
 
 # Prüfe ob das Team noch lebende Monster hat
 func has_alive_monsters() -> bool:

@@ -426,7 +426,7 @@ const DUNGEON_ENCOUNTER_CONFIG := {
 			]
 		]
 	},
-	"cavern": {
+	"gloomrot_catacombs": {
 		"rarity_weight_rules": [
 			{"start_min": 1, "start_max": 5, "weights": {"common": 82, "uncommon": 18, "rare": 0, "very_rare": 0, "legendary": 0}},
 			{"start_min": 6, "start_max": 10, "weights": {"common": 60, "uncommon": 38, "rare": 2, "very_rare": 0, "legendary": 0}},
@@ -456,12 +456,11 @@ const DUNGEON_ENCOUNTER_CONFIG := {
 		"rarity_pools": {
 			"common": [
 				"res://data/monsters/slime.tres",
-				"res://data/monsters/wolf.tres",
 				"res://data/monsters/stoneback.tres"
 			],
 			"uncommon": [
 				"res://data/monsters/ghostling.tres",
-				"res://data/monsters/emberkat.tres"
+				"res://data/monsters/wolf.tres"
 			],
 			"rare": [
 				"res://data/monsters/wolfinator.tres"
@@ -471,11 +470,11 @@ const DUNGEON_ENCOUNTER_CONFIG := {
 		},
 		"thief_team_templates": [
 			[
-				"res://data/monsters/wolf.tres",
+				"res://data/monsters/slime.tres",
 				"res://data/monsters/ghostling.tres"
 			],
 			[
-				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/wolf.tres",
 				"res://data/monsters/stoneback.tres"
 			]
 		],
@@ -487,12 +486,12 @@ const DUNGEON_ENCOUNTER_CONFIG := {
 			],
 			[
 				"res://data/monsters/wolfinator.tres",
-				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/ghostling.tres",
 				"res://data/monsters/slime.tres"
 			]
 		]
 	},
-	"forest": {
+	"thornfang_warrens": {
 		"rarity_weight_rules": [
 			{"start_min": 1, "start_max": 5, "weights": {"common": 68, "uncommon": 32, "rare": 0, "very_rare": 0, "legendary": 0}},
 			{"start_min": 6, "start_max": 10, "weights": {"common": 42, "uncommon": 52, "rare": 6, "very_rare": 0, "legendary": 0}},
@@ -522,10 +521,10 @@ const DUNGEON_ENCOUNTER_CONFIG := {
 		"rarity_pools": {
 			"common": [
 				"res://data/monsters/wolf.tres",
-				"res://data/monsters/slime.tres"
+				"res://data/monsters/fernox.tres"
 			],
 			"uncommon": [
-				"res://data/monsters/fernox.tres",
+				"res://data/monsters/slime.tres",
 				"res://data/monsters/aquafin.tres"
 			],
 			"rare": [
@@ -540,26 +539,26 @@ const DUNGEON_ENCOUNTER_CONFIG := {
 				"res://data/monsters/fernox.tres"
 			],
 			[
-				"res://data/monsters/aquafin.tres",
 				"res://data/monsters/slime.tres",
-				"res://data/monsters/wolf.tres"
+				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/fernox.tres"
 			]
 		],
 		"boss_team_templates": [
 			[
 				"res://data/monsters/wolfinator.tres",
 				"res://data/monsters/fernox.tres",
-				"res://data/monsters/aquafin.tres"
+				"res://data/monsters/wolf.tres"
 			],
 			[
 				"res://data/monsters/wolfinator.tres",
-				"res://data/monsters/wolf.tres",
+				"res://data/monsters/aquafin.tres",
 				"res://data/monsters/fernox.tres",
 				"res://data/monsters/slime.tres"
 			]
 		]
 	},
-	"ruins": {
+	"sunforge_basilica": {
 		"rarity_weight_rules": [
 			{"start_min": 1, "start_max": 5, "weights": {"common": 62, "uncommon": 38, "rare": 0, "very_rare": 0, "legendary": 0}},
 			{"start_min": 6, "start_max": 10, "weights": {"common": 30, "uncommon": 54, "rare": 16, "very_rare": 0, "legendary": 0}},
@@ -588,13 +587,13 @@ const DUNGEON_ENCOUNTER_CONFIG := {
 		],
 		"rarity_pools": {
 			"common": [
-				"res://data/monsters/slime.tres",
+				"res://data/monsters/stoneback.tres",
 				"res://data/monsters/wolf.tres"
 			],
 			"uncommon": [
-				"res://data/monsters/ghostling.tres",
 				"res://data/monsters/emberkat.tres",
-				"res://data/monsters/stoneback.tres"
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/slime.tres"
 			],
 			"rare": [
 				"res://data/monsters/wolfinator.tres"
@@ -604,29 +603,30 @@ const DUNGEON_ENCOUNTER_CONFIG := {
 		},
 		"thief_team_templates": [
 			[
-				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/stoneback.tres",
 				"res://data/monsters/wolf.tres"
 			],
 			[
 				"res://data/monsters/emberkat.tres",
-				"res://data/monsters/stoneback.tres",
-				"res://data/monsters/slime.tres"
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/wolf.tres"
 			]
 		],
 		"boss_team_templates": [
 			[
 				"res://data/monsters/wolfinator.tres",
-				"res://data/monsters/ghostling.tres",
-				"res://data/monsters/stoneback.tres"
+				"res://data/monsters/stoneback.tres",
+				"res://data/monsters/emberkat.tres"
 			],
 			[
 				"res://data/monsters/wolfinator.tres",
-				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/stoneback.tres",
 				"res://data/monsters/wolf.tres"
 			]
 		]
 	},
-	"swamp": {
+	"skytide_reservoir": {
 		"rarity_weight_rules": [
 			{"start_min": 1, "start_max": 5, "weights": {"common": 56, "uncommon": 44, "rare": 0, "very_rare": 0, "legendary": 0}},
 			{"start_min": 6, "start_max": 10, "weights": {"common": 24, "uncommon": 56, "rare": 20, "very_rare": 0, "legendary": 0}},
@@ -655,11 +655,11 @@ const DUNGEON_ENCOUNTER_CONFIG := {
 		],
 		"rarity_pools": {
 			"common": [
-				"res://data/monsters/slime.tres",
-				"res://data/monsters/wolf.tres"
+				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/slime.tres"
 			],
 			"uncommon": [
-				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/wolf.tres",
 				"res://data/monsters/fernox.tres",
 				"res://data/monsters/ghostling.tres"
 			],
@@ -671,25 +671,192 @@ const DUNGEON_ENCOUNTER_CONFIG := {
 		},
 		"thief_team_templates": [
 			[
-				"res://data/monsters/ghostling.tres",
-				"res://data/monsters/aquafin.tres"
+				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/wolf.tres"
 			],
 			[
 				"res://data/monsters/fernox.tres",
 				"res://data/monsters/slime.tres",
-				"res://data/monsters/wolf.tres"
+				"res://data/monsters/aquafin.tres"
 			]
 		],
 		"boss_team_templates": [
 			[
 				"res://data/monsters/wolfinator.tres",
 				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/fernox.tres",
+				"res://data/monsters/wolf.tres"
+			],
+			[
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/slime.tres",
+				"res://data/monsters/ghostling.tres"
+			]
+		]
+	},
+	"emberfault_chasm": {
+		"rarity_pools": {
+			"common": [
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/stoneback.tres"
+			],
+			"uncommon": [
+				"res://data/monsters/wolf.tres",
 				"res://data/monsters/fernox.tres"
+			],
+			"rare": [
+				"res://data/monsters/wolfinator.tres"
+			],
+			"very_rare": [],
+			"legendary": []
+		},
+		"thief_team_templates": [
+			[
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/wolf.tres"
+			],
+			[
+				"res://data/monsters/stoneback.tres",
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/fernox.tres"
+			]
+		],
+		"boss_team_templates": [
+			[
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/stoneback.tres"
+			],
+			[
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/stoneback.tres"
+			]
+		]
+	},
+	"stargrave_observatory": {
+		"rarity_pools": {
+			"common": [
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/slime.tres"
+			],
+			"uncommon": [
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/stoneback.tres"
+			],
+			"rare": [
+				"res://data/monsters/wolfinator.tres"
+			],
+			"very_rare": [],
+			"legendary": []
+		},
+		"thief_team_templates": [
+			[
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/wolf.tres"
+			],
+			[
+				"res://data/monsters/slime.tres",
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/aquafin.tres"
+			]
+		],
+		"boss_team_templates": [
+			[
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/stoneback.tres"
 			],
 			[
 				"res://data/monsters/wolfinator.tres",
 				"res://data/monsters/ghostling.tres",
-				"res://data/monsters/slime.tres"
+				"res://data/monsters/slime.tres",
+				"res://data/monsters/aquafin.tres"
+			]
+		]
+	},
+	"ironhowl_bastion": {
+		"rarity_pools": {
+			"common": [
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/stoneback.tres"
+			],
+			"uncommon": [
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/fernox.tres"
+			],
+			"rare": [
+				"res://data/monsters/wolfinator.tres"
+			],
+			"very_rare": [],
+			"legendary": []
+		},
+		"thief_team_templates": [
+			[
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/stoneback.tres"
+			],
+			[
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/fernox.tres"
+			]
+		],
+		"boss_team_templates": [
+			[
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/wolf.tres",
+				"res://data/monsters/stoneback.tres"
+			],
+			[
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/stoneback.tres",
+				"res://data/monsters/emberkat.tres",
+				"res://data/monsters/wolf.tres"
+			]
+		]
+	},
+	"echo_vault": {
+		"rarity_pools": {
+			"common": [
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/wolf.tres"
+			],
+			"uncommon": [
+				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/fernox.tres"
+			],
+			"rare": [
+				"res://data/monsters/wolfinator.tres"
+			],
+			"very_rare": [],
+			"legendary": []
+		},
+		"thief_team_templates": [
+			[
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/wolf.tres"
+			],
+			[
+				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/fernox.tres"
+			]
+		],
+		"boss_team_templates": [
+			[
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/wolf.tres"
+			],
+			[
+				"res://data/monsters/wolfinator.tres",
+				"res://data/monsters/aquafin.tres",
+				"res://data/monsters/ghostling.tres",
+				"res://data/monsters/fernox.tres"
 			]
 		]
 	}
