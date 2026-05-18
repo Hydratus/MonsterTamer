@@ -925,8 +925,8 @@ msgstr "Inferno"
 msgid "Iron Charge"
 msgstr "Iron Charge"
 
-msgid "Normal Attack"
-msgstr "Normal Attack"
+msgid "Basic Attack"
+msgstr "Basic Attack"
 
 msgid "On contact, lowers the attacker's Strength by 1 stage."
 msgstr "On contact, lowers the attacker's Strength by 1 stage."

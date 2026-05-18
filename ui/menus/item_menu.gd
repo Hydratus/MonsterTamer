@@ -33,6 +33,8 @@ var _ignore_hold_until_release := false
 var _require_focus_owner := true
 var _allow_enter_from_tabs := true
 var _focus_enabled := true
+var _input_locked := false
+var _last_used_item_id_by_tab: Dictionary = {}
 
 const NAV_REPEAT_DELAY := 0.35
 const NAV_REPEAT_INTERVAL := 0.08
@@ -42,6 +44,9 @@ func _ready() -> void:
 	set_process_input(true)
 	set_process_unhandled_input(true)
 	set_process(true)
+	var tab_bar: Control = _tabs.get_tab_bar()
+	if tab_bar != null:
+		tab_bar.focus_mode = Control.FOCUS_NONE
 	_tabs.set_tab_title(ItemDataClass.Category.SOULBINDER, "Binding Runes")
 	_tabs.tab_changed.connect(_on_tab_changed)
 	_back_button.pressed.connect(func():
@@ -52,6 +57,10 @@ func _ready() -> void:
 	)
 
 func _process(delta: float) -> void:
+	if _input_locked:
+		_nav_hold_dir = 0
+		_nav_repeat_timer = 0.0
+		return
 	if not visible:
 		_nav_hold_dir = 0
 		_nav_repeat_timer = 0.0
@@ -102,6 +111,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			viewport.set_input_as_handled()
 
 func _handle_nav_event(event: InputEvent) -> bool:
+	# Im targets-Modus: Abbrechen mit "ui_cancel" (z.B. ESC/B)
+	if _mode == "targets" and event.is_action_pressed("ui_cancel"):
+		_show_items_for_tab(_tabs.current_tab)
+		return true
+	if _input_locked:
+		return false
 	if not visible:
 		return false
 	var focus_owner: Control = get_viewport().gui_get_focus_owner() as Control
@@ -119,13 +134,19 @@ func _handle_nav_event(event: InputEvent) -> bool:
 			return true
 		return false
 	if event.is_action_pressed("ui_left"):
-		if focus_in_menu:
+		# Tab-Wechsel nur im "items"-Modus erlauben
+		if _mode == "items" and (focus_in_menu or _allow_enter_from_tabs):
 			select_prev_tab()
+			if not focus_in_menu and not _buttons.is_empty() and _focus_enabled and not _input_locked:
+				_try_grab_focus(_buttons[0])
 			return true
 		return false
 	if event.is_action_pressed("ui_right"):
-		if focus_in_menu:
+		# Tab-Wechsel nur im "items"-Modus erlauben
+		if _mode == "items" and (focus_in_menu or _allow_enter_from_tabs):
 			select_next_tab()
+			if not focus_in_menu and not _buttons.is_empty() and _focus_enabled and not _input_locked:
+				_try_grab_focus(_buttons[0])
 			return true
 		return false
 	if _buttons.is_empty():
@@ -212,6 +233,15 @@ func set_auto_focus_content(enabled: bool) -> void:
 func set_require_focus_owner(enabled: bool) -> void:
 	_require_focus_owner = enabled
 
+func set_input_locked(locked: bool) -> void:
+	_input_locked = locked
+	if locked:
+		_nav_hold_dir = 0
+		_nav_repeat_timer = 0.0
+
+func is_input_locked() -> bool:
+	return _input_locked
+
 func select_next_tab() -> void:
 	_tabs.current_tab = min(_tabs.current_tab + 1, _tabs.get_tab_count() - 1)
 
@@ -223,10 +253,22 @@ func select_tab(tab_index: int) -> void:
 
 func grab_first_focus() -> void:
 	if _buttons.size() > 0:
-		_buttons[0].grab_focus()
-		_ignore_hold_until_release = true
+		if _try_grab_focus(_buttons[0]):
+			_ignore_hold_until_release = true
 	elif _allow_back:
-		_back_button.grab_focus()
+		_try_grab_focus(_back_button)
+
+func _try_grab_focus(control: Control) -> bool:
+	if control == null or not is_instance_valid(control):
+		return false
+	if not _focus_enabled or _input_locked:
+		return false
+	if control.focus_mode == Control.FOCUS_NONE:
+		return false
+	if not control.is_inside_tree() or not control.is_visible_in_tree():
+		return false
+	control.grab_focus()
+	return true
 
 func _closed_cleanup() -> void:
 	_pending_item = null
@@ -235,6 +277,8 @@ func _closed_cleanup() -> void:
 func _on_tab_changed(_index: int) -> void:
 	if _mode == "items":
 		_show_items_for_tab(_tabs.current_tab)
+		if _focus_enabled and not _input_locked and not _buttons.is_empty():
+			call_deferred("_try_grab_focus", _buttons[0])
 	tab_changed.emit(_tabs.current_tab)
 
 func has_items_in_current_tab() -> bool:
@@ -274,21 +318,22 @@ func _show_items_for_tab(tab_index: int) -> void:
 		var empty_button := Button.new()
 		empty_button.text = tr("No items.")
 		empty_button.focus_mode = Control.FOCUS_ALL if _focus_enabled else Control.FOCUS_NONE
-		empty_button.pressed.connect(func():
-			# Keep a focus target in empty tabs so left/right tab navigation remains possible.
-			pass
-		)
+		empty_button.disabled = true
 		list.add_child(empty_button)
 		_buttons.append(empty_button)
-		if _auto_focus_content:
-			empty_button.grab_focus()
+		if _auto_focus_content and _focus_enabled and not _input_locked:
+			_try_grab_focus(empty_button)
 		return
 
+	var preferred_item_id := str(_last_used_item_id_by_tab.get(tab_index, ""))
+	var preferred_index := -1
+	var button_index := 0
 	for item in filtered:
 		var count: int = game.get_item_count(item.id)
 		var button := Button.new()
 		button.focus_mode = Control.FOCUS_ALL if _focus_enabled else Control.FOCUS_NONE
 		button.text = tr("%s x%d") % [TranslationServer.translate(item.name), count]
+		button.set_meta("item_id", item.id)
 		button.focus_entered.connect(func():
 			_ensure_scroll_visible(_get_scroll_for_tab(tab_index), button)
 		)
@@ -297,9 +342,15 @@ func _show_items_for_tab(tab_index: int) -> void:
 		)
 		list.add_child(button)
 		_buttons.append(button)
+		if preferred_item_id != "" and str(item.id) == preferred_item_id and preferred_index == -1:
+			preferred_index = button_index
+		button_index += 1
 
-	if _auto_focus_content:
-		grab_first_focus()
+	if _auto_focus_content and _focus_enabled and not _input_locked:
+		if preferred_index >= 0 and preferred_index < _buttons.size():
+			_try_grab_focus(_buttons[preferred_index])
+		else:
+			grab_first_focus()
 
 func _get_game():
 	var loop := Engine.get_main_loop()
@@ -310,6 +361,7 @@ func _get_game():
 func _on_item_pressed(item: MTItemData) -> void:
 	if item == null:
 		return
+	_last_used_item_id_by_tab[_tabs.current_tab] = str(item.id)
 	if item.target_type == MTItemData.TargetType.SELF_TEAM and _team.size() > 0:
 		_show_targets(item)
 		return
@@ -336,12 +388,14 @@ func _show_targets(item: MTItemData) -> void:
 			_ensure_scroll_visible(_get_scroll_for_tab(_tabs.current_tab), button)
 		)
 		button.pressed.connect(func():
+			_last_used_item_id_by_tab[_tabs.current_tab] = str(item.id)
 			item_used.emit(item, monster)
 		)
 		list.add_child(button)
 		_buttons.append(button)
 
-	grab_first_focus()
+	if _focus_enabled and not _input_locked:
+		grab_first_focus()
 
 func _monster_name(monster: MTMonsterInstance) -> String:
 	if monster == null or monster.data == null:

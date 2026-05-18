@@ -132,14 +132,14 @@ static func create_portal_button(owner, biome: String, _index: int) -> PanelCont
 static func get_biome_description(biome: String) -> String:
 	"""Returns description for biome"""
 	var descriptions = {
-		"gloomrot_catacombs": "Undead & Dark Element",
-		"thornfang_warrens": "Grass & Poison Element",
-		"sunforge_basilica": "Fire & Light Element",
+		"gloomrot_catacombs": "Undead & Cosmic Element",
+		"thornfang_warrens": "Plant & Poison Element",
+		"sunforge_basilica": "Fire & Holy Element",
 		"skytide_reservoir": "Water & Ice Element",
-		"emberfault_chasm": "Fire & Rock Element",
-		"stargrave_observatory": "Psychic & Electric Element",
-		"ironhowl_bastion": "Steel & Normal Element",
-		"echo_vault": "Ghost & Undead Element"
+		"emberfault_chasm": "Fire & Earth Element",
+		"stargrave_observatory": "Cosmic & Electric Element",
+		"ironhowl_bastion": "Metal & Beast Element",
+		"echo_vault": "Undead & Cosmic Element"
 	}
 	return descriptions.get(biome, "")
 

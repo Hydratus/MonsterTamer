@@ -21,12 +21,12 @@ attack = ExtResource("4_atk")
 [sub_resource type="Resource" id="Resource_ca707"]
 script = ExtResource("3_sp0ky")
 attack = ExtResource("5_atk")
-learn_level = 8
+learn_level = 15
 
 [sub_resource type="Resource" id="Resource_sh5ow"]
 script = ExtResource("3_sp0ky")
 attack = ExtResource("6_atk")
-learn_level = 12
+learn_level = 17
 
 [sub_resource type="Resource" id="Resource_4y304"]
 script = ExtResource("3_sp0ky")
@@ -37,9 +37,9 @@ learn_level = 18
 script = ExtResource("3_mdsc")
 name = "Wolfinator"
 base_max_hp = 70
-base_max_energy = 55
+base_max_energy = 100
 base_strength = 75
-base_magic = 24
+base_magic = 50
 base_defense = 30
 base_resistance = 24
 base_speed = 50

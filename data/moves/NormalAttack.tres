@@ -5,7 +5,7 @@
 
 [resource]
 script = ExtResource("1_574ln")
-name = "Normal Attack"
+name = "Basic Attack"
 power = 10
 energy_cost = 0
 makes_contact = true

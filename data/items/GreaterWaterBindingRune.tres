@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://dw5tddi23fbvd"]
+[gd_resource type="Resource" script_class="MTItemData" format=3 uid="uid://d0dn8dp7hq7x8"]
 
 [ext_resource type="Script" uid="uid://564rgj7ohsyo" path="res://core/items/item_data.gd" id="1"]
 

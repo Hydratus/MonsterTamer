@@ -414,9 +414,10 @@ func _show_monster_options(team: MTMonsterTeam, index: int, monster: MTMonsterIn
 	# Switch-Button (nur wenn Monster lebt und nicht bereits aktiv)
 	if monster.is_alive() and monster != team.get_active_monster():
 		_log_debug("show switch button for %s" % _monster_name(monster))
-		var can_switch_out := current_monster == null \
-			or not current_monster.has_method("can_switch_out") \
-			or current_monster.can_switch_out()
+		var active_monster: MTMonsterInstance = team.get_active_monster()
+		var can_switch_out := active_monster == null \
+			or not active_monster.has_method("can_switch_out") \
+			or active_monster.can_switch_out()
 		var switch_button := Button.new()
 		switch_button.text = tr("Switch") if can_switch_out else tr("Switch (Trapped!)")
 		switch_button.disabled = not can_switch_out
@@ -426,16 +427,20 @@ func _show_monster_options(team: MTMonsterTeam, index: int, monster: MTMonsterIn
 			if battle_controller == null:
 				_log_error("battle_controller is null")
 				return
+			var switch_actor: MTMonsterInstance = team.get_active_monster()
+			if switch_actor == null:
+				_log_error("active monster is null")
+				return
 			
 			# Bestimme Team-Index (0 = Player, 1 = Enemy)
 			var team_index := _resolve_team_index(team)
 			
 			# Erstelle MTSwitchAction
-			var switch_action = MTSwitchAction.new(team_index, index, current_monster)
+			var switch_action = MTSwitchAction.new(team_index, index, switch_actor)
 			_log_debug("submit switch action team=%d index=%d" % [team_index, index])
 			
 			# Registriere als Spieler-Aktion (nicht direkt zur Queue)
-			battle_controller.pending_player_actions[current_monster] = switch_action
+			battle_controller.pending_player_actions[switch_actor] = switch_action
 			battle_controller.check_all_player_actions()
 			hide_menu()
 		)
@@ -596,7 +601,7 @@ func _show_item_menu() -> void:
 		show_main_menu(current_monster, current_team, battle_controller)
 	)
 	item_menu.set_require_focus_owner(false)
-	item_menu.set_allow_enter_from_tabs(false)
+	item_menu.set_allow_enter_from_tabs(true)
 	item_menu.set_tabs_focus_enabled(false)
 	item_menu.set_auto_focus_content(true)
 	item_menu.select_tab(_last_inventory_tab)

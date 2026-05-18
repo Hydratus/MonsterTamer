@@ -71,7 +71,7 @@ var encounter_table: Array[MTEncounterEntry] = []
 @export var boss_team_size: int = 5
 @export var item_reward_pool: Array[String] = [
 	"lesser_healing_potion",
-	"lesser_normal_binding_rune",
+	"lesser_undead_binding_rune",
 	"lesser_fire_binding_rune",
 	"lesser_water_binding_rune"
 ]
@@ -100,7 +100,7 @@ var encounter_table: Array[MTEncounterEntry] = []
 # Merchant stock (uses run gold)
 @export var merchant_shop_items: Array[String] = [
 	"lesser_healing_potion",
-	"lesser_normal_binding_rune",
+	"lesser_undead_binding_rune",
 	"lesser_fire_binding_rune",
 	"lesser_water_binding_rune",
 	"secret_key"
@@ -135,6 +135,7 @@ var _pending_return_to_hub := false
 var _boss_battle_active := false
 var _pending_biome_selection := false
 var _selected_next_biome: String = ""
+var _biome_portal_npcs: Array = []
 var _room_cells_lookup: Dictionary = {}
 var _gauntlet_fight_queue: Array[Dictionary] = []
 var _current_gauntlet_fight_index: int = 0
@@ -587,6 +588,8 @@ func _handle_custom_npc_interaction(npc) -> bool:
 	if interaction == "dungeon_boss" and _is_current_floor_boss_floor():
 		_boss_battle_active = true
 		return false
+	if interaction.begins_with("dungeon_portal_choice:"):
+		return _handle_biome_portal_interaction(npc, interaction)
 	
 	# Handle puzzle switches
 	if interaction.begins_with("dungeon_switch_"):
@@ -737,9 +740,9 @@ func _on_battle_finished(winner_team_index: int) -> void:
 		if game != null and game.boss_system_enabled and current_floor < 49 and game.is_dungeon_boss_floor(current_floor):
 			var biome_options = game.get_next_boss_biome_options(habitat, current_floor)
 			if not biome_options.is_empty():
-				_show_biome_portals(biome_options)
+				_spawn_biome_choice_portals(biome_options)
 				_pending_biome_selection = true
-				_enqueue_message(tr("Choose your next biome through the portals."))
+				_enqueue_message(tr("Two biome portals appear ahead. Step into one to choose your path."))
 			else:
 				_pending_floor_advance = true
 				_enqueue_message(tr("Boss defeated! The path to the next biome opens."))
@@ -766,8 +769,11 @@ func _track_defeated_boss() -> void:
 		if team_entry is MTNPCMonsterEntry:
 			var monster_data: MTMonsterData = team_entry.monster_data
 			if monster_data != null:
+				var monster_name: String = str(monster_data.name).strip_edges()
+				if monster_name == "":
+					monster_name = "Boss Monster"
 				var monster_dict: Dictionary = {
-					"name": monster_data.display_name if monster_data.display_name != "" else "Boss Monster",
+					"name": monster_name,
 					"level": team_entry.level,
 					"path": monster_data.resource_path
 				}
@@ -823,6 +829,7 @@ func _apply_floor_rules(reset_player: bool) -> void:
 		str(base_encounter_chance), str(encounter_chance), current_floor])
 	_check_monster_egg_hatch()
 	_generate_floor_layout()
+	_clear_biome_choice_portals()
 	_assign_floor_goals()
 	_assign_room_roles()
 	_apply_layout_to_tilemaps()
@@ -2170,6 +2177,95 @@ func _show_biome_portals(biome_options: Array[String]) -> void:
 func _hide_biome_portals() -> void:
 	DungeonPortalUIHelperClass.hide_biome_selection_portals(self)
 
+func _spawn_biome_choice_portals(biome_options: Array[String]) -> void:
+	_clear_biome_choice_portals()
+	_hide_biome_portals()
+	if biome_options.is_empty():
+		return
+	var room_index: int = _get_farthest_room_index(0)
+	if room_index < 0 or room_index >= _room_rects.size():
+		return
+	var room_center: Vector2i = _room_center(_room_rects[room_index])
+	var preferred_cells: Array[Vector2i] = [room_center + Vector2i(-2, 0), room_center + Vector2i(2, 0)]
+	var reserved: Dictionary = {}
+	reserved[_player_cell] = true
+	if _stairs_npc != null and _stairs_npc.visible:
+		reserved[_world_to_cell(_stairs_npc.global_position)] = true
+	if _boss_npc != null and _boss_npc.visible:
+		reserved[_world_to_cell(_boss_npc.global_position)] = true
+	for npc in _npcs:
+		if npc == null or not npc.visible or not npc.has_method("get_cell"):
+			continue
+		reserved[npc.get_cell(_grass_layer)] = true
+	var spawn_count: int = min(2, biome_options.size())
+	for i in range(spawn_count):
+		var biome: String = str(biome_options[i])
+		var preferred: Vector2i = preferred_cells[i] if i < preferred_cells.size() else room_center
+		var cell: Vector2i = _find_portal_spawn_cell(preferred, reserved)
+		if cell == Vector2i(-1, -1):
+			continue
+		reserved[cell] = true
+		_spawn_dynamic_npc(cell, _create_biome_portal_npc_data(biome))
+		if _dynamic_npcs.is_empty():
+			continue
+		var portal_npc = _dynamic_npcs[_dynamic_npcs.size() - 1]
+		if portal_npc == null:
+			continue
+		portal_npc.modulate = Color(0.55, 0.8, 1.0, 1.0) if i == 0 else Color(0.95, 0.7, 0.35, 1.0)
+		_attach_portal_name_label(portal_npc, DungeonPortalUIHelperClass.get_biome_display_name(biome))
+		_biome_portal_npcs.append(portal_npc)
+
+func _clear_biome_choice_portals() -> void:
+	for portal_npc in _biome_portal_npcs:
+		if portal_npc == null:
+			continue
+		_npcs.erase(portal_npc)
+		_dynamic_npcs.erase(portal_npc)
+		portal_npc.queue_free()
+	_biome_portal_npcs.clear()
+
+func _find_portal_spawn_cell(preferred: Vector2i, reserved: Dictionary) -> Vector2i:
+	if _is_cell_walkable(preferred) and not reserved.has(preferred):
+		return preferred
+	var max_radius := 6
+	for radius in range(1, max_radius + 1):
+		for y in range(preferred.y - radius, preferred.y + radius + 1):
+			for x in range(preferred.x - radius, preferred.x + radius + 1):
+				var candidate := Vector2i(x, y)
+				if reserved.has(candidate):
+					continue
+				if not _is_cell_walkable(candidate):
+					continue
+				return candidate
+	return Vector2i(-1, -1)
+
+func _create_biome_portal_npc_data(biome: String) -> MTNPCData:
+	var data := NPCDataClass.new()
+	var biome_name: String = DungeonPortalUIHelperClass.get_biome_display_name(biome)
+	data.display_name = biome_name
+	data.dialogue_before = tr("A portal to %s hums with energy.") % biome_name
+	data.interaction_id = "dungeon_portal_choice:%s" % biome
+	data.walk_enabled = false
+	data.battle_once = false
+	return data
+
+func _attach_portal_name_label(portal_npc, label_text: String) -> void:
+	if portal_npc == null:
+		return
+	for child in portal_npc.get_children():
+		if child is Label and child.name == "PortalBiomeLabel":
+			child.queue_free()
+	var label := Label.new()
+	label.name = "PortalBiomeLabel"
+	label.text = label_text
+	label.position = Vector2(-64, -44)
+	label.size = Vector2(128, 24)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.75, 1.0))
+	label.add_theme_color_override("font_outline_color", Color(0.06, 0.06, 0.1, 1.0))
+	label.add_theme_constant_override("outline_size", 2)
+	portal_npc.add_child(label)
+
 func _on_portal_biome_selected(biome: String) -> void:
 	"""Handle biome selection from portal UI"""
 	_selected_next_biome = biome
@@ -2177,9 +2273,23 @@ func _on_portal_biome_selected(biome: String) -> void:
 	var game = _get_game()
 	if game != null and game.has_method("set_next_boss_biome_choice"):
 		game.set_next_boss_biome_choice(biome)
+	_clear_biome_choice_portals()
 	_hide_biome_portals()
 	_enqueue_message(tr("Traveling to %s...") % [DungeonPortalUIHelperClass.get_biome_display_name(biome)])
 	_pending_floor_advance = true
+
+func _handle_biome_portal_interaction(npc, interaction: String) -> bool:
+	if not _pending_biome_selection:
+		return true
+	var parts := interaction.split(":")
+	if parts.size() < 2:
+		return true
+	var biome: String = str(parts[1]).strip_edges()
+	if biome == "":
+		return true
+	_on_portal_biome_selected(biome)
+	_set_npc_active(npc, false, Vector2i.ZERO)
+	return true
 
 func _rebuild_merchant_shop_buttons() -> void:
 	DungeonShopUIHelperClass.rebuild_merchant_shop_buttons(self, ITEM_DB_CLASS)

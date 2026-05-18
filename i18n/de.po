@@ -925,8 +925,8 @@ msgstr "Hoellenfeuer"
 msgid "Iron Charge"
 msgstr "Eisenansturm"
 
-msgid "Normal Attack"
-msgstr "Normalangriff"
+msgid "Basic Attack"
+msgstr "Basisangriff"
 
 msgid "On contact, lowers the attacker's Strength by 1 stage."
 msgstr "Bei Kontakt wird die STR des Angreifers um 1 Stufe gesenkt."

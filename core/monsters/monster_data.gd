@@ -8,10 +8,10 @@ const TraitLearnDataClass = preload("res://core/monsters/trait_learn_data.gd")
 
 # Growth rate enum - wie schnell das Monster levelt
 enum GrowthType {
-	FAST,       # Schnell - Level × 100 EXP
-	NORMAL,     # Normal - Level × 150 EXP
-	SLOW,       # Langsam - Level × 200 EXP
-	VERY_SLOW   # Sehr langsam - Level × 250 EXP
+	FAST,       # Schnell - Level × 120 EXP
+	NORMAL,     # Normal - Level × 180 EXP
+	SLOW,       # Langsam - Level × 240 EXP
+	VERY_SLOW   # Sehr langsam - Level × 300 EXP
 }
 
 @export var name: String

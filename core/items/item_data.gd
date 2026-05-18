@@ -21,11 +21,21 @@ enum RuneTier {
 
 enum RuneElement {
 	UNIVERSAL = -1,
-	NORMAL = 0,
 	FIRE = 1,
 	PLANT = 2,
 	WATER = 3,
-	GHOST = 4
+	UNDEAD = 4,
+	ELECTRIC = 5,
+	SOUND = 6,
+	COSMIC = 7,
+	HOLY = 8,
+	POISON = 9,
+	METAL = 10,
+	DRAGON = 11,
+	AIR = 12,
+	BEAST = 13,
+	EARTH = 14,
+	ICE = 15
 }
 
 enum TargetType {
@@ -60,3 +70,4 @@ func get_rune_tier_multiplier() -> float:
 			return 2.5
 		_:
 			return 1.0
+

@@ -290,7 +290,11 @@ func _on_item_used(item: ItemDataClass, target: MTMonsterInstance) -> void:
 	if item == null or target == null:
 		return
 	_apply_item_overworld(item, target)
+	# Refresh inventory contents after consumption, but do not auto-grab focus
+	# while a message may immediately open and lock menu input.
+	_item_menu.set_auto_focus_content(false)
 	_item_menu.refresh()
+	_item_menu.set_auto_focus_content(true)
 
 func _apply_item_overworld(item: ItemDataClass, target: MTMonsterInstance) -> void:
 	var messages: Array[String] = []
@@ -1735,6 +1739,10 @@ func _set_focus_for_controls(root: Node, enabled: bool) -> void:
 
 func set_overlay_message_active(active: bool) -> void:
 	_overlay_message_active = active
+	if _item_menu != null and _item_menu.has_method("set_input_locked"):
+		_item_menu.set_input_locked(active)
+	if _active_section == "inventory" and _menu_level == "content":
+		_set_inventory_focus_enabled(not active)
 
 func _on_joy_connection_changed(_device: int, _connected: bool) -> void:
 	_refresh_control_buttons()

@@ -10,4 +10,7 @@ static func clamp_stage(stage: int) -> int:
 
 static func get_multiplier(stage: int) -> float:
 	stage = clamp_stage(stage)
-	return 1.0 + stage * STEP
+	if stage >= 0:
+		return (2.0 + stage) / 2.0
+	else:
+		return 2.0 / (2.0 - stage)
